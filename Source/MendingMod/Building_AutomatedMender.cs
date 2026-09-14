@@ -12,8 +12,8 @@ namespace MendingMod
     // Runs the same MendingUtility formulas as the pawn path, but with a fixed skill level
     // (functions as a skill-10 worker per design) instead of reading a pawn's skill.
     //
-    // Input spots are the cells adjacent to the building's two short edges (four cells for the
-    // 3x2 footprint, in any rotation). Anything sitting in those cells counts, whether it's loose
+    // Gear and materials feed in along the back edge and finished items leave by a single port
+    // at the front. Anything sitting in those cells counts, whether it's loose
     // on the ground, in a stockpile zone, or in a storage building - vanilla storage keeps its
     // contents spawned on its own cells, so a plain cell scan already sees shelves and the like.
     // Buildings that hold items in an internal container instead (deep-storage mods, and Vanilla
@@ -91,57 +91,59 @@ namespace MendingMod
             }
         }
 
-        // All four cells adjacent to the footprint's two short edges, whichever way the building
-        // is facing: for a 3x2 that's two cells on each of the 2-cell sides. The first is the
-        // item spot and the rest take materials.
-        private List<IntVec3> AllInputCells()
+        // The row of cells just outside one end of the footprint: everything feeds in along the
+        // back edge and comes out of the front, the way the Vanilla Furniture Expanded factory
+        // machines are laid out, so a belt can run into the back and away from the front.
+        private List<IntVec3> EdgeCells(bool front)
         {
             CellRect rect = this.OccupiedRect();
+            IntVec3 dir = front ? Rotation.FacingCell : Rotation.Opposite.FacingCell;
             List<IntVec3> cells = new List<IntVec3>();
 
-            if (rect.Height <= rect.Width)
+            if (dir.x != 0)
             {
+                int x = dir.x > 0 ? rect.maxX + 1 : rect.minX - 1;
                 for (int z = rect.minZ; z <= rect.maxZ; z++)
-                {
-                    cells.Add(new IntVec3(rect.minX - 1, 0, z));
-                    cells.Add(new IntVec3(rect.maxX + 1, 0, z));
-                }
+                    cells.Add(new IntVec3(x, 0, z));
             }
             else
             {
+                int z = dir.z > 0 ? rect.maxZ + 1 : rect.minZ - 1;
                 for (int x = rect.minX; x <= rect.maxX; x++)
-                {
-                    cells.Add(new IntVec3(x, 0, rect.minZ - 1));
-                    cells.Add(new IntVec3(x, 0, rect.maxZ + 1));
-                }
+                    cells.Add(new IntVec3(x, 0, z));
             }
 
             return cells;
         }
 
-        // The one cell that damaged gear goes on.
-        public IntVec3 ItemInputCell => AllInputCells()[0];
+        // Damaged gear goes on the middle of the back edge.
+        public IntVec3 ItemInputCell
+        {
+            get
+            {
+                List<IntVec3> back = EdgeCells(front: false);
+                return back[back.Count / 2];
+            }
+        }
 
-        // Everything else on the short edges takes repair materials.
-        public IEnumerable<IntVec3> ResourceInputCells => AllInputCells().Skip(1);
+        // The rest of the back edge takes repair materials.
+        public IEnumerable<IntVec3> ResourceInputCells
+        {
+            get
+            {
+                List<IntVec3> back = EdgeCells(front: false);
+                int middle = back.Count / 2;
+                return back.Where((cell, i) => i != middle);
+            }
+        }
 
-        // Single cell past the middle of the edge the building faces. Repaired items land here,
-        // which is also what lets a conveyor laid against the front pick them straight up.
+        // Single output port at the middle of the front edge.
         public IntVec3 OutputCell
         {
             get
             {
-                CellRect rect = this.OccupiedRect();
-                IntVec3 facing = Rotation.FacingCell;
-
-                if (facing.x != 0)
-                {
-                    int x = facing.x > 0 ? rect.maxX + 1 : rect.minX - 1;
-                    return new IntVec3(x, 0, rect.minZ + rect.Height / 2);
-                }
-
-                int z = facing.z > 0 ? rect.maxZ + 1 : rect.minZ - 1;
-                return new IntVec3(rect.minX + rect.Width / 2, 0, z);
+                List<IntVec3> front = EdgeCells(front: true);
+                return front[front.Count / 2];
             }
         }
 

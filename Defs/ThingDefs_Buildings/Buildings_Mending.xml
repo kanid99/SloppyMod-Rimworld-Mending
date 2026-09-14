@@ -9,7 +9,9 @@
     <graphicData>
       <texPath>Things/Building/Production/TableMending_Manual</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
-      <drawSize>(3,1.29)</drawSize>
+      <!-- Matches the artwork's own 1.988:1 aspect so it fills all three cells without
+           distortion; the textures are cropped to the art, so this is its true size. -->
+      <drawSize>(3,1.51)</drawSize>
     </graphicData>
     <size>(3,1)</size>
     <costList>
@@ -58,7 +60,7 @@
     <graphicData>
       <texPath>Things/Building/Production/TableMending_Electric</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
-      <drawSize>(3,1.29)</drawSize>
+      <drawSize>(3,1.20)</drawSize>
     </graphicData>
     <size>(3,1)</size>
     <costList>
@@ -107,7 +109,7 @@
   <ThingDef ParentName="BuildingBase">
     <defName>AutomatedMender</defName>
     <label>automated mender</label>
-    <description>A fully automated mending station. A fully automated mending station, working as a skill 10 mender with no pawn labor. Select it to see its spots: put one damaged weapon or piece of apparel on the cyan spot, repair materials on the green spots, and finished items come out on the yellow spot in front. Each spot accepts loose items on the ground or any storage building sitting on it.</description>
+    <description>An industrial repair line that mends worn gear with no pawn labor, working as a skill 10 mender. Select it to see its spots: gear and materials feed in along the back, and finished items come out of the single port at the front. Put one damaged weapon or piece of apparel on the cyan spot, repair materials on the green spots, and collect repaired gear from the yellow spot. Every spot accepts loose items on the ground or any storage building sitting on it, so conveyors and hoppers can feed it directly.</description>
     <thingClass>MendingMod.Building_AutomatedMender</thingClass>
     <!-- Without this the def defaults to TickerType.Never and Thing.DoTick never calls Tick(),
          so the mender's whole state machine (and its power draw) silently never runs. -->
@@ -115,21 +117,34 @@
     <graphicData>
       <texPath>Things/Building/Production/AutomatedMender</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
-      <drawSize>(3,2)</drawSize>
+      <drawSize>(6,4)</drawSize>
+      <damageData>
+        <cornerTL>Damage/Corner</cornerTL>
+        <cornerTR>Damage/Corner</cornerTR>
+        <cornerBL>Damage/Corner</cornerBL>
+        <cornerBR>Damage/Corner</cornerBR>
+      </damageData>
     </graphicData>
-    <size>(3,2)</size>
+    <size>(5,3)</size>
     <costList>
-      <Steel>150</Steel>
+      <Steel>250</Steel>
       <ComponentIndustrial>6</ComponentIndustrial>
       <ComponentSpacer>2</ComponentSpacer>
     </costList>
     <altitudeLayer>Building</altitudeLayer>
-    <passability>Impassable</passability>
-    <fillPercent>1.0</fillPercent>
+    <passability>PassThroughOnly</passability>
+    <pathCost>50</pathCost>
+    <fillPercent>0.5</fillPercent>
+    <surfaceType>Item</surfaceType>
     <constructEffect>ConstructMetal</constructEffect>
     <designationCategory>Production</designationCategory>
     <rotatable>true</rotatable>
+    <neverMultiSelect>true</neverMultiSelect>
+    <uiIconScale>0.8</uiIconScale>
+    <constructionSkillPrerequisite>6</constructionSkillPrerequisite>
     <statBases>
+      <Mass>40</Mass>
+      <Beauty>-8</Beauty>
       <MaxHitPoints>300</MaxHitPoints>
       <WorkToBuild>6000</WorkToBuild>
       <Flammability>0.3</Flammability>
@@ -140,7 +155,7 @@
     <comps>
       <li Class="CompProperties_Power">
         <compClass>CompPowerTrader</compClass>
-        <basePowerConsumption>1500</basePowerConsumption>
+        <basePowerConsumption>400</basePowerConsumption>
       </li>
       <li Class="CompProperties_Flickable" />
       <li Class="MendingMod.CompProperties_MenderWasteBuffer">
