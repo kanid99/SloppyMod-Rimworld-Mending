@@ -8,7 +8,7 @@
     <thingClass>Building_WorkTable</thingClass>
     <graphicData>
       <texPath>Things/Building/Production/TableMending_Manual</texPath>
-      <graphicClass>Graphic_Single</graphicClass>
+      <graphicClass>Graphic_Multi</graphicClass>
       <drawSize>(2,1)</drawSize>
     </graphicData>
     <size>(2,1)</size>
@@ -57,7 +57,7 @@
     <thingClass>Building_WorkTable</thingClass>
     <graphicData>
       <texPath>Things/Building/Production/TableMending_Electric</texPath>
-      <graphicClass>Graphic_Single</graphicClass>
+      <graphicClass>Graphic_Multi</graphicClass>
       <drawSize>(2,1)</drawSize>
     </graphicData>
     <size>(2,1)</size>
@@ -111,7 +111,7 @@
     <thingClass>MendingMod.Building_AutomatedMender</thingClass>
     <graphicData>
       <texPath>Things/Building/Production/AutomatedMender</texPath>
-      <graphicClass>Graphic_Single</graphicClass>
+      <graphicClass>Graphic_Multi</graphicClass>
       <drawSize>(3,2)</drawSize>
     </graphicData>
     <size>(3,2)</size>
