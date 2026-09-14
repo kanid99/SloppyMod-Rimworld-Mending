@@ -28,9 +28,20 @@ namespace MendingMod
             return Mathf.Clamp01(1f - (float)item.HitPoints / item.MaxHitPoints);
         }
 
-        // recipeMaker.workAmount is the def's own base crafting time; scaling it by missing HP
-        // and quality gives a rough "how much of this item are we redoing" estimate. Falls back
-        // to the WorkToMake stat if the def has no recipeMaker block (e.g. it's stuff-generated).
+        // Damage drives work time on a log curve rather than linearly: log10(1 + 9x) still maps
+        // 0 -> 0 and 1 -> 1, but rises steeply at the start, so a barely-scratched item costs a
+        // meaningful share of the full repair time instead of finishing almost instantly, while
+        // a nearly-destroyed one doesn't balloon past rebuilding it outright.
+        private static float DamageWorkCurve(float missingHpFraction)
+        {
+            return Mathf.Log10(1f + 9f * Mathf.Clamp01(missingHpFraction));
+        }
+
+        // recipeMaker.workAmount is the def's own base crafting time; scaling it by the damage
+        // curve and quality gives a rough "how much of this item are we redoing" estimate. Falls
+        // back to the WorkToMake stat if the def has no recipeMaker block (e.g. it's
+        // stuff-generated). The bench's own WorkTableWorkSpeedFactor is applied by the caller,
+        // not here, so the automated mender and the two tables can differ.
         public static float GetDynamicWorkAmount(Thing item)
         {
             if (item == null)
@@ -46,7 +57,8 @@ namespace MendingMod
             item.TryGetQuality(out QualityCategory quality);
             float qualityFactor = 1f + (int)quality * 0.15f;
 
-            return baseWork * GetMissingHpFraction(item) * qualityFactor;
+            return baseWork * DamageWorkCurve(GetMissingHpFraction(item)) * qualityFactor
+                * MendingModMain.Settings.repairWorkMultiplier;
         }
 
         // Skill level at (or above) which the roll always succeeds. Scales up with the item's

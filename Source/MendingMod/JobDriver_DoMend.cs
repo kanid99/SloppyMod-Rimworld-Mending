@@ -30,6 +30,12 @@ namespace MendingMod
             this.FailOnDestroyedNullOrForbidden(BillGiverInd);
             this.FailOnBurningImmobile(BillGiverInd);
             this.FailOn(() => job.bill == null || job.bill.suspended);
+            // CurrentlyUsableForBills is what actually enforces "no power, no work" for a
+            // Building_WorkTable (it returns false whenever a table with a CompPowerTrader and no
+            // unpoweredWorkTableWorkSpeedFactor is unpowered). Vanilla JobDriver_DoBill fails on
+            // it too; this driver replaces vanilla's MakeNewToils wholesale, so it has to repeat
+            // the check or an unpowered table keeps working.
+            this.FailOn(() => !BillGiver.CurrentlyUsableForBills());
 
             Thing mendTarget = job.GetTargetQueue(IngredientInd)
                 .Select(t => t.Thing)
@@ -42,7 +48,12 @@ namespace MendingMod
             work.initAction = () =>
             {
                 float workAmount = mendTarget != null ? Mathf.Max(60f, MendingUtility.GetDynamicWorkAmount(mendTarget)) : 300f;
-                work.actor.jobs.curDriver.ticksLeftThisToil = Mathf.RoundToInt(workAmount / pawn.GetStatValue(StatDefOf.GeneralLaborSpeed));
+                // WorkTableWorkSpeedFactor is what separates the two benches (0.25 on the manual
+                // table, 1.0 on the electric one); vanilla applies it in Toils_Recipe.DoRecipeWork,
+                // which this driver doesn't use.
+                float benchFactor = job.GetTarget(BillGiverInd).Thing?.GetStatValue(StatDefOf.WorkTableWorkSpeedFactor) ?? 1f;
+                float speed = pawn.GetStatValue(StatDefOf.GeneralLaborSpeed) * Mathf.Max(0.01f, benchFactor);
+                work.actor.jobs.curDriver.ticksLeftThisToil = Mathf.RoundToInt(workAmount / speed);
             };
             work.defaultCompleteMode = ToilCompleteMode.Delay;
             work.WithProgressBarToilDelay(BillGiverInd);
@@ -71,9 +82,42 @@ namespace MendingMod
                 ConsumeMaterialsNearBillGiver(billGiverThing, mendTarget);
                 RecipeWorker_Mend.CompleteMend(mendTarget, actor, billGiverThing);
 
-                actor.jobs.EndCurrentJob(JobCondition.Succeeded);
+                if (!TryStartStoringMendedItem(actor, mendTarget))
+                    actor.jobs.EndCurrentJob(JobCondition.Succeeded);
             };
             return toil;
+        }
+
+        // Mirrors what Toils_Recipe.FinishRecipeAndStartStoringProduct does with a recipe's
+        // products, so the bill's own "drop on floor / best stockpile / specific stockpile"
+        // dropdown means the same thing here as on any vanilla bench. Returns true if it queued a
+        // haul job (which ends this one), false if the item should just stay where it is.
+        private bool TryStartStoringMendedItem(Pawn actor, Thing mendTarget)
+        {
+            if (job.bill.GetStoreMode() == BillStoreModeDefOf.DropOnFloor)
+                return false;
+
+            IntVec3 foundCell = IntVec3.Invalid;
+            if (job.bill.GetStoreMode() == BillStoreModeDefOf.BestStockpile)
+                StoreUtility.TryFindBestBetterStoreCellFor(mendTarget, actor, actor.Map, StoragePriority.Unstored, actor.Faction, out foundCell);
+            else if (job.bill.GetStoreMode() == BillStoreModeDefOf.SpecificStockpile)
+                StoreUtility.TryFindBestBetterStoreCellForIn(mendTarget, actor, actor.Map, StoragePriority.Unstored, actor.Faction, job.bill.GetSlotGroup(), out foundCell);
+
+            if (!foundCell.IsValid || !actor.carryTracker.TryStartCarry(mendTarget))
+                return false;
+
+            actor.jobs.StartJob(
+                HaulAIUtility.HaulToCellStorageJob(actor, mendTarget, foundCell, fitInStoreCell: false),
+                JobCondition.Succeeded,
+                null,
+                resumeCurJobAfterwards: false,
+                cancelBusyStances: true,
+                null,
+                null,
+                fromQueue: false,
+                canReturnCurJobToPool: false,
+                keepCarryingThingOverride: true);
+            return true;
         }
 
         // Vanilla's own ingredient-consumption bookkeeping never fires for our JobDef (see class

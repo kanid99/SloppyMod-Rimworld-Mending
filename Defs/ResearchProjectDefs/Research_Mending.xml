@@ -27,7 +27,7 @@
   <ResearchProjectDef>
     <defName>AutomatedMending</defName>
     <label>automated mending</label>
-    <description>Construct a fully automated mending station that repairs items fed through dedicated hoppers, with no pawn labor required.</description>
+    <description>Construct a fully automated mending station that repairs items left on its input spots, with no pawn labor required.</description>
     <baseCost>2200</baseCost>
     <techLevel>Spacer</techLevel>
     <prerequisites>

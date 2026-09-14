@@ -1,26 +1,34 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using RimWorld;
 using UnityEngine;
 using Verse;
 
 namespace MendingMod
 {
-    // Tick-driven state machine: Idle scans adjacent hoppers for work, Working counts down a
-    // dynamically-computed work duration on the swallowed item, then ejects it. Runs the same
-    // MendingUtility formulas as the pawn path, but with a fixed skill level (functions as a
-    // skill-10 worker per design) instead of reading a pawn's skill.
+    // Tick-driven state machine: Idle scans its input spots for work, Working counts down a
+    // dynamically-computed work duration on the swallowed item, then ejects it out the front.
+    // Runs the same MendingUtility formulas as the pawn path, but with a fixed skill level
+    // (functions as a skill-10 worker per design) instead of reading a pawn's skill.
+    //
+    // Input spots are the cells adjacent to the building's two short edges (four cells for the
+    // 3x2 footprint, in any rotation). Anything sitting in those cells counts, whether it's loose
+    // on the ground, in a stockpile zone, or in a storage building - vanilla storage keeps its
+    // contents spawned on its own cells, so a plain cell scan already sees shelves and the like.
+    // Buildings that hold items in an internal container instead (deep-storage mods, and Vanilla
+    // Furniture Expanded's conveyors) are read through IThingHolder, which is also what makes
+    // conveyor feeding work with no dependency on that mod.
     public class Building_AutomatedMender : Building, IThingHolder
     {
         private const int FixedSkillLevel = 10;
-        private const string ItemHopperDefName = "MendingItemHopper";
-        private const string ResourceHopperDefName = "MendingResourceHopper";
 
         private enum MenderState : byte { Idle, Working }
 
         private ThingOwner<Thing> innerContainer;
         private Thing currentItem;
         private int workTicksRemaining;
+        private int workTicksTotal;
         private MenderState state = MenderState.Idle;
 
         public Building_AutomatedMender()
@@ -44,15 +52,24 @@ namespace MendingMod
             Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
             Scribe_References.Look(ref currentItem, "currentItem");
             Scribe_Values.Look(ref workTicksRemaining, "workTicksRemaining");
+            Scribe_Values.Look(ref workTicksTotal, "workTicksTotal");
             Scribe_Values.Look(ref state, "state");
+        }
+
+        private bool PowerOn
+        {
+            get
+            {
+                CompPowerTrader power = GetComp<CompPowerTrader>();
+                return power == null || power.PowerOn;
+            }
         }
 
         protected override void Tick()
         {
             base.Tick();
 
-            CompPowerTrader power = GetComp<CompPowerTrader>();
-            if (power != null && !power.PowerOn)
+            if (!PowerOn)
                 return;
 
             if (state == MenderState.Idle)
@@ -65,32 +82,118 @@ namespace MendingMod
             }
         }
 
+        // The two short edges of the footprint, whichever way the building is facing: for a 3x2
+        // that's two cells on each of the 2-cell sides.
+        public IEnumerable<IntVec3> InputCells
+        {
+            get
+            {
+                CellRect rect = this.OccupiedRect();
+
+                if (rect.Height <= rect.Width)
+                {
+                    for (int z = rect.minZ; z <= rect.maxZ; z++)
+                    {
+                        yield return new IntVec3(rect.minX - 1, 0, z);
+                        yield return new IntVec3(rect.maxX + 1, 0, z);
+                    }
+                }
+                else
+                {
+                    for (int x = rect.minX; x <= rect.maxX; x++)
+                    {
+                        yield return new IntVec3(x, 0, rect.minZ - 1);
+                        yield return new IntVec3(x, 0, rect.maxZ + 1);
+                    }
+                }
+            }
+        }
+
+        // The cells just past the edge the building faces. Repaired items go here, which is what
+        // lets a conveyor laid against the front pick them straight up.
+        public IEnumerable<IntVec3> OutputCells
+        {
+            get
+            {
+                CellRect rect = this.OccupiedRect();
+                IntVec3 facing = Rotation.FacingCell;
+
+                if (facing.x != 0)
+                {
+                    int x = facing.x > 0 ? rect.maxX + 1 : rect.minX - 1;
+                    for (int z = rect.minZ; z <= rect.maxZ; z++)
+                        yield return new IntVec3(x, 0, z);
+                }
+                else
+                {
+                    int z = facing.z > 0 ? rect.maxZ + 1 : rect.minZ - 1;
+                    for (int x = rect.minX; x <= rect.maxX; x++)
+                        yield return new IntVec3(x, 0, z);
+                }
+            }
+        }
+
+        private IEnumerable<Thing> AvailableInputThings()
+        {
+            foreach (IntVec3 cell in InputCells)
+            {
+                if (!cell.InBounds(Map))
+                    continue;
+
+                foreach (Thing thing in cell.GetThingList(Map))
+                {
+                    if (thing.def.category == ThingCategory.Item)
+                        yield return thing;
+
+                    if (thing is IThingHolder holder && thing != this)
+                    {
+                        ThingOwner owner = holder.GetDirectlyHeldThings();
+                        if (owner == null)
+                            continue;
+
+                        foreach (Thing held in owner)
+                        {
+                            if (held.def.category == ThingCategory.Item)
+                                yield return held;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Only apparel and weapons are mendable (matching the two recipes), and checking that
+        // rather than useHitPoints alone keeps deteriorated resource stacks out of the input.
+        private static bool IsMendable(Thing thing)
+        {
+            return (thing.def.IsApparel || thing.def.IsWeapon)
+                && thing.def.useHitPoints
+                && thing.HitPoints < thing.MaxHitPoints;
+        }
+
         private void TryStartMend()
         {
-            Building_Storage itemHopper = FindAdjacentHopper(ItemHopperDefName);
-            Thing damagedItem = itemHopper?.slotGroup?.HeldThings
-                .FirstOrDefault(t => t.def.useHitPoints && t.HitPoints < t.MaxHitPoints);
+            List<Thing> available = AvailableInputThings().ToList();
 
+            Thing damagedItem = available.FirstOrDefault(IsMendable);
             if (damagedItem == null)
                 return;
 
             List<ThingDefCountClass> costs = MendingUtility.GetDynamicIngredientCosts(damagedItem);
 
-            Building_Storage resourceHopper = FindAdjacentHopper(ResourceHopperDefName);
-            if (resourceHopper?.slotGroup == null)
-                return;
-
             // Pass 1: verify every material is available before touching anything.
-            Dictionary<ThingDef, int> available = new Dictionary<ThingDef, int>();
-            foreach (Thing t in resourceHopper.slotGroup.HeldThings)
+            Dictionary<ThingDef, int> stock = new Dictionary<ThingDef, int>();
+            foreach (Thing thing in available)
             {
-                available.TryGetValue(t.def, out int have);
-                available[t.def] = have + t.stackCount;
+                if (thing == damagedItem)
+                    continue;
+
+                stock.TryGetValue(thing.def, out int have);
+                stock[thing.def] = have + thing.stackCount;
             }
 
             foreach (ThingDefCountClass cost in costs)
             {
-                if (!available.TryGetValue(cost.thingDef, out int have) || have < cost.count)
+                if (!stock.TryGetValue(cost.thingDef, out int have) || have < cost.count)
                     return;
             }
 
@@ -98,7 +201,7 @@ namespace MendingMod
             foreach (ThingDefCountClass cost in costs)
             {
                 int remaining = cost.count;
-                foreach (Thing stack in resourceHopper.slotGroup.HeldThings.Where(t => t.def == cost.thingDef).ToList())
+                foreach (Thing stack in available.Where(t => t != damagedItem && t.def == cost.thingDef).ToList())
                 {
                     if (remaining <= 0)
                         break;
@@ -112,7 +215,8 @@ namespace MendingMod
             currentItem = damagedItem;
             innerContainer.TryAddOrTransfer(damagedItem);
 
-            workTicksRemaining = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.GetDynamicWorkAmount(currentItem)));
+            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.GetDynamicWorkAmount(currentItem)));
+            workTicksRemaining = workTicksTotal;
             state = MenderState.Working;
         }
 
@@ -136,27 +240,64 @@ namespace MendingMod
             GetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(currentItem);
             MendingUtility.ResolveRepair(currentItem, FixedSkillLevel);
 
-            IntVec3 outputCell = GetValidDropCell(Position + Rotation.FacingCell);
-            innerContainer.TryDrop(currentItem, outputCell, Map, ThingPlaceMode.Near, out _);
+            EjectItem(currentItem);
 
             currentItem = null;
             state = MenderState.Idle;
         }
 
-        private IntVec3 GetValidDropCell(IntVec3 preferred)
+        // Direct placement first so the item lands exactly on an output cell (a conveyor laid
+        // there will collect it on its next tick); only if every output cell refuses does it fall
+        // back to scattering the item nearby.
+        private void EjectItem(Thing item)
         {
-            return preferred.InBounds(Map) && preferred.Walkable(Map) ? preferred : Position;
-        }
-
-        private Building_Storage FindAdjacentHopper(string defName)
-        {
-            foreach (IntVec3 cell in GenAdj.CellsAdjacentCardinal(this))
+            foreach (IntVec3 cell in OutputCells)
             {
-                if (cell.GetFirstBuilding(Map) is Building_Storage storage && storage.def.defName == defName)
-                    return storage;
+                if (!cell.InBounds(Map))
+                    continue;
+
+                if (innerContainer.TryDrop(item, cell, Map, ThingPlaceMode.Direct, out _))
+                    return;
             }
 
-            return null;
+            innerContainer.TryDrop(item, Position, Map, ThingPlaceMode.Near, out _);
+        }
+
+        public override void DrawExtraSelectionOverlays()
+        {
+            base.DrawExtraSelectionOverlays();
+
+            if (Map == null)
+                return;
+
+            GenDraw.DrawFieldEdges(InputCells.Where(c => c.InBounds(Map)).ToList(), Color.green);
+            GenDraw.DrawFieldEdges(OutputCells.Where(c => c.InBounds(Map)).ToList(), Color.yellow);
+        }
+
+        public override string GetInspectString()
+        {
+            StringBuilder sb = new StringBuilder(base.GetInspectString());
+
+            if (sb.Length > 0)
+                sb.AppendLine();
+
+            if (!PowerOn)
+            {
+                sb.Append("DynamicMending.MenderNoPower".Translate());
+            }
+            else if (state == MenderState.Working && currentItem != null)
+            {
+                float progress = workTicksTotal > 0
+                    ? 1f - (float)workTicksRemaining / workTicksTotal
+                    : 0f;
+                sb.Append("DynamicMending.MenderRepairing".Translate(currentItem.LabelCap, progress.ToStringPercent()));
+            }
+            else
+            {
+                sb.Append("DynamicMending.MenderIdle".Translate());
+            }
+
+            return sb.ToString();
         }
     }
 }

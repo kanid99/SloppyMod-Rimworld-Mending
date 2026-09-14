@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <DynamicMending.NoIngredientsOrTarget>No damaged item or repair materials in range.</DynamicMending.NoIngredientsOrTarget>
+
+  <DynamicMending.MenderIdle>Idle: waiting for a damaged item and materials on the input spots.</DynamicMending.MenderIdle>
+  <DynamicMending.MenderNoPower>Unpowered.</DynamicMending.MenderNoPower>
+  <DynamicMending.MenderRepairing>Repairing {0}: {1}</DynamicMending.MenderRepairing>
+
+</LanguageData>
