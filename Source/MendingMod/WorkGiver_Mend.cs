@@ -15,20 +15,35 @@ namespace MendingMod
         public override Job JobOnThing(Pawn pawn, Thing thing, bool forced = false)
         {
             if (!(thing is IBillGiver billGiver) || !ThingIsUsableBillGiver(thing))
+            {
+                DevLog(thing, "not a usable bill giver");
                 return null;
+            }
 
             if (!pawn.CanReserve(thing, 1, -1, null, forced) || thing.IsForbidden(pawn) || thing.IsBurning())
+            {
+                DevLog(thing, "can't reserve / forbidden / burning");
                 return null;
+            }
 
             billGiver.BillStack.RemoveIncompletableBills();
+
+            if (billGiver.BillStack.Count == 0)
+                DevLog(thing, "bill stack is empty");
 
             foreach (Bill bill in billGiver.BillStack)
             {
                 if (bill.recipe.workerClass != typeof(RecipeWorker_Mend))
+                {
+                    DevLog(thing, $"bill '{bill.Label}' workerClass is {bill.recipe.workerClass} not RecipeWorker_Mend");
                     continue;
+                }
 
                 if (!bill.ShouldDoNow() || !bill.PawnAllowedToStartAnew(pawn))
+                {
+                    DevLog(thing, $"bill '{bill.Label}' ShouldDoNow={bill.ShouldDoNow()} PawnAllowedToStartAnew={bill.PawnAllowedToStartAnew(pawn)}");
                     continue;
+                }
 
                 List<ThingCount> chosen = new List<ThingCount>();
                 if (!TryBuildMendIngredients(bill, pawn, thing, chosen))
@@ -46,6 +61,12 @@ namespace MendingMod
             }
 
             return null;
+        }
+
+        private static void DevLog(Thing thing, string message)
+        {
+            if (Prefs.DevMode)
+                Log.Message($"[DynamicMending] {thing.LabelShort} @ {thing.Position}: {message}");
         }
 
         // Deliberately not named/shaped like WorkGiver_DoBill's own static
@@ -70,7 +91,10 @@ namespace MendingMod
                 t => !t.IsForbidden(pawn) && pawn.CanReserve(t) && targetFilter.filter.Allows(t) && IsDamaged(t));
 
             if (mendTarget == null)
+            {
+                DevLog(billGiver, $"no reachable damaged item matching bill '{bill.Label}' within radius {bill.ingredientSearchRadius}");
                 return false;
+            }
 
             chosen.Add(new ThingCount(mendTarget, 1));
 
@@ -81,11 +105,15 @@ namespace MendingMod
             {
                 List<ThingCount> found = new List<ThingCount>();
                 if (!TryFindMaterial(cost.thingDef, cost.count, pawn, billGiver, bill.ingredientSearchRadius, found))
+                {
+                    DevLog(billGiver, $"found target {mendTarget.LabelShort} but missing material {cost.thingDef.defName} x{cost.count} within radius {bill.ingredientSearchRadius}");
                     return false;
+                }
 
                 chosen.AddRange(found);
             }
 
+            DevLog(billGiver, $"job ready: mend {mendTarget.LabelShort}");
             return true;
         }
 
