@@ -121,12 +121,19 @@ namespace MendingMod
         public static List<ThingDefCountClass> GetDynamicIngredientCosts(Thing item)
         {
             List<ThingDefCountClass> result = new List<ThingDefCountClass>();
+            float missingHpFraction = GetMissingHpFraction(item);
+            float multiplier = MendingModMain.Settings.degradationMultiplier;
+
+            if (MendingModMain.Settings.simpleMode)
+            {
+                int steelCount = Mathf.Max(1, Mathf.CeilToInt(MendingModMain.Settings.simpleModeSteelPerRepair * missingHpFraction * multiplier));
+                result.Add(new ThingDefCountClass(ThingDefOf.Steel, steelCount));
+                return result;
+            }
+
             List<ThingDefCountClass> adjusted = CostListCalculator.CostListAdjusted(item);
             if (adjusted.NullOrEmpty())
                 return result;
-
-            float missingHpFraction = GetMissingHpFraction(item);
-            float multiplier = MendingModMain.Settings.degradationMultiplier;
 
             foreach (ThingDefCountClass cost in adjusted)
             {

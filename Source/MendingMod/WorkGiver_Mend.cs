@@ -12,8 +12,48 @@ namespace MendingMod
     // not declared in XML at all, they come from MendingUtility.GetDynamicIngredientCosts.
     public class WorkGiver_Mend : WorkGiver_DoBill
     {
+        // Temporary unconditional diagnostics (not gated behind Prefs.DevMode) - narrowed to
+        // only our own two tables so it doesn't spam the log with every other mod's bill givers.
+        public override bool ShouldSkip(Pawn pawn, bool forced = false)
+        {
+            List<Thing> candidates = pawn.Map.listerThings.ThingsInGroup(ThingRequestGroup.PotentialBillGiver);
+            bool foundOurs = false;
+            foreach (Thing t in candidates)
+            {
+                if (t.def.defName != "TableMending_Manual" && t.def.defName != "TableMending_Electric")
+                    continue;
+
+                foundOurs = true;
+                bool isBillGiver = t is IBillGiver;
+                bool usable = isBillGiver && ThingIsUsableBillGiver(t);
+                bool anyShouldDo = isBillGiver && ((IBillGiver)t).BillStack.AnyShouldDoNow;
+                int billCount = isBillGiver ? ((IBillGiver)t).BillStack.Count : -1;
+                Log.Message($"[DynamicMending] candidate {t.LabelShort}@{t.Position}: fixedBillGiverDefs={(def.fixedBillGiverDefs == null ? "NULL" : def.fixedBillGiverDefs.Count.ToString())} isBillGiver={isBillGiver} usable={usable} anyShouldDo={anyShouldDo} billCount={billCount}");
+
+                if (isBillGiver)
+                {
+                    foreach (Bill bill in ((IBillGiver)t).BillStack)
+                    {
+                        string extra = bill is Bill_Production billProd
+                            ? $" repeatMode={billProd.repeatMode?.defName} targetCount={billProd.targetCount}"
+                            : "";
+                        Log.Message($"[DynamicMending]   bill '{bill.Label}' recipe={bill.recipe.defName} suspended={bill.suspended} ShouldDoNow={bill.ShouldDoNow()}{extra}");
+                    }
+                }
+            }
+
+            if (!foundOurs)
+                Log.Message($"[DynamicMending] ShouldSkip({pawn.LabelShort}): no TableMending_* found in PotentialBillGiver group on this map at all!");
+
+            bool skip = base.ShouldSkip(pawn, forced);
+            Log.Message($"[DynamicMending] ShouldSkip({pawn.LabelShort}, forced={forced}) = {skip}");
+            return skip;
+        }
+
         public override Job JobOnThing(Pawn pawn, Thing thing, bool forced = false)
         {
+            Log.Message($"[DynamicMending] JobOnThing called: pawn={pawn.LabelShort} thing={thing.LabelShort} forced={forced}");
+
             if (!(thing is IBillGiver billGiver) || !ThingIsUsableBillGiver(thing))
             {
                 DevLog(thing, "not a usable bill giver");

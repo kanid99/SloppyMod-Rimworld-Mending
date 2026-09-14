@@ -7,12 +7,16 @@ namespace MendingMod
     {
         public bool generateWaste = true;
         public float degradationMultiplier = 1.0f;
+        public bool simpleMode = false;
+        public float simpleModeSteelPerRepair = 10f;
 
         public override void ExposeData()
         {
             base.ExposeData();
             Scribe_Values.Look(ref generateWaste, "generateWaste", true);
             Scribe_Values.Look(ref degradationMultiplier, "degradationMultiplier", 1.0f);
+            Scribe_Values.Look(ref simpleMode, "simpleMode", false);
+            Scribe_Values.Look(ref simpleModeSteelPerRepair, "simpleModeSteelPerRepair", 10f);
         }
     }
 
@@ -39,6 +43,19 @@ namespace MendingMod
 
             listing.Label($"Degradation multiplier: {Settings.degradationMultiplier:F2}");
             Settings.degradationMultiplier = listing.Slider(Settings.degradationMultiplier, 0.0f, 2.0f);
+
+            listing.Gap();
+
+            listing.CheckboxLabeled(
+                "Simple mode",
+                ref Settings.simpleMode,
+                "When enabled, every repair costs only steel (scaled by missing HP) instead of materials computed from the item's own composition.");
+
+            if (Settings.simpleMode)
+            {
+                listing.Label($"Steel per full repair: {Settings.simpleModeSteelPerRepair:F0}");
+                Settings.simpleModeSteelPerRepair = listing.Slider(Settings.simpleModeSteelPerRepair, 1f, 50f);
+            }
 
             listing.End();
             base.DoSettingsWindowContents(inRect);
