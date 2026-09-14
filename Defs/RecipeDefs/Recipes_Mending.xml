@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    workSkill is deliberately left unset on both recipes: vanilla's automatic per-recipe XP
+    grant keys off it, and we grant XP manually in RecipeWorker_Mend based on the mended
+    item's own recipeMaker.workSkill instead (a mended flak vest grants Tailoring, a mended
+    plasteel spear grants Smithing, etc.) so it stays tied to the specific item, not a flat
+    recipe-level skill.
+  -->
+
+  <RecipeDef>
+    <defName>MendApparel</defName>
+    <label>mend apparel</label>
+    <description>Repair a damaged piece of apparel. Material and work-time costs scale dynamically with how much HP is missing.</description>
+    <jobString>Mending apparel.</jobString>
+    <workerClass>MendingMod.RecipeWorker_Mend</workerClass>
+    <billClass>MendingMod.Bill_Mend</billClass>
+    <workAmount>300</workAmount>
+    <effectWorking>Tailor</effectWorking>
+    <soundWorking>Recipe_Tailor</soundWorking>
+    <ingredients>
+      <li>
+        <filter>
+          <categories>
+            <li>Apparel</li>
+          </categories>
+          <allowedHitPointsPercents>0~0.99</allowedHitPointsPercents>
+        </filter>
+        <count>1</count>
+      </li>
+    </ingredients>
+    <fixedIngredientFilter>
+      <categories>
+        <li>Apparel</li>
+      </categories>
+      <allowedHitPointsPercents>0~0.99</allowedHitPointsPercents>
+    </fixedIngredientFilter>
+    <products />
+    <recipeUsers>
+      <li>TableMending_Manual</li>
+      <li>TableMending_Electric</li>
+    </recipeUsers>
+  </RecipeDef>
+
+  <RecipeDef>
+    <defName>MendWeapon</defName>
+    <label>mend weapon</label>
+    <description>Repair a damaged weapon. Material and work-time costs scale dynamically with how much HP is missing.</description>
+    <jobString>Mending weapon.</jobString>
+    <workerClass>MendingMod.RecipeWorker_Mend</workerClass>
+    <billClass>MendingMod.Bill_Mend</billClass>
+    <workAmount>300</workAmount>
+    <effectWorking>Smith</effectWorking>
+    <soundWorking>Recipe_Smith</soundWorking>
+    <ingredients>
+      <li>
+        <filter>
+          <categories>
+            <li>Weapons</li>
+          </categories>
+          <allowedHitPointsPercents>0~0.99</allowedHitPointsPercents>
+        </filter>
+        <count>1</count>
+      </li>
+    </ingredients>
+    <fixedIngredientFilter>
+      <categories>
+        <li>Weapons</li>
+      </categories>
+      <allowedHitPointsPercents>0~0.99</allowedHitPointsPercents>
+    </fixedIngredientFilter>
+    <products />
+    <recipeUsers>
+      <li>TableMending_Manual</li>
+      <li>TableMending_Electric</li>
+    </recipeUsers>
+  </RecipeDef>
+
+</Defs>

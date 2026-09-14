@@ -1,7 +1,7 @@
 using UnityEngine;
 using Verse;
 
-namespace DynamicMending
+namespace MendingMod
 {
     public class MendingModSettings : ModSettings
     {

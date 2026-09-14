@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <ThingDef ParentName="BuildingBase">
+    <defName>TableMending_Manual</defName>
+    <label>mending table</label>
+    <description>A simple, unpowered workbench for repairing worn apparel and weapons by hand.</description>
+    <thingClass>Building_WorkTable</thingClass>
+    <graphicData>
+      <texPath>Things/Building/Production/TableMending_Manual</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(2,1)</drawSize>
+    </graphicData>
+    <size>(2,1)</size>
+    <costList>
+      <WoodLog>60</WoodLog>
+      <Steel>20</Steel>
+    </costList>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <pathCost>50</pathCost>
+    <fillPercent>0.5</fillPercent>
+    <constructEffect>ConstructMetal</constructEffect>
+    <designationCategory>Production</designationCategory>
+    <surfaceType>Item</surfaceType>
+    <rotatable>true</rotatable>
+    <statBases>
+      <MaxHitPoints>150</MaxHitPoints>
+      <WorkToBuild>1800</WorkToBuild>
+      <Flammability>1.0</Flammability>
+      <WorkTableWorkSpeedFactor>0.5</WorkTableWorkSpeedFactor>
+      <WorkTableEfficiencyFactor>1.0</WorkTableEfficiencyFactor>
+    </statBases>
+    <researchPrerequisites>
+      <li>BasicMending</li>
+    </researchPrerequisites>
+    <comps>
+      <li Class="MendingMod.CompProperties_MenderWasteBuffer">
+        <wasteBufferThreshold>1</wasteBufferThreshold>
+        <toxicWasteDefName>Wastepack</toxicWasteDefName>
+        <trashWasteDefNames>
+          <li>VRE_Trash</li>
+          <li>VRE_TrashBag</li>
+          <li>Trash</li>
+        </trashWasteDefNames>
+      </li>
+    </comps>
+    <inspectorTabs>
+      <li>ITab_Bills</li>
+    </inspectorTabs>
+  </ThingDef>
+
+  <ThingDef ParentName="BuildingBase">
+    <defName>TableMending_Electric</defName>
+    <label>electric mending table</label>
+    <description>A powered mending table. Repairs apparel and weapons at full speed.</description>
+    <thingClass>Building_WorkTable</thingClass>
+    <graphicData>
+      <texPath>Things/Building/Production/TableMending_Electric</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(2,1)</drawSize>
+    </graphicData>
+    <size>(2,1)</size>
+    <costList>
+      <Steel>60</Steel>
+      <ComponentIndustrial>2</ComponentIndustrial>
+    </costList>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <pathCost>50</pathCost>
+    <fillPercent>0.5</fillPercent>
+    <constructEffect>ConstructMetal</constructEffect>
+    <designationCategory>Production</designationCategory>
+    <surfaceType>Item</surfaceType>
+    <rotatable>true</rotatable>
+    <statBases>
+      <MaxHitPoints>180</MaxHitPoints>
+      <WorkToBuild>2400</WorkToBuild>
+      <Flammability>0.5</Flammability>
+      <WorkTableWorkSpeedFactor>1.0</WorkTableWorkSpeedFactor>
+      <WorkTableEfficiencyFactor>1.0</WorkTableEfficiencyFactor>
+    </statBases>
+    <researchPrerequisites>
+      <li>ElectricMending</li>
+    </researchPrerequisites>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>150</basePowerConsumption>
+      </li>
+      <li Class="CompProperties_Flickable" />
+      <li Class="MendingMod.CompProperties_MenderWasteBuffer">
+        <wasteBufferThreshold>1</wasteBufferThreshold>
+        <toxicWasteDefName>Wastepack</toxicWasteDefName>
+        <trashWasteDefNames>
+          <li>VRE_Trash</li>
+          <li>VRE_TrashBag</li>
+          <li>Trash</li>
+        </trashWasteDefNames>
+      </li>
+    </comps>
+    <inspectorTabs>
+      <li>ITab_Bills</li>
+    </inspectorTabs>
+  </ThingDef>
+
+  <ThingDef ParentName="BuildingBase">
+    <defName>AutomatedMender</defName>
+    <label>automated mender</label>
+    <description>A fully automated mending station. Feed it damaged gear through an item hopper and repair materials through a resource hopper, and it repairs items with no pawn labor, working as a skill 10 mender.</description>
+    <thingClass>MendingMod.Building_AutomatedMender</thingClass>
+    <graphicData>
+      <texPath>Things/Building/Production/AutomatedMender</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(3,2)</drawSize>
+    </graphicData>
+    <size>(3,2)</size>
+    <costList>
+      <Steel>150</Steel>
+      <ComponentIndustrial>6</ComponentIndustrial>
+      <ComponentSpacer>2</ComponentSpacer>
+    </costList>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>Impassable</passability>
+    <fillPercent>1.0</fillPercent>
+    <constructEffect>ConstructMetal</constructEffect>
+    <designationCategory>Production</designationCategory>
+    <rotatable>true</rotatable>
+    <statBases>
+      <MaxHitPoints>300</MaxHitPoints>
+      <WorkToBuild>6000</WorkToBuild>
+      <Flammability>0.3</Flammability>
+    </statBases>
+    <researchPrerequisites>
+      <li>AutomatedMending</li>
+    </researchPrerequisites>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>1500</basePowerConsumption>
+      </li>
+      <li Class="CompProperties_Flickable" />
+      <li Class="MendingMod.CompProperties_MenderWasteBuffer">
+        <wasteBufferThreshold>1</wasteBufferThreshold>
+        <toxicWasteDefName>Wastepack</toxicWasteDefName>
+        <trashWasteDefNames>
+          <li>VRE_Trash</li>
+          <li>VRE_TrashBag</li>
+          <li>Trash</li>
+        </trashWasteDefNames>
+      </li>
+    </comps>
+  </ThingDef>
+
+  <ThingDef ParentName="Building_StorageBase">
+    <defName>MendingItemHopper</defName>
+    <label>mending item hopper</label>
+    <description>Holds damaged apparel and weapons awaiting automated repair. Refuses fully-repaired items so the automated mender always has real work to do.</description>
+    <thingClass>Building_Storage</thingClass>
+    <graphicData>
+      <texPath>Things/Building/Production/MendingItemHopper</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+    </graphicData>
+    <size>(1,1)</size>
+    <costList>
+      <Steel>30</Steel>
+    </costList>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <fillPercent>0.4</fillPercent>
+    <designationCategory>Production</designationCategory>
+    <statBases>
+      <MaxHitPoints>100</MaxHitPoints>
+      <WorkToBuild>600</WorkToBuild>
+    </statBases>
+    <researchPrerequisites>
+      <li>AutomatedMending</li>
+    </researchPrerequisites>
+    <fixedStorageSettings>
+      <filter>
+        <categories>
+          <li>Apparel</li>
+          <li>Weapons</li>
+        </categories>
+        <allowedHitPointsPercents>0~0.99</allowedHitPointsPercents>
+      </filter>
+    </fixedStorageSettings>
+    <defaultStorageSettings>
+      <priority>Important</priority>
+      <filter>
+        <categories>
+          <li>Apparel</li>
+          <li>Weapons</li>
+        </categories>
+        <allowedHitPointsPercents>0~0.99</allowedHitPointsPercents>
+      </filter>
+    </defaultStorageSettings>
+  </ThingDef>
+
+  <ThingDef ParentName="Building_StorageBase">
+    <defName>MendingResourceHopper</defName>
+    <label>mending resource hopper</label>
+    <description>Holds raw and manufactured materials for the automated mender to consume.</description>
+    <thingClass>Building_Storage</thingClass>
+    <graphicData>
+      <texPath>Things/Building/Production/MendingResourceHopper</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+    </graphicData>
+    <size>(1,1)</size>
+    <costList>
+      <Steel>30</Steel>
+    </costList>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <fillPercent>0.4</fillPercent>
+    <designationCategory>Production</designationCategory>
+    <statBases>
+      <MaxHitPoints>100</MaxHitPoints>
+      <WorkToBuild>600</WorkToBuild>
+    </statBases>
+    <researchPrerequisites>
+      <li>AutomatedMending</li>
+    </researchPrerequisites>
+    <fixedStorageSettings>
+      <filter>
+        <categories>
+          <li>ResourcesRaw</li>
+          <li>Manufactured</li>
+          <li>Textiles</li>
+        </categories>
+      </filter>
+    </fixedStorageSettings>
+    <defaultStorageSettings>
+      <priority>Important</priority>
+      <filter>
+        <categories>
+          <li>ResourcesRaw</li>
+          <li>Manufactured</li>
+          <li>Textiles</li>
+        </categories>
+      </filter>
+    </defaultStorageSettings>
+  </ThingDef>
+
+</Defs>

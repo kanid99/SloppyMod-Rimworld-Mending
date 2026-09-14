@@ -5,11 +5,11 @@ using UnityEngine;
 using Verse;
 using Verse.AI;
 
-namespace DynamicMending
+namespace MendingMod
 {
-    // Assumes a RecipeDef using RecipeWorker_Mend whose ingredients[0] filter matches
-    // "damaged, useHitPoints things" (the item to mend) and ingredients[1..] are the
-    // repair materials, whose declared counts are treated as a per-100%-missing-HP cost.
+    // Assumes a RecipeDef using RecipeWorker_Mend with a single ingredients[0] entry whose
+    // filter matches "damaged, useHitPoints things" (the item to mend) — material costs are
+    // not declared in XML at all, they come from MendingUtility.GetDynamicIngredientCosts.
     public class WorkGiver_Mend : WorkGiver_DoBill
     {
         public override Job JobOnThing(Pawn pawn, Thing thing, bool forced = false)
@@ -37,7 +37,7 @@ namespace DynamicMending
                     continue;
                 }
 
-                Job job = JobMaker.MakeJob(JobDefOf.DoBill, thing);
+                Job job = JobMaker.MakeJob(MendingDefOf.DoMend, thing);
                 job.bill = bill;
                 job.targetQueueB = chosen.Select(tc => new LocalTargetInfo(tc.Thing)).ToList();
                 job.countQueue = chosen.Select(tc => tc.Count).ToList();
@@ -73,17 +73,13 @@ namespace DynamicMending
 
             chosen.Add(new ThingCount(mendTarget, 1));
 
-            float missingHpFraction = Mathf.Clamp01(1f - (float)mendTarget.HitPoints / mendTarget.MaxHitPoints);
-            float costScale = missingHpFraction * MendingModMain.Settings.degradationMultiplier;
-
-            for (int i = 1; i < bill.recipe.ingredients.Count; i++)
+            // Two-pass verification: every material cost is located (read-only) before any of
+            // it is added to `chosen`. Nothing is reserved or consumed until JobOnThing returns
+            // a fully-populated job, so a failed search here leaves no partial state behind.
+            foreach (ThingDefCountClass cost in MendingUtility.GetDynamicIngredientCosts(mendTarget))
             {
-                IngredientCount ingredientCount = bill.recipe.ingredients[i];
-                int baseCount = Mathf.Max(1, Mathf.RoundToInt(ingredientCount.GetBaseCount()));
-                int dynamicCount = Mathf.Max(1, Mathf.CeilToInt(baseCount * costScale));
-
                 List<ThingCount> found = new List<ThingCount>();
-                if (!TryFindIngredientsFor(ingredientCount, dynamicCount, pawn, billGiver, bill.ingredientSearchRadius, found))
+                if (!TryFindMaterial(cost.thingDef, cost.count, pawn, billGiver, bill.ingredientSearchRadius, found))
                     return false;
 
                 chosen.AddRange(found);
@@ -97,7 +93,7 @@ namespace DynamicMending
             return t.def.useHitPoints && t.HitPoints < t.MaxHitPoints;
         }
 
-        private static bool TryFindIngredientsFor(IngredientCount ingredientCount, int countNeeded, Pawn pawn, Thing billGiver, float searchRadius, List<ThingCount> found)
+        private static bool TryFindMaterial(ThingDef materialDef, int countNeeded, Pawn pawn, Thing billGiver, float searchRadius, List<ThingCount> found)
         {
             int remaining = countNeeded;
 
@@ -106,7 +102,7 @@ namespace DynamicMending
                 if (remaining <= 0)
                     break;
 
-                if (!ingredientCount.filter.Allows(candidate))
+                if (candidate.def != materialDef)
                     continue;
 
                 if (candidate.IsForbidden(pawn) || !pawn.CanReserve(candidate))

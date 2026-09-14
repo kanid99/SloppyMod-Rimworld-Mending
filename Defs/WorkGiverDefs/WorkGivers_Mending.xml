@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <WorkGiverDef>
+    <defName>DoMendApparel</defName>
+    <label>mend apparel</label>
+    <giverClass>MendingMod.WorkGiver_Mend</giverClass>
+    <workType>Tailoring</workType>
+    <colonistsOnly>true</colonistsOnly>
+    <priorityInType>0</priorityInType>
+    <verb>mend</verb>
+    <gerund>mending</gerund>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+  </WorkGiverDef>
+
+  <WorkGiverDef>
+    <defName>DoMendWeapon</defName>
+    <label>mend weapon</label>
+    <giverClass>MendingMod.WorkGiver_Mend</giverClass>
+    <workType>Smithing</workType>
+    <colonistsOnly>true</colonistsOnly>
+    <priorityInType>0</priorityInType>
+    <verb>mend</verb>
+    <gerund>mending</gerund>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+  </WorkGiverDef>
+
+</Defs>

@@ -3,7 +3,7 @@ using RimWorld;
 using UnityEngine;
 using Verse;
 
-namespace DynamicMending
+namespace MendingMod
 {
     // count/defName fields are XML-tunable so a mending building can be configured
     // without recompiling, and so the trash defName can be corrected to match
@@ -46,10 +46,7 @@ namespace DynamicMending
             if (item == null || !MendingModMain.Settings.generateWaste)
                 return;
 
-            if (item.MaxHitPoints <= 0)
-                return;
-
-            float missingHpFraction = 1f - (float)item.HitPoints / item.MaxHitPoints;
+            float missingHpFraction = MendingUtility.GetMissingHpFraction(item);
             if (missingHpFraction <= 0f)
                 return;
 

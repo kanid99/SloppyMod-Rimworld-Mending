@@ -3,8 +3,8 @@
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <RootNamespace>DynamicMending</RootNamespace>
-    <AssemblyName>DynamicMending</AssemblyName>
+    <RootNamespace>MendingMod</RootNamespace>
+    <AssemblyName>MendingMod</AssemblyName>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>..\..\Assemblies\</OutputPath>
     <!-- Point this at your local RimWorld install (folder containing RimWorldWin64_Data). -->
