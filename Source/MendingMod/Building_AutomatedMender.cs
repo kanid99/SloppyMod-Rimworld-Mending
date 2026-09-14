@@ -230,7 +230,7 @@ namespace MendingMod
             currentItem = damagedItem;
             innerContainer.TryAddOrTransfer(damagedItem);
 
-            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.GetDynamicWorkAmount(currentItem)));
+            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.GetDynamicWorkAmount(currentItem, FixedSkillLevel)));
             workTicksRemaining = workTicksTotal;
             state = MenderState.Working;
         }
@@ -252,7 +252,7 @@ namespace MendingMod
 
         private void FinishMend()
         {
-            GetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(currentItem);
+            GetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(currentItem, FixedSkillLevel);
             MendingUtility.ResolveRepair(currentItem, FixedSkillLevel);
 
             EjectItem(currentItem);

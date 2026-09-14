@@ -64,7 +64,7 @@ namespace MendingMod
 
         private int WorkTicksFor(Thing mendTarget)
         {
-            float workAmount = mendTarget != null ? MendingUtility.GetDynamicWorkAmount(mendTarget) : 300f;
+            float workAmount = mendTarget != null ? MendingUtility.GetDynamicWorkAmount(mendTarget, MendingUtility.GetSkillLevel(mendTarget, pawn)) : 300f;
             // WorkTableWorkSpeedFactor is what separates the two benches (0.25 on the manual
             // table, 1.0 on the electric one); vanilla applies it in Toils_Recipe.DoRecipeWork,
             // which this driver doesn't use.

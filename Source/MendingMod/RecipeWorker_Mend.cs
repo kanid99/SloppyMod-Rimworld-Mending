@@ -45,9 +45,12 @@ namespace MendingMod
         // XP grants and two batches of waste per repair.
         public static void CompleteMend(Thing targetItem, Pawn actor, Thing billGiverThing)
         {
-            billGiverThing?.TryGetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(targetItem);
+            int skillLevel = MendingUtility.GetSkillLevel(targetItem, actor);
 
-            int skillLevel = actor.skills?.GetSkill(MendingUtility.GetRelevantWorkSkill(targetItem))?.Level ?? 0;
+            // Waste is measured before ResolveRepair restores the hit points, or the missing-HP
+            // fraction it reads would already be zero.
+            billGiverThing?.TryGetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(targetItem, skillLevel);
+
             MendingUtility.ResolveRepair(targetItem, skillLevel);
 
             MendingUtility.AwardSkillXp(targetItem, actor, BaseXpPerMend);

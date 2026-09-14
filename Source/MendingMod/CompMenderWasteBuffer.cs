@@ -41,7 +41,7 @@ namespace MendingMod
         // Called by the recipe/job logic that performs the actual mend, before the
         // item's hit points are restored, so the missing-HP fraction still reflects
         // the work that was just done.
-        public void Notify_ItemMended(Thing item)
+        public void Notify_ItemMended(Thing item, int skillLevel)
         {
             if (item == null || !MendingModMain.Settings.generateWaste)
                 return;
@@ -50,7 +50,12 @@ namespace MendingMod
             if (missingHpFraction <= 0f)
                 return;
 
-            float wasteAmount = missingHpFraction * MendingModMain.Settings.degradationMultiplier;
+            // The materials a clumsy mender burns past what the repair actually needed have to go
+            // somewhere, so waste rides the same skill curve as the material cost: half the
+            // baseline at skill 20, normal at skill 10, and well over double down at skill 1.
+            float wasteAmount = missingHpFraction
+                * MendingUtility.SkillEffortFactor(skillLevel)
+                * MendingModMain.Settings.degradationMultiplier;
 
             if (UsesToxicIngredients(item.def, item.Stuff))
             {

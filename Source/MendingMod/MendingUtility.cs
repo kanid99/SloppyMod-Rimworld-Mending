@@ -37,13 +37,31 @@ namespace MendingMod
             return Mathf.Log10(1f + 9f * Mathf.Clamp01(missingHpFraction));
         }
 
+        // How much a mender squanders relative to a perfect job. A skill 20 mender is the
+        // no-waste baseline at 1.0: they spend exactly the fraction of the item that's missing.
+        // Below that, waste climbs on a quadratic so it stays gentle through the mid skills and
+        // bites hard at the bottom - 2.0 at skill 10 and 5.0 at skill 0, where a repair costs
+        // the item's whole build cost and you may as well make a new one.
+        public static float SkillWasteMultiplier(int skillLevel)
+        {
+            float shortfall = (20f - Mathf.Clamp(skillLevel, 0, 20)) / 20f;
+            return 1f + 4f * shortfall * shortfall;
+        }
+
+        // The same curve normalised so skill 10 sits at 1.0, for the axes where skill 10 should
+        // read as "normal" rather than as a penalty: time taken and waste produced.
+        public static float SkillEffortFactor(int skillLevel)
+        {
+            return SkillWasteMultiplier(skillLevel) / 2f;
+        }
+
         // WorkToMake read off the thing itself is the game's own "how long did this take to
         // build" number and accounts for the item's stuff. recipeMaker.workAmount is left unset
         // on most apparel and weapons, so preferring it (as this used to) meant almost every
         // repair fell through to a flat 300 ticks and finished in a couple of seconds. The
         // bench's own WorkTableWorkSpeedFactor is applied by the caller, not here, so the
         // automated mender and the two tables can differ.
-        public static float GetDynamicWorkAmount(Thing item)
+        public static float GetDynamicWorkAmount(Thing item, int skillLevel)
         {
             if (item == null)
                 return 300f;
@@ -60,18 +78,23 @@ namespace MendingMod
             float qualityFactor = 1f + (int)quality * 0.15f;
 
             return baseWork * DamageWorkCurve(GetMissingHpFraction(item)) * qualityFactor
+                * SkillEffortFactor(skillLevel)
                 * MendingModMain.Settings.repairWorkMultiplier;
         }
 
-        // Skill level at (or above) which the roll always succeeds. Scales up with the item's
-        // quality (harder items are riskier to touch) and with how much HP is being restored.
-        private static float RequiredSkillForMaxChance(Thing item, float missingHpFraction)
+        // Skill is the dominant term, then how much of the item is being rebuilt, then how fine
+        // it is. Tuned around skill 10 as the normal case: on a 20%-damaged normal-quality item
+        // that's roughly 1% failure at skill 20, 13% at skill 10 and 25% at skill 1.
+        private static float FailureChance(Thing item, int skillLevel, float missingHpFraction)
         {
             item.TryGetQuality(out QualityCategory quality);
-            float qualityComponent = ((int)quality + 1) * 2f;
-            float hpComponent = missingHpFraction * 10f;
 
-            return (qualityComponent + hpComponent) * MendingModMain.Settings.degradationMultiplier;
+            float skillChance = Mathf.Lerp(0.45f, 0.02f, Mathf.Clamp01(skillLevel / 20f));
+            float damageFactor = Mathf.Lerp(0.4f, 1f, Mathf.Clamp01(missingHpFraction));
+            float qualityFactor = 1f + (int)quality * 0.05f;
+
+            return Mathf.Clamp01(skillChance * damageFactor * qualityFactor
+                * MendingModMain.Settings.degradationMultiplier);
         }
 
         public static MendResult ResolveRepair(Thing item, int skillLevel)
@@ -85,9 +108,8 @@ namespace MendingMod
                 return result;
             }
 
-            float requiredSkill = RequiredSkillForMaxChance(item, missingHpFraction);
-            float successChance = requiredSkill <= 0f ? 1f : Mathf.Clamp01(skillLevel / requiredSkill);
-            bool success = Rand.Chance(successChance);
+            float failChance = FailureChance(item, skillLevel, missingHpFraction);
+            bool success = !Rand.Chance(failChance);
 
             if (success)
             {
@@ -95,13 +117,12 @@ namespace MendingMod
             }
             else
             {
-                float failSeverity = 1f - successChance;
-                int hpLoss = Mathf.RoundToInt(item.MaxHitPoints * missingHpFraction * failSeverity * 0.5f * MendingModMain.Settings.degradationMultiplier);
+                int hpLoss = Mathf.RoundToInt(item.MaxHitPoints * missingHpFraction * failChance * 0.5f * MendingModMain.Settings.degradationMultiplier);
                 item.HitPoints = Mathf.Max(1, item.HitPoints - hpLoss);
             }
 
             float severityScale = success ? 1f : 2f;
-            bool qualityDropped = TryRollQualityDrop(item, missingHpFraction, 1f - successChance, severityScale);
+            bool qualityDropped = TryRollQualityDrop(item, missingHpFraction, failChance, severityScale);
 
             result.success = success;
             result.qualityDropped = qualityDropped;
@@ -132,21 +153,6 @@ namespace MendingMod
         // plasteel vs steel); it knows nothing about damage, so the missing-HP fraction is
         // applied here on top. It's a static method on CostListCalculator, not an instance
         // method on ThingDef.
-        // A repair costs half of what the item took to build for an unskilled mender, falling to
-        // a quarter of it at skill 20.
-        private static float SkillCostFactor(int skillLevel)
-        {
-            return Mathf.Lerp(0.5f, 0.25f, Mathf.Clamp01(skillLevel / 20f));
-        }
-
-        // How much of that band the damage actually claims. Deliberately floored at half rather
-        // than running straight off the damage curve to zero, so patching a lightly scuffed item
-        // still costs real materials instead of rounding down to a token amount.
-        private static float DamageCostFactor(Thing item)
-        {
-            return Mathf.Lerp(0.5f, 1f, DamageWorkCurve(GetMissingHpFraction(item)));
-        }
-
         public static int GetSkillLevel(Thing item, Pawn pawn)
         {
             return pawn?.skills?.GetSkill(GetRelevantWorkSkill(item))?.Level ?? 0;
@@ -158,7 +164,11 @@ namespace MendingMod
         public static List<ThingDefCountClass> GetDynamicIngredientCosts(Thing item, int skillLevel)
         {
             List<ThingDefCountClass> result = new List<ThingDefCountClass>();
-            float costFraction = SkillCostFactor(skillLevel) * DamageCostFactor(item)
+
+            // The fraction of the item that's actually missing is what a flawless repair costs;
+            // everything above that is the mender's waste. Capped at the whole build cost, since
+            // past that point rebuilding the item outright would be cheaper than repairing it.
+            float costFraction = Mathf.Clamp01(GetMissingHpFraction(item) * SkillWasteMultiplier(skillLevel))
                 * MendingModMain.Settings.degradationMultiplier;
 
             if (MendingModMain.Settings.simpleMode)
