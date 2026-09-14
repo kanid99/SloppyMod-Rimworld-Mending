@@ -15,7 +15,6 @@
     <description>Repair a damaged piece of apparel. Material and work-time costs scale dynamically with how much HP is missing.</description>
     <jobString>Mending apparel.</jobString>
     <workerClass>MendingMod.RecipeWorker_Mend</workerClass>
-    <billClass>MendingMod.Bill_Mend</billClass>
     <workAmount>300</workAmount>
     <effectWorking>Tailor</effectWorking>
     <soundWorking>Recipe_Tailor</soundWorking>
@@ -49,7 +48,6 @@
     <description>Repair a damaged weapon. Material and work-time costs scale dynamically with how much HP is missing.</description>
     <jobString>Mending weapon.</jobString>
     <workerClass>MendingMod.RecipeWorker_Mend</workerClass>
-    <billClass>MendingMod.Bill_Mend</billClass>
     <workAmount>300</workAmount>
     <effectWorking>Smith</effectWorking>
     <soundWorking>Recipe_Smith</soundWorking>

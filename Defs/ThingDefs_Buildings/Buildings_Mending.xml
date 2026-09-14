@@ -152,7 +152,7 @@
     </comps>
   </ThingDef>
 
-  <ThingDef ParentName="Building_StorageBase">
+  <ThingDef ParentName="BuildingBase">
     <defName>MendingItemHopper</defName>
     <label>mending item hopper</label>
     <description>Holds damaged apparel and weapons awaiting automated repair. Refuses fully-repaired items so the automated mender always has real work to do.</description>
@@ -176,28 +176,30 @@
     <researchPrerequisites>
       <li>AutomatedMending</li>
     </researchPrerequisites>
-    <fixedStorageSettings>
-      <filter>
-        <categories>
-          <li>Apparel</li>
-          <li>Weapons</li>
-        </categories>
-        <allowedHitPointsPercents>0~0.99</allowedHitPointsPercents>
-      </filter>
-    </fixedStorageSettings>
-    <defaultStorageSettings>
-      <priority>Important</priority>
-      <filter>
-        <categories>
-          <li>Apparel</li>
-          <li>Weapons</li>
-        </categories>
-        <allowedHitPointsPercents>0~0.99</allowedHitPointsPercents>
-      </filter>
-    </defaultStorageSettings>
+    <building>
+      <fixedStorageSettings>
+        <filter>
+          <categories>
+            <li>Apparel</li>
+            <li>Weapons</li>
+          </categories>
+          <allowedHitPointsPercents>0~0.99</allowedHitPointsPercents>
+        </filter>
+      </fixedStorageSettings>
+      <defaultStorageSettings>
+        <priority>Important</priority>
+        <filter>
+          <categories>
+            <li>Apparel</li>
+            <li>Weapons</li>
+          </categories>
+          <allowedHitPointsPercents>0~0.99</allowedHitPointsPercents>
+        </filter>
+      </defaultStorageSettings>
+    </building>
   </ThingDef>
 
-  <ThingDef ParentName="Building_StorageBase">
+  <ThingDef ParentName="BuildingBase">
     <defName>MendingResourceHopper</defName>
     <label>mending resource hopper</label>
     <description>Holds raw and manufactured materials for the automated mender to consume.</description>
@@ -221,25 +223,27 @@
     <researchPrerequisites>
       <li>AutomatedMending</li>
     </researchPrerequisites>
-    <fixedStorageSettings>
-      <filter>
-        <categories>
-          <li>ResourcesRaw</li>
-          <li>Manufactured</li>
-          <li>Textiles</li>
-        </categories>
-      </filter>
-    </fixedStorageSettings>
-    <defaultStorageSettings>
-      <priority>Important</priority>
-      <filter>
-        <categories>
-          <li>ResourcesRaw</li>
-          <li>Manufactured</li>
-          <li>Textiles</li>
-        </categories>
-      </filter>
-    </defaultStorageSettings>
+    <building>
+      <fixedStorageSettings>
+        <filter>
+          <categories>
+            <li>ResourcesRaw</li>
+            <li>Manufactured</li>
+            <li>Textiles</li>
+          </categories>
+        </filter>
+      </fixedStorageSettings>
+      <defaultStorageSettings>
+        <priority>Important</priority>
+        <filter>
+          <categories>
+            <li>ResourcesRaw</li>
+            <li>Manufactured</li>
+            <li>Textiles</li>
+          </categories>
+        </filter>
+      </defaultStorageSettings>
+    </building>
   </ThingDef>
 
 </Defs>

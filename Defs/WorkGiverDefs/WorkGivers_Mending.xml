@@ -9,7 +9,6 @@
     <label>mend apparel</label>
     <giverClass>MendingMod.WorkGiver_Mend</giverClass>
     <workType>Crafting</workType>
-    <colonistsOnly>true</colonistsOnly>
     <priorityInType>0</priorityInType>
     <verb>mend</verb>
     <gerund>mending</gerund>
@@ -23,7 +22,6 @@
     <label>mend weapon</label>
     <giverClass>MendingMod.WorkGiver_Mend</giverClass>
     <workType>Smithing</workType>
-    <colonistsOnly>true</colonistsOnly>
     <priorityInType>0</priorityInType>
     <verb>mend</verb>
     <gerund>mending</gerund>
