@@ -23,7 +23,7 @@ namespace MendingMod
     {
         private const int FixedSkillLevel = 10;
 
-        private enum MenderState : byte { Idle, Working }
+        private enum MenderState : byte { Idle, Working, Ejecting }
 
         private ThingOwner<Thing> innerContainer;
         private Thing currentItem;
@@ -73,12 +73,17 @@ namespace MendingMod
             if (!PowerOn)
                 return;
 
+            // Twice a second is plenty for noticing new input or a cleared output spot, and avoids
+            // re-scanning the spots on every one of the 60 ticks per second.
             if (state == MenderState.Idle)
             {
-                // Twice a second is plenty for noticing new input, and avoids re-scanning the
-                // input spots on every one of the 60 ticks per second.
                 if (this.IsHashIntervalTick(30))
                     TryStartMend();
+            }
+            else if (state == MenderState.Ejecting)
+            {
+                if (this.IsHashIntervalTick(30))
+                    TryEject();
             }
             else
             {
@@ -228,8 +233,16 @@ namespace MendingMod
                 }
             }
 
+            // Bail before committing if the item can't actually be taken in: ThingOwner.TryDrop
+            // refuses to drop anything the container doesn't hold, so starting work on an item
+            // that never made it inside would repair it and then strand it on the input spot.
+            if (!innerContainer.TryAddOrTransfer(damagedItem))
+            {
+                idleReason = "DynamicMending.MenderCannotTakeItem".Translate(damagedItem.LabelShortCap);
+                return;
+            }
+
             currentItem = damagedItem;
-            innerContainer.TryAddOrTransfer(damagedItem);
 
             workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.GetDynamicWorkAmount(currentItem, FixedSkillLevel)));
             workTicksRemaining = workTicksTotal;
@@ -256,25 +269,40 @@ namespace MendingMod
             GetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(currentItem, FixedSkillLevel);
             MendingUtility.ResolveRepair(currentItem, FixedSkillLevel);
 
-            EjectItem(currentItem);
-
-            currentItem = null;
-            state = MenderState.Idle;
+            state = MenderState.Ejecting;
+            TryEject();
         }
 
         // Direct placement first so the item lands exactly on an output cell (a conveyor laid
         // there will collect it on its next tick); only if every output cell refuses does it fall
         // back to scattering the item nearby.
-        private void EjectItem(Thing item)
+        // Only ever places onto the output spot itself, never scattered nearby: a designated spot
+        // that sometimes puts the item two tiles away is worse than one that visibly waits. If
+        // the spot is blocked the item stays inside and this retries, so a conveyor or stockpile
+        // clearing the spot gets the item on the next scan.
+        private void TryEject()
         {
+            if (currentItem == null || currentItem.Destroyed)
+            {
+                currentItem = null;
+                idleReason = null;
+                state = MenderState.Idle;
+                return;
+            }
+
             IntVec3 cell = OutputCell;
 
-            if (cell.InBounds(Map) && innerContainer.TryDrop(item, cell, Map, ThingPlaceMode.Direct, out _))
+            if (cell.InBounds(Map)
+                && innerContainer.Contains(currentItem)
+                && innerContainer.TryDrop(currentItem, cell, Map, ThingPlaceMode.Direct, out _))
+            {
+                currentItem = null;
+                idleReason = null;
+                state = MenderState.Idle;
                 return;
+            }
 
-            // Never leave the item stuck in the container just because the output spot is
-            // occupied - spill it beside the building instead.
-            innerContainer.TryDrop(item, cell.InBounds(Map) ? cell : Position, Map, ThingPlaceMode.Near, out _);
+            idleReason = "DynamicMending.MenderOutputBlocked".Translate(currentItem.LabelShortCap);
         }
 
         public override void DrawExtraSelectionOverlays()

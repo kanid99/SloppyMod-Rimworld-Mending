@@ -124,8 +124,14 @@ namespace MendingMod
             else if (job.bill.GetStoreMode() == BillStoreModeDefOf.SpecificStockpile)
                 StoreUtility.TryFindBestBetterStoreCellForIn(mendTarget, actor, actor.Map, StoragePriority.Unstored, actor.Faction, job.bill.GetSlotGroup(), out foundCell);
 
+            // No stockpile will take it (or it can't be picked up): vanilla falls back to dropping
+            // the product at the worker's feet rather than abandoning it, and without this the
+            // item just stays on the bench occupying the next job's ingredient cells.
             if (!foundCell.IsValid || !actor.carryTracker.TryStartCarry(mendTarget))
+            {
+                DropOffBench(actor, mendTarget);
                 return false;
+            }
 
             actor.jobs.StartJob(
                 HaulAIUtility.HaulToCellStorageJob(actor, mendTarget, foundCell, fitInStoreCell: false),
