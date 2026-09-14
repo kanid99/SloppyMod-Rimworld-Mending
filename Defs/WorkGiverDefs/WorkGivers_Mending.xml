@@ -4,6 +4,10 @@
   <!-- Vanilla RimWorld 1.6 has no separate "Tailoring" WorkTypeDef (confirmed against
        RimWorld.WorkTypeDefOf in Assembly-CSharp.dll) - apparel crafting uses the generic
        Crafting worktype, same as everything else that isn't Smithing. -->
+  <!-- fixedBillGiverDefs is required, not cosmetic: WorkGiver_DoBill.ThingIsUsableBillGiver
+       only ever returns true for a building bill-giver via def.fixedBillGiverDefs.Contains(thing.def)
+       (confirmed by decompiling the real vanilla method) - without this list, ShouldSkip always
+       returns true and the work giver is silently unusable, both for auto-work and force-work. -->
   <WorkGiverDef>
     <defName>DoMendApparel</defName>
     <label>mend apparel</label>
@@ -12,6 +16,10 @@
     <priorityInType>0</priorityInType>
     <verb>mend</verb>
     <gerund>mending</gerund>
+    <fixedBillGiverDefs>
+      <li>TableMending_Manual</li>
+      <li>TableMending_Electric</li>
+    </fixedBillGiverDefs>
     <requiredCapacities>
       <li>Manipulation</li>
     </requiredCapacities>
@@ -25,6 +33,10 @@
     <priorityInType>0</priorityInType>
     <verb>mend</verb>
     <gerund>mending</gerund>
+    <fixedBillGiverDefs>
+      <li>TableMending_Manual</li>
+      <li>TableMending_Electric</li>
+    </fixedBillGiverDefs>
     <requiredCapacities>
       <li>Manipulation</li>
     </requiredCapacities>

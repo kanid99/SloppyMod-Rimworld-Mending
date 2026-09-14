@@ -12,17 +12,8 @@ namespace MendingMod
     // not declared in XML at all, they come from MendingUtility.GetDynamicIngredientCosts.
     public class WorkGiver_Mend : WorkGiver_DoBill
     {
-        public override bool ShouldSkip(Pawn pawn, bool forced = false)
-        {
-            bool skip = base.ShouldSkip(pawn, forced);
-            Log.Message($"[DynamicMending] ShouldSkip({pawn.LabelShort}, forced={forced}) = {skip}");
-            return skip;
-        }
-
         public override Job JobOnThing(Pawn pawn, Thing thing, bool forced = false)
         {
-            Log.Message($"[DynamicMending] JobOnThing called: pawn={pawn.LabelShort} thing={thing.LabelShort} forced={forced}");
-
             if (!(thing is IBillGiver billGiver) || !ThingIsUsableBillGiver(thing))
             {
                 DevLog(thing, "not a usable bill giver");
@@ -74,7 +65,8 @@ namespace MendingMod
 
         private static void DevLog(Thing thing, string message)
         {
-            Log.Message($"[DynamicMending] {thing.LabelShort} @ {thing.Position}: {message}");
+            if (Prefs.DevMode)
+                Log.Message($"[DynamicMending] {thing.LabelShort} @ {thing.Position}: {message}");
         }
 
         // Deliberately not named/shaped like WorkGiver_DoBill's own static
