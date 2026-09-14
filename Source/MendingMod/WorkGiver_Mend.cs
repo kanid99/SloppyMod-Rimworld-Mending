@@ -115,7 +115,7 @@ namespace MendingMod
             // Two-pass verification: every material cost is located (read-only) before any of
             // it is added to `chosen`. Nothing is reserved or consumed until JobOnThing returns
             // a fully-populated job, so a failed search here leaves no partial state behind.
-            foreach (ThingDefCountClass cost in MendingUtility.GetDynamicIngredientCosts(mendTarget))
+            foreach (ThingDefCountClass cost in MendingUtility.GetDynamicIngredientCosts(mendTarget, MendingUtility.GetSkillLevel(mendTarget, pawn)))
             {
                 List<ThingCount> found = new List<ThingCount>();
                 if (!TryFindMaterial(cost.thingDef, cost.count, pawn, billGiver, searchRadius, found))

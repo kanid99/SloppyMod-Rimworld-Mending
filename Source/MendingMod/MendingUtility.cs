@@ -37,19 +37,21 @@ namespace MendingMod
             return Mathf.Log10(1f + 9f * Mathf.Clamp01(missingHpFraction));
         }
 
-        // recipeMaker.workAmount is the def's own base crafting time; scaling it by the damage
-        // curve and quality gives a rough "how much of this item are we redoing" estimate. Falls
-        // back to the WorkToMake stat if the def has no recipeMaker block (e.g. it's
-        // stuff-generated). The bench's own WorkTableWorkSpeedFactor is applied by the caller,
-        // not here, so the automated mender and the two tables can differ.
+        // WorkToMake read off the thing itself is the game's own "how long did this take to
+        // build" number and accounts for the item's stuff. recipeMaker.workAmount is left unset
+        // on most apparel and weapons, so preferring it (as this used to) meant almost every
+        // repair fell through to a flat 300 ticks and finished in a couple of seconds. The
+        // bench's own WorkTableWorkSpeedFactor is applied by the caller, not here, so the
+        // automated mender and the two tables can differ.
         public static float GetDynamicWorkAmount(Thing item)
         {
             if (item == null)
                 return 300f;
 
-            float baseWork = item.def.recipeMaker != null
-                ? item.def.recipeMaker.workAmount
-                : item.def.GetStatValueAbstract(StatDefOf.WorkToMake, item.Stuff);
+            float baseWork = item.GetStatValue(StatDefOf.WorkToMake);
+
+            if (baseWork <= 0f && item.def.recipeMaker != null)
+                baseWork = item.def.recipeMaker.workAmount;
 
             if (baseWork <= 0f)
                 baseWork = 300f;
@@ -130,15 +132,38 @@ namespace MendingMod
         // plasteel vs steel); it knows nothing about damage, so the missing-HP fraction is
         // applied here on top. It's a static method on CostListCalculator, not an instance
         // method on ThingDef.
-        public static List<ThingDefCountClass> GetDynamicIngredientCosts(Thing item)
+        // A repair costs half of what the item took to build for an unskilled mender, falling to
+        // a quarter of it at skill 20.
+        private static float SkillCostFactor(int skillLevel)
+        {
+            return Mathf.Lerp(0.5f, 0.25f, Mathf.Clamp01(skillLevel / 20f));
+        }
+
+        // How much of that band the damage actually claims. Deliberately floored at half rather
+        // than running straight off the damage curve to zero, so patching a lightly scuffed item
+        // still costs real materials instead of rounding down to a token amount.
+        private static float DamageCostFactor(Thing item)
+        {
+            return Mathf.Lerp(0.5f, 1f, DamageWorkCurve(GetMissingHpFraction(item)));
+        }
+
+        public static int GetSkillLevel(Thing item, Pawn pawn)
+        {
+            return pawn?.skills?.GetSkill(GetRelevantWorkSkill(item))?.Level ?? 0;
+        }
+
+        // skillLevel has to come from whoever is actually doing the repair, and the work giver
+        // and the job driver must pass the same pawn: the driver consumes exactly the list the
+        // work giver priced, so a mismatch would leave materials behind or come up short.
+        public static List<ThingDefCountClass> GetDynamicIngredientCosts(Thing item, int skillLevel)
         {
             List<ThingDefCountClass> result = new List<ThingDefCountClass>();
-            float missingHpFraction = GetMissingHpFraction(item);
-            float multiplier = MendingModMain.Settings.degradationMultiplier;
+            float costFraction = SkillCostFactor(skillLevel) * DamageCostFactor(item)
+                * MendingModMain.Settings.degradationMultiplier;
 
             if (MendingModMain.Settings.simpleMode)
             {
-                int steelCount = Mathf.Max(1, Mathf.CeilToInt(MendingModMain.Settings.simpleModeSteelPerRepair * missingHpFraction * multiplier));
+                int steelCount = Mathf.Max(1, Mathf.CeilToInt(MendingModMain.Settings.simpleModeSteelPerRepair * costFraction));
                 result.Add(new ThingDefCountClass(ThingDefOf.Steel, steelCount));
                 return result;
             }
@@ -149,7 +174,7 @@ namespace MendingMod
 
             foreach (ThingDefCountClass cost in adjusted)
             {
-                int count = Mathf.Max(1, Mathf.CeilToInt(cost.count * missingHpFraction * multiplier));
+                int count = Mathf.Max(1, Mathf.CeilToInt(cost.count * costFraction));
                 result.Add(new ThingDefCountClass(cost.thingDef, count));
             }
 

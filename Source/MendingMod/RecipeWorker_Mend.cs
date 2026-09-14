@@ -38,18 +38,11 @@ namespace MendingMod
                 ingredient.Destroy(DestroyMode.Vanish);
         }
 
-        public override void Notify_IterationCompleted(Pawn actor, List<Thing> ingredients)
-        {
-            base.Notify_IterationCompleted(actor, ingredients);
-
-            Thing targetItem = FindMendTarget(ingredients);
-            if (targetItem == null)
-                return;
-
-            Thing billGiverThing = actor.CurJob?.GetTarget(TargetIndex.A).Thing;
-            CompleteMend(targetItem, actor, billGiverThing);
-        }
-
+        // Deliberately no Notify_IterationCompleted override. JobDriver_DoMend calls
+        // Bill_Production.Notify_IterationCompleted (it is what decrements a "do X times" bill),
+        // and that forwards to recipe.Worker.Notify_IterationCompleted - so doing the repair here
+        // as well as in the driver's finish toil would apply it twice: two quality-loss rolls, two
+        // XP grants and two batches of waste per repair.
         public static void CompleteMend(Thing targetItem, Pawn actor, Thing billGiverThing)
         {
             billGiverThing?.TryGetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(targetItem);

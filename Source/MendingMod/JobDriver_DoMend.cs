@@ -25,6 +25,8 @@ namespace MendingMod
         // BillGiverInd/IngredientInd/IngredientPlaceCellInd (A/B/C) are already declared as
         // protected consts on JobDriver_DoBill itself - reusing those instead of redeclaring.
 
+        private const int MinWorkTicks = 600;
+
         protected override IEnumerable<Toil> MakeNewToils()
         {
             this.FailOnDestroyedNullOrForbidden(BillGiverInd);
@@ -44,17 +46,12 @@ namespace MendingMod
             foreach (Toil toil in CollectIngredientsToils(IngredientInd, BillGiverInd, IngredientPlaceCellInd))
                 yield return toil;
 
+            // defaultDuration, not an initAction assignment to ticksLeftThisToil: the parameterless
+            // WithProgressBarToilDelay divides by toil.defaultDuration, so leaving it at 0 (as this
+            // did) made the bar's progress -Infinity and nothing drew. Setting it here also lets
+            // the driver seed ticksLeftThisToil itself, which is what Delay mode expects.
             Toil work = new Toil();
-            work.initAction = () =>
-            {
-                float workAmount = mendTarget != null ? Mathf.Max(60f, MendingUtility.GetDynamicWorkAmount(mendTarget)) : 300f;
-                // WorkTableWorkSpeedFactor is what separates the two benches (0.25 on the manual
-                // table, 1.0 on the electric one); vanilla applies it in Toils_Recipe.DoRecipeWork,
-                // which this driver doesn't use.
-                float benchFactor = job.GetTarget(BillGiverInd).Thing?.GetStatValue(StatDefOf.WorkTableWorkSpeedFactor) ?? 1f;
-                float speed = pawn.GetStatValue(StatDefOf.GeneralLaborSpeed) * Mathf.Max(0.01f, benchFactor);
-                work.actor.jobs.curDriver.ticksLeftThisToil = Mathf.RoundToInt(workAmount / speed);
-            };
+            work.defaultDuration = WorkTicksFor(mendTarget);
             work.defaultCompleteMode = ToilCompleteMode.Delay;
             work.WithProgressBarToilDelay(BillGiverInd);
             work.WithEffect(() => job.bill.recipe.effectWorking, BillGiverInd);
@@ -63,6 +60,21 @@ namespace MendingMod
             yield return work;
 
             yield return FinishMendToil(mendTarget);
+        }
+
+        private int WorkTicksFor(Thing mendTarget)
+        {
+            float workAmount = mendTarget != null ? MendingUtility.GetDynamicWorkAmount(mendTarget) : 300f;
+            // WorkTableWorkSpeedFactor is what separates the two benches (0.25 on the manual
+            // table, 1.0 on the electric one); vanilla applies it in Toils_Recipe.DoRecipeWork,
+            // which this driver doesn't use.
+            float benchFactor = job.GetTarget(BillGiverInd).Thing?.GetStatValue(StatDefOf.WorkTableWorkSpeedFactor) ?? 1f;
+            float speed = pawn.GetStatValue(StatDefOf.GeneralLaborSpeed) * Mathf.Max(0.01f, benchFactor);
+            // Floored at ten seconds of real bench time (at 1x) so that cheap gear - where the
+            // item's own build time is only a few hundred ticks - still reads as a repair job
+            // rather than finishing the instant the pawn sits down. Anything expensive is driven
+            // by the formula above, well past this floor.
+            return Mathf.Max(MinWorkTicks, Mathf.RoundToInt(workAmount / Mathf.Max(0.01f, speed)));
         }
 
         private Toil FinishMendToil(Thing mendTarget)
@@ -79,8 +91,14 @@ namespace MendingMod
                     return;
                 }
 
-                ConsumeMaterialsNearBillGiver(billGiverThing, mendTarget);
+                ConsumeMaterialsNearBillGiver(billGiverThing, mendTarget, actor);
                 RecipeWorker_Mend.CompleteMend(mendTarget, actor, billGiverThing);
+
+                // Bill_Production.Notify_IterationCompleted is what decrements repeatCount and
+                // posts the "bill complete" message. Vanilla calls it from
+                // FinishRecipeAndStartStoringProduct, which this driver replaces - without it a
+                // "do 1 time" bill never counts down and repeats forever.
+                job.bill.Notify_IterationCompleted(actor, new List<Thing> { mendTarget });
 
                 if (!TryStartStoringMendedItem(actor, mendTarget))
                     actor.jobs.EndCurrentJob(JobCondition.Succeeded);
@@ -95,7 +113,10 @@ namespace MendingMod
         private bool TryStartStoringMendedItem(Pawn actor, Thing mendTarget)
         {
             if (job.bill.GetStoreMode() == BillStoreModeDefOf.DropOnFloor)
+            {
+                DropOffBench(actor, mendTarget);
                 return false;
+            }
 
             IntVec3 foundCell = IntVec3.Invalid;
             if (job.bill.GetStoreMode() == BillStoreModeDefOf.BestStockpile)
@@ -120,6 +141,32 @@ namespace MendingMod
             return true;
         }
 
+        // The mended item is still lying on whichever bench cell it was hauled to, and a bench
+        // cell is exactly where the next job wants to put its ingredients. "Drop on floor" has to
+        // actually clear the work surface, so it gets moved to a cell that isn't part of the
+        // bench rather than left sitting on it.
+        private void DropOffBench(Pawn actor, Thing mendTarget)
+        {
+            Thing billGiverThing = job.GetTarget(BillGiverInd).Thing;
+            if (billGiverThing == null || !mendTarget.Spawned)
+                return;
+
+            HashSet<IntVec3> benchCells = new HashSet<IntVec3>(billGiverThing.OccupiedRect());
+            if (!benchCells.Contains(mendTarget.Position))
+                return;
+
+            Map map = mendTarget.Map;
+            mendTarget.DeSpawn();
+
+            if (!GenPlace.TryPlaceThing(mendTarget, actor.Position, map, ThingPlaceMode.Near, out _, null,
+                    cell => !benchCells.Contains(cell), null, 3))
+            {
+                // Unfiltered fallback so a crowded bench can never leave the item despawned and
+                // therefore destroyed.
+                GenPlace.TryPlaceThing(mendTarget, actor.Position, map, ThingPlaceMode.Near);
+            }
+        }
+
         // Vanilla's own ingredient-consumption bookkeeping never fires for our JobDef (see class
         // comment above), so instead of trusting job.placedThings we destroy the same ThingDef/
         // count list WorkGiver_Mend used to build this job - MendingUtility.GetDynamicIngredientCosts
@@ -129,14 +176,14 @@ namespace MendingMod
         // IngredientStackCells, tried first, with a small radius around its interaction cell as a
         // fallback for overflow (matching Toils_JobTransforms.IngredientPlaceCellsInOrder's own
         // search order).
-        private static void ConsumeMaterialsNearBillGiver(Thing billGiverThing, Thing mendTarget)
+        private static void ConsumeMaterialsNearBillGiver(Thing billGiverThing, Thing mendTarget, Pawn actor)
         {
             List<IntVec3> searchCells = new List<IntVec3>();
             if (billGiverThing is IBillGiver billGiver)
                 searchCells.AddRange(billGiver.IngredientStackCells);
             searchCells.AddRange(GenRadial.RadialCellsAround(billGiverThing.InteractionCell, 3f, true));
 
-            foreach (ThingDefCountClass cost in MendingUtility.GetDynamicIngredientCosts(mendTarget))
+            foreach (ThingDefCountClass cost in MendingUtility.GetDynamicIngredientCosts(mendTarget, MendingUtility.GetSkillLevel(mendTarget, actor)))
             {
                 int remaining = cost.count;
                 foreach (IntVec3 cell in searchCells)

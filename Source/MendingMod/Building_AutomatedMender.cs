@@ -178,7 +178,7 @@ namespace MendingMod
             if (damagedItem == null)
                 return;
 
-            List<ThingDefCountClass> costs = MendingUtility.GetDynamicIngredientCosts(damagedItem);
+            List<ThingDefCountClass> costs = MendingUtility.GetDynamicIngredientCosts(damagedItem, FixedSkillLevel);
 
             // Pass 1: verify every material is available before touching anything.
             Dictionary<ThingDef, int> stock = new Dictionary<ThingDef, int>();

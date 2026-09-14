@@ -9,7 +9,7 @@ namespace MendingMod
         public float degradationMultiplier = 1.0f;
         public bool simpleMode = false;
         public float simpleModeSteelPerRepair = 10f;
-        public float repairWorkMultiplier = 3.0f;
+        public float repairWorkMultiplier = 0.35f;
 
         public override void ExposeData()
         {
@@ -18,7 +18,7 @@ namespace MendingMod
             Scribe_Values.Look(ref degradationMultiplier, "degradationMultiplier", 1.0f);
             Scribe_Values.Look(ref simpleMode, "simpleMode", false);
             Scribe_Values.Look(ref simpleModeSteelPerRepair, "simpleModeSteelPerRepair", 10f);
-            Scribe_Values.Look(ref repairWorkMultiplier, "repairWorkMultiplier", 3.0f);
+            Scribe_Values.Look(ref repairWorkMultiplier, "repairWorkMultiplier", 0.35f);
         }
     }
 
@@ -48,8 +48,8 @@ namespace MendingMod
 
             listing.Gap();
 
-            listing.Label($"Repair time multiplier: {Settings.repairWorkMultiplier:F2}");
-            Settings.repairWorkMultiplier = listing.Slider(Settings.repairWorkMultiplier, 0.25f, 10.0f);
+            listing.Label($"Repair time: {Settings.repairWorkMultiplier:F2}x the item's full build time");
+            Settings.repairWorkMultiplier = listing.Slider(Settings.repairWorkMultiplier, 0.02f, 2.0f);
 
             listing.Gap();
 
