@@ -86,36 +86,43 @@ namespace MendingMod
             }
         }
 
-        // The two short edges of the footprint, whichever way the building is facing: for a 3x2
-        // that's two cells on each of the 2-cell sides.
-        public IEnumerable<IntVec3> InputCells
+        // All four cells adjacent to the footprint's two short edges, whichever way the building
+        // is facing: for a 3x2 that's two cells on each of the 2-cell sides. The first is the
+        // item spot and the rest take materials.
+        private List<IntVec3> AllInputCells()
         {
-            get
-            {
-                CellRect rect = this.OccupiedRect();
+            CellRect rect = this.OccupiedRect();
+            List<IntVec3> cells = new List<IntVec3>();
 
-                if (rect.Height <= rect.Width)
+            if (rect.Height <= rect.Width)
+            {
+                for (int z = rect.minZ; z <= rect.maxZ; z++)
                 {
-                    for (int z = rect.minZ; z <= rect.maxZ; z++)
-                    {
-                        yield return new IntVec3(rect.minX - 1, 0, z);
-                        yield return new IntVec3(rect.maxX + 1, 0, z);
-                    }
-                }
-                else
-                {
-                    for (int x = rect.minX; x <= rect.maxX; x++)
-                    {
-                        yield return new IntVec3(x, 0, rect.minZ - 1);
-                        yield return new IntVec3(x, 0, rect.maxZ + 1);
-                    }
+                    cells.Add(new IntVec3(rect.minX - 1, 0, z));
+                    cells.Add(new IntVec3(rect.maxX + 1, 0, z));
                 }
             }
+            else
+            {
+                for (int x = rect.minX; x <= rect.maxX; x++)
+                {
+                    cells.Add(new IntVec3(x, 0, rect.minZ - 1));
+                    cells.Add(new IntVec3(x, 0, rect.maxZ + 1));
+                }
+            }
+
+            return cells;
         }
 
-        // The cells just past the edge the building faces. Repaired items go here, which is what
-        // lets a conveyor laid against the front pick them straight up.
-        public IEnumerable<IntVec3> OutputCells
+        // The one cell that damaged gear goes on.
+        public IntVec3 ItemInputCell => AllInputCells()[0];
+
+        // Everything else on the short edges takes repair materials.
+        public IEnumerable<IntVec3> ResourceInputCells => AllInputCells().Skip(1);
+
+        // Single cell past the middle of the edge the building faces. Repaired items land here,
+        // which is also what lets a conveyor laid against the front pick them straight up.
+        public IntVec3 OutputCell
         {
             get
             {
@@ -125,44 +132,42 @@ namespace MendingMod
                 if (facing.x != 0)
                 {
                     int x = facing.x > 0 ? rect.maxX + 1 : rect.minX - 1;
-                    for (int z = rect.minZ; z <= rect.maxZ; z++)
-                        yield return new IntVec3(x, 0, z);
+                    return new IntVec3(x, 0, rect.minZ + rect.Height / 2);
                 }
-                else
+
+                int z = facing.z > 0 ? rect.maxZ + 1 : rect.minZ - 1;
+                return new IntVec3(rect.minX + rect.Width / 2, 0, z);
+            }
+        }
+
+        private IEnumerable<Thing> ThingsOn(IntVec3 cell)
+        {
+            if (!cell.InBounds(Map))
+                yield break;
+
+            foreach (Thing thing in cell.GetThingList(Map))
+            {
+                if (thing.def.category == ThingCategory.Item)
+                    yield return thing;
+
+                if (thing is IThingHolder holder && thing != this)
                 {
-                    int z = facing.z > 0 ? rect.maxZ + 1 : rect.minZ - 1;
-                    for (int x = rect.minX; x <= rect.maxX; x++)
-                        yield return new IntVec3(x, 0, z);
+                    ThingOwner owner = holder.GetDirectlyHeldThings();
+                    if (owner == null)
+                        continue;
+
+                    foreach (Thing held in owner)
+                    {
+                        if (held.def.category == ThingCategory.Item)
+                            yield return held;
+                    }
                 }
             }
         }
 
-        private IEnumerable<Thing> AvailableInputThings()
+        private IEnumerable<Thing> ThingsOn(IEnumerable<IntVec3> cells)
         {
-            foreach (IntVec3 cell in InputCells)
-            {
-                if (!cell.InBounds(Map))
-                    continue;
-
-                foreach (Thing thing in cell.GetThingList(Map))
-                {
-                    if (thing.def.category == ThingCategory.Item)
-                        yield return thing;
-
-                    if (thing is IThingHolder holder && thing != this)
-                    {
-                        ThingOwner owner = holder.GetDirectlyHeldThings();
-                        if (owner == null)
-                            continue;
-
-                        foreach (Thing held in owner)
-                        {
-                            if (held.def.category == ThingCategory.Item)
-                                yield return held;
-                        }
-                    }
-                }
-            }
+            return cells.SelectMany(ThingsOn);
         }
 
         // Only apparel and weapons are mendable (matching the two recipes), and checking that
@@ -176,24 +181,20 @@ namespace MendingMod
 
         private void TryStartMend()
         {
-            List<Thing> available = AvailableInputThings().ToList();
-
-            Thing damagedItem = available.FirstOrDefault(IsMendable);
+            Thing damagedItem = ThingsOn(ItemInputCell).FirstOrDefault(IsMendable);
             if (damagedItem == null)
             {
                 idleReason = "DynamicMending.MenderNoItem".Translate();
                 return;
             }
 
+            List<Thing> available = ThingsOn(ResourceInputCells).Where(t => t != damagedItem).ToList();
             List<ThingDefCountClass> costs = MendingUtility.GetDynamicIngredientCosts(damagedItem, FixedSkillLevel);
 
             // Pass 1: verify every material is available before touching anything.
             Dictionary<ThingDef, int> stock = new Dictionary<ThingDef, int>();
             foreach (Thing thing in available)
             {
-                if (thing == damagedItem)
-                    continue;
-
                 stock.TryGetValue(thing.def, out int have);
                 stock[thing.def] = have + thing.stackCount;
             }
@@ -266,16 +267,14 @@ namespace MendingMod
         // back to scattering the item nearby.
         private void EjectItem(Thing item)
         {
-            foreach (IntVec3 cell in OutputCells)
-            {
-                if (!cell.InBounds(Map))
-                    continue;
+            IntVec3 cell = OutputCell;
 
-                if (innerContainer.TryDrop(item, cell, Map, ThingPlaceMode.Direct, out _))
-                    return;
-            }
+            if (cell.InBounds(Map) && innerContainer.TryDrop(item, cell, Map, ThingPlaceMode.Direct, out _))
+                return;
 
-            innerContainer.TryDrop(item, Position, Map, ThingPlaceMode.Near, out _);
+            // Never leave the item stuck in the container just because the output spot is
+            // occupied - spill it beside the building instead.
+            innerContainer.TryDrop(item, cell.InBounds(Map) ? cell : Position, Map, ThingPlaceMode.Near, out _);
         }
 
         public override void DrawExtraSelectionOverlays()
@@ -285,8 +284,9 @@ namespace MendingMod
             if (Map == null)
                 return;
 
-            GenDraw.DrawFieldEdges(InputCells.Where(c => c.InBounds(Map)).ToList(), Color.green);
-            GenDraw.DrawFieldEdges(OutputCells.Where(c => c.InBounds(Map)).ToList(), Color.yellow);
+            GenDraw.DrawFieldEdges(new List<IntVec3> { ItemInputCell }, Color.cyan);
+            GenDraw.DrawFieldEdges(ResourceInputCells.Where(c => c.InBounds(Map)).ToList(), Color.green);
+            GenDraw.DrawFieldEdges(new List<IntVec3> { OutputCell }, Color.yellow);
         }
 
         public override string GetInspectString()

@@ -107,7 +107,7 @@
   <ThingDef ParentName="BuildingBase">
     <defName>AutomatedMender</defName>
     <label>automated mender</label>
-    <description>A fully automated mending station. Leave damaged gear and repair materials on its four input spots (shown in green when selected) - loose on the ground, or in any storage building sitting on them - and it repairs items with no pawn labor, working as a skill 10 mender. Either kind of input works on any of the four spots. Repaired items are ejected onto the output spots in front (shown in yellow).</description>
+    <description>A fully automated mending station. A fully automated mending station, working as a skill 10 mender with no pawn labor. Select it to see its spots: put one damaged weapon or piece of apparel on the cyan spot, repair materials on the green spots, and finished items come out on the yellow spot in front. Each spot accepts loose items on the ground or any storage building sitting on it.</description>
     <thingClass>MendingMod.Building_AutomatedMender</thingClass>
     <!-- Without this the def defaults to TickerType.Never and Thing.DoTick never calls Tick(),
          so the mender's whole state machine (and its power draw) silently never runs. -->
