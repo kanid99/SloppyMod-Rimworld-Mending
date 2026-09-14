@@ -19,9 +19,17 @@ namespace MendingMod
     // Buildings that hold items in an internal container instead (deep-storage mods, and Vanilla
     // Furniture Expanded's conveyors) are read through IThingHolder, which is also what makes
     // conveyor feeding work with no dependency on that mod.
+    [StaticConstructorOnStartup]
     public class Building_AutomatedMender : Building, IThingHolder
     {
         private const int FixedSkillLevel = 10;
+
+        // Built in a static constructor context so the materials are created after the graphics
+        // system is up, which is what [StaticConstructorOnStartup] guarantees.
+        private static readonly Material BarFilledMat =
+            SolidColorMaterials.SimpleSolidColorMaterial(new Color(0.24f, 0.79f, 0.85f));
+        private static readonly Material BarUnfilledMat =
+            SolidColorMaterials.SimpleSolidColorMaterial(new Color(0.12f, 0.13f, 0.14f));
 
         private enum MenderState : byte { Idle, Working, Ejecting }
 
@@ -305,6 +313,31 @@ namespace MendingMod
             }
 
             idleReason = "DynamicMending.MenderOutputBlocked".Translate(currentItem.LabelShortCap);
+        }
+
+        private float WorkProgress => workTicksTotal > 0
+            ? Mathf.Clamp01(1f - (float)workTicksRemaining / workTicksTotal)
+            : 0f;
+
+        // Live repair progress drawn across the machine, so you can read how far along a job is
+        // without selecting the building and reading the inspect pane.
+        protected override void DrawAt(Vector3 drawLoc, bool flip = false)
+        {
+            base.DrawAt(drawLoc, flip);
+
+            if (state != MenderState.Working)
+                return;
+
+            GenDraw.DrawFillableBar(new GenDraw.FillableBarRequest
+            {
+                center = drawLoc + Vector3.up * 0.1f,
+                size = new Vector2(2.6f, 0.34f),
+                fillPercent = WorkProgress,
+                filledMat = BarFilledMat,
+                unfilledMat = BarUnfilledMat,
+                margin = 0.12f,
+                rotation = Rot4.North,
+            });
         }
 
         public override void DrawExtraSelectionOverlays()

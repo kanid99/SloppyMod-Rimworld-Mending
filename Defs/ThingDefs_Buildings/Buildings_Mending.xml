@@ -9,9 +9,9 @@
     <graphicData>
       <texPath>Things/Building/Production/TableMending_Manual</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
-      <!-- Matches the artwork's own 1.988:1 aspect so it fills all three cells without
-           distortion; the textures are cropped to the art, so this is its true size. -->
-      <drawSize>(3,1.51)</drawSize>
+      <!-- drawSize deliberately equals size: the textures are authored at the footprint's exact
+           3:1 aspect, so the art lands inside its own cells with no overhang. -->
+      <drawSize>(3,1)</drawSize>
     </graphicData>
     <size>(3,1)</size>
     <costList>
@@ -60,7 +60,7 @@
     <graphicData>
       <texPath>Things/Building/Production/TableMending_Electric</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
-      <drawSize>(3,1.20)</drawSize>
+      <drawSize>(3,1)</drawSize>
     </graphicData>
     <size>(3,1)</size>
     <costList>
@@ -117,7 +117,7 @@
     <graphicData>
       <texPath>Things/Building/Production/AutomatedMender</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
-      <drawSize>(6,4)</drawSize>
+      <drawSize>(5,3)</drawSize>
       <damageData>
         <cornerTL>Damage/Corner</cornerTL>
         <cornerTR>Damage/Corner</cornerTR>
