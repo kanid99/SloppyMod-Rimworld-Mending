@@ -96,7 +96,6 @@ namespace MendingMod
                 job.bill = bill;
                 job.targetQueueB = chosen.Select(tc => new LocalTargetInfo(tc.Thing)).ToList();
                 job.countQueue = chosen.Select(tc => tc.Count).ToList();
-                job.haulMode = HaulMode.ToCellStorage;
                 return job;
             }
 
@@ -120,6 +119,13 @@ namespace MendingMod
             if (bill.recipe.ingredients.NullOrEmpty())
                 return false;
 
+            // GenRadial's cell lookup table is capped at radius 200 (confirmed by decompiling
+            // GenRadial.NumCellsInRadius) - anything above that logs a real vanilla Log.Error
+            // every time it's hit. bill.ingredientSearchRadius defaults to 999 ("unlimited" in
+            // the bill's own UI), so it has to be clamped before being handed to either
+            // GenClosest.ClosestThingReachable or GenRadial.RadialDistinctThingsAround below.
+            float searchRadius = Mathf.Min(bill.ingredientSearchRadius, 200f);
+
             IngredientCount targetFilter = bill.recipe.ingredients[0];
             Thing mendTarget = GenClosest.ClosestThingReachable(
                 billGiver.Position,
@@ -127,12 +133,12 @@ namespace MendingMod
                 ThingRequest.ForGroup(ThingRequestGroup.HaulableEver),
                 PathEndMode.ClosestTouch,
                 TraverseParms.For(pawn),
-                bill.ingredientSearchRadius,
+                searchRadius,
                 t => !t.IsForbidden(pawn) && pawn.CanReserve(t) && targetFilter.filter.Allows(t) && IsDamaged(t));
 
             if (mendTarget == null)
             {
-                DevLog(billGiver, $"no reachable damaged item matching bill '{bill.Label}' within radius {bill.ingredientSearchRadius}");
+                DevLog(billGiver, $"no reachable damaged item matching bill '{bill.Label}' within radius {searchRadius}");
                 return false;
             }
 
@@ -144,9 +150,9 @@ namespace MendingMod
             foreach (ThingDefCountClass cost in MendingUtility.GetDynamicIngredientCosts(mendTarget))
             {
                 List<ThingCount> found = new List<ThingCount>();
-                if (!TryFindMaterial(cost.thingDef, cost.count, pawn, billGiver, bill.ingredientSearchRadius, found))
+                if (!TryFindMaterial(cost.thingDef, cost.count, pawn, billGiver, searchRadius, found))
                 {
-                    DevLog(billGiver, $"found target {mendTarget.LabelShort} but missing material {cost.thingDef.defName} x{cost.count} within radius {bill.ingredientSearchRadius}");
+                    DevLog(billGiver, $"found target {mendTarget.LabelShort} but missing material {cost.thingDef.defName} x{cost.count} within radius {searchRadius}");
                     return false;
                 }
 

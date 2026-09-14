@@ -11,9 +11,20 @@ namespace MendingMod
     // `ingredients` doesn't matter. XP is granted here (not by the vanilla per-recipe skill)
     // so it always lands on the mended item's own recipeMaker.workSkill, not a flat
     // Tailoring/Smithing value shared by the whole RecipeDef.
+    //
+    // JobDriver_DoMend does NOT route through Toils_Recipe.FinishRecipeAndStartStoringProduct
+    // (which is what would normally invoke ConsumeIngredient/Notify_IterationCompleted below) -
+    // confirmed by decompiling real vanilla Toils_Haul.PlaceHauledThingInCell that the
+    // HaulAIUtility.UpdateJobWithPlacedThings callback which populates job.placedThings (and
+    // therefore what FinishRecipeAndStartStoringProduct treats as "ingredients") only fires for
+    // a hardcoded whitelist of vanilla JobDefs that our own DoMend JobDef isn't part of - so
+    // job.placedThings would always stay empty and nothing would ever actually happen. JobDriver_
+    // DoMend calls CompleteMend directly from its own finish toil instead. ConsumeIngredient and
+    // Notify_IterationCompleted are kept here only as a safety net for that (currently unused)
+    // vanilla call path.
     public class RecipeWorker_Mend : RecipeWorker
     {
-        private const float BaseXpPerMend = 40f;
+        public const float BaseXpPerMend = 40f;
 
         // RecipeWorker's real consumption hook is per-ingredient (ConsumeIngredient, singular),
         // called once for each Thing in the bill — there is no plural ConsumeIngredients virtual
@@ -36,6 +47,11 @@ namespace MendingMod
                 return;
 
             Thing billGiverThing = actor.CurJob?.GetTarget(TargetIndex.A).Thing;
+            CompleteMend(targetItem, actor, billGiverThing);
+        }
+
+        public static void CompleteMend(Thing targetItem, Pawn actor, Thing billGiverThing)
+        {
             billGiverThing?.TryGetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(targetItem);
 
             int skillLevel = actor.skills?.GetSkill(MendingUtility.GetRelevantWorkSkill(targetItem))?.Level ?? 0;
