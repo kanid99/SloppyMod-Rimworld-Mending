@@ -30,6 +30,7 @@ namespace MendingMod
         private int workTicksRemaining;
         private int workTicksTotal;
         private MenderState state = MenderState.Idle;
+        private string idleReason;
 
         public Building_AutomatedMender()
         {
@@ -74,7 +75,10 @@ namespace MendingMod
 
             if (state == MenderState.Idle)
             {
-                TryStartMend();
+                // Twice a second is plenty for noticing new input, and avoids re-scanning the
+                // input spots on every one of the 60 ticks per second.
+                if (this.IsHashIntervalTick(30))
+                    TryStartMend();
             }
             else
             {
@@ -176,7 +180,10 @@ namespace MendingMod
 
             Thing damagedItem = available.FirstOrDefault(IsMendable);
             if (damagedItem == null)
+            {
+                idleReason = "DynamicMending.MenderNoItem".Translate();
                 return;
+            }
 
             List<ThingDefCountClass> costs = MendingUtility.GetDynamicIngredientCosts(damagedItem, FixedSkillLevel);
 
@@ -194,8 +201,16 @@ namespace MendingMod
             foreach (ThingDefCountClass cost in costs)
             {
                 if (!stock.TryGetValue(cost.thingDef, out int have) || have < cost.count)
+                {
+                    // Naming the exact shortfall rather than a generic "idle" - otherwise the only
+                    // way to find out why nothing is happening is to guess at the input spots.
+                    idleReason = "DynamicMending.MenderNeedsMaterial".Translate(
+                        damagedItem.LabelShortCap, cost.count, cost.thingDef.label, have);
                     return;
+                }
             }
+
+            idleReason = null;
 
             // Pass 2: only now consume, since pass 1 guaranteed every cost can be met.
             foreach (ThingDefCountClass cost in costs)
@@ -294,8 +309,11 @@ namespace MendingMod
             }
             else
             {
-                sb.Append("DynamicMending.MenderIdle".Translate());
+                sb.Append(idleReason ?? "DynamicMending.MenderIdle".Translate().ToString());
             }
+
+            sb.AppendLine();
+            sb.Append("DynamicMending.MenderSpotLegend".Translate());
 
             return sb.ToString();
         }
