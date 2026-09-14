@@ -31,7 +31,7 @@ namespace MendingMod
                     continue;
 
                 List<ThingCount> chosen = new List<ThingCount>();
-                if (!TryFindBestBillIngredients(bill, pawn, thing, chosen))
+                if (!TryBuildMendIngredients(bill, pawn, thing, chosen))
                 {
                     JobFailReason.Is("DynamicMending.NoIngredientsOrTarget".Translate());
                     continue;
@@ -48,10 +48,11 @@ namespace MendingMod
             return null;
         }
 
-        // Hides, rather than overrides, WorkGiver_DoBill's static TryFindBestBillIngredients
-        // (C# cannot override a static member) — JobOnThing above calls this version directly,
-        // so the vanilla static helper is simply never consulted for this WorkGiver.
-        protected new bool TryFindBestBillIngredients(Bill bill, Pawn pawn, Thing billGiver, List<ThingCount> chosen)
+        // Deliberately not named/shaped like WorkGiver_DoBill's own static
+        // TryFindBestBillIngredients(Bill, Pawn, Thing, List<ThingCount>, List<IngredientCount>)
+        // - that one searches recipe.ingredients filters, which this recipe doesn't declare
+        // material entries for at all (the C# computes them dynamically instead).
+        private bool TryBuildMendIngredients(Bill bill, Pawn pawn, Thing billGiver, List<ThingCount> chosen)
         {
             chosen.Clear();
 

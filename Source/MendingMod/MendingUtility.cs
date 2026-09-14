@@ -114,12 +114,14 @@ namespace MendingMod
             return true;
         }
 
-        // CostListAdjusted only rescales for the item's actual Stuff (e.g. plasteel vs steel);
-        // it knows nothing about damage, so the missing-HP fraction is applied here on top.
+        // CostListCalculator.CostListAdjusted only rescales for the item's actual Stuff (e.g.
+        // plasteel vs steel); it knows nothing about damage, so the missing-HP fraction is
+        // applied here on top. It's a static method on CostListCalculator, not an instance
+        // method on ThingDef.
         public static List<ThingDefCountClass> GetDynamicIngredientCosts(Thing item)
         {
             List<ThingDefCountClass> result = new List<ThingDefCountClass>();
-            List<ThingDefCountClass> adjusted = item.def.CostListAdjusted(item.Stuff, false);
+            List<ThingDefCountClass> adjusted = CostListCalculator.CostListAdjusted(item);
             if (adjusted.NullOrEmpty())
                 return result;
 

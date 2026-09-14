@@ -7,23 +7,16 @@ using Verse.AI;
 
 namespace MendingMod
 {
-    // Reserves the bench and the whole ingredient queue up front (TryMakePreToilReservations)
-    // before any hauling toil runs, so another pawn can never grab a material this job already
-    // claimed on the same tick — that's what prevents the classic "two pawns fight over the
-    // same steel pile" deadlock. Work duration is computed dynamically from the mend target's
+    // Subclasses JobDriver_DoBill (rather than JobDriver directly) specifically to reuse its
+    // TryMakePreToilReservations and CollectIngredientsToils: those already reserve the bill
+    // giver and the whole ingredient queue up front and handle the haul-to-bench toils, which
+    // is what prevents a second pawn from grabbing a material this job already claimed. Only
+    // the actual "do work" toil is replaced, so its duration can scale with the mend target's
     // missing HP/quality (MendingUtility.GetDynamicWorkAmount) instead of RecipeDef.workAmount.
-    public class JobDriver_DoMend : JobDriver
+    public class JobDriver_DoMend : JobDriver_DoBill
     {
-        private const TargetIndex BillGiverInd = TargetIndex.A;
-        private const TargetIndex IngredientInd = TargetIndex.B;
-
-        public override bool TryMakePreToilReservations(bool errorOnFailed)
-        {
-            if (!pawn.Reserve(job.GetTarget(BillGiverInd), job, 1, -1, null, errorOnFailed))
-                return false;
-
-            return pawn.ReserveQueue(job.GetTargetQueue(IngredientInd), job, 1, -1, null, errorOnFailed);
-        }
+        // BillGiverInd/IngredientInd/IngredientPlaceCellInd (A/B/C) are already declared as
+        // protected consts on JobDriver_DoBill itself - reusing those instead of redeclaring.
 
         protected override IEnumerable<Toil> MakeNewToils()
         {
@@ -35,15 +28,8 @@ namespace MendingMod
                 .Select(t => t.Thing)
                 .FirstOrDefault(t => t != null && t.def.useHitPoints && t.HitPoints < t.MaxHitPoints);
 
-            int queueCount = job.GetTargetQueue(IngredientInd).Count;
-            for (int i = 0; i < queueCount; i++)
-            {
-                yield return Toils_JobTransforms.ExtractNextTargetFromQueue(IngredientInd);
-                yield return Toils_Goto.GotoThing(IngredientInd, PathEndMode.ClosestTouch);
-                yield return Toils_Haul.StartCarryThing(IngredientInd);
-                yield return Toils_Goto.GotoThing(BillGiverInd, PathEndMode.InteractionCell);
-                yield return Toils_Haul.PlaceHauledThingInCell(BillGiverInd, null, false);
-            }
+            foreach (Toil toil in CollectIngredientsToils(IngredientInd, BillGiverInd, IngredientPlaceCellInd))
+                yield return toil;
 
             Toil work = new Toil();
             work.initAction = () =>
@@ -53,7 +39,6 @@ namespace MendingMod
             };
             work.defaultCompleteMode = ToilCompleteMode.Delay;
             work.WithProgressBarToilDelay(BillGiverInd);
-            work.FailOnCannotTouch(BillGiverInd, PathEndMode.InteractionCell);
             yield return work;
 
             yield return Toils_Recipe.FinishRecipeAndStartStoringProduct();

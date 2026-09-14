@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Defs>
 
+  <!-- Vanilla RimWorld 1.6 has no separate "Tailoring" WorkTypeDef (confirmed against
+       RimWorld.WorkTypeDefOf in Assembly-CSharp.dll) - apparel crafting uses the generic
+       Crafting worktype, same as everything else that isn't Smithing. -->
   <WorkGiverDef>
     <defName>DoMendApparel</defName>
     <label>mend apparel</label>
     <giverClass>MendingMod.WorkGiver_Mend</giverClass>
-    <workType>Tailoring</workType>
+    <workType>Crafting</workType>
     <colonistsOnly>true</colonistsOnly>
     <priorityInType>0</priorityInType>
     <verb>mend</verb>

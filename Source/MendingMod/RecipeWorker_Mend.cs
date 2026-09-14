@@ -15,19 +15,16 @@ namespace MendingMod
     {
         private const float BaseXpPerMend = 40f;
 
-        public override void ConsumeIngredients(List<Thing> ingredients, RecipeDef recipe, Map map)
+        // RecipeWorker's real consumption hook is per-ingredient (ConsumeIngredient, singular),
+        // called once for each Thing in the bill — there is no plural ConsumeIngredients virtual
+        // to override. The item being mended is simply the one ingredient we don't destroy.
+        public override void ConsumeIngredient(Thing ingredient, RecipeDef recipe, Map map)
         {
-            Thing targetItem = FindMendTarget(ingredients);
+            if (ingredient.def.useHitPoints && ingredient.HitPoints < ingredient.MaxHitPoints)
+                return;
 
-            for (int i = 0; i < ingredients.Count; i++)
-            {
-                Thing ingredient = ingredients[i];
-                if (ingredient == targetItem)
-                    continue;
-
-                if (!ingredient.Destroyed)
-                    ingredient.Destroy(DestroyMode.Vanish);
-            }
+            if (!ingredient.Destroyed)
+                ingredient.Destroy(DestroyMode.Vanish);
         }
 
         public override void Notify_IterationCompleted(Pawn actor, List<Thing> ingredients)
