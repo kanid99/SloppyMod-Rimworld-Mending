@@ -197,6 +197,9 @@
         </filter>
       </defaultStorageSettings>
     </building>
+    <inspectorTabs>
+      <li>ITab_Storage</li>
+    </inspectorTabs>
   </ThingDef>
 
   <ThingDef ParentName="BuildingBase">
@@ -244,6 +247,9 @@
         </filter>
       </defaultStorageSettings>
     </building>
+    <inspectorTabs>
+      <li>ITab_Storage</li>
+    </inspectorTabs>
   </ThingDef>
 
 </Defs>
