@@ -31,6 +31,34 @@ namespace MendingMod
 
         public CompProperties_MenderWasteBuffer Props => (CompProperties_MenderWasteBuffer)props;
 
+        // Buffers fill per repair, not per tick, so there is no honest countdown to show - what
+        // matters is how close each is to spilling and roughly how many more repairs that takes.
+        public override string CompInspectStringExtra()
+        {
+            if (!MendingModMain.Settings.generateWaste)
+                return null;
+
+            ResolveWasteDefsOnce();
+
+            float threshold = Mathf.Max(0.01f, Props?.wasteBufferThreshold ?? 1f);
+            List<string> parts = new List<string>();
+
+            if (toxicWasteDefCache != null)
+                parts.Add(BufferReadout(toxicWasteDefCache.label, toxicBuffer, threshold));
+
+            if (trashWasteDefCache != null)
+                parts.Add(BufferReadout(trashWasteDefCache.label, trashBuffer, threshold));
+
+            return parts.Count > 0
+                ? "DynamicMending.WasteBuffered".Translate(string.Join(", ", parts))
+                : null;
+        }
+
+        private static string BufferReadout(string label, float buffer, float threshold)
+        {
+            return $"{label} {(buffer / threshold).ToStringPercent()}";
+        }
+
         public override void PostExposeData()
         {
             base.PostExposeData();
