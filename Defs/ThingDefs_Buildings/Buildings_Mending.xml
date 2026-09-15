@@ -9,14 +9,26 @@
     <graphicData>
       <texPath>Things/Building/Production/TableMending_Manual</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
+      <!-- CutoutComplex reads a companion mask, which the game looks for at
+           <texPath>_northm / _eastm / _southm - an "m" appended with NO separating
+           underscore (Graphic_Multi.Init builds it as path + "_north" + "m"). In that
+           mask the slab is red, so it takes the stuff colour, and everything standing on
+           the bench is black, so it keeps its own colours: a wooden bench still has steel
+           tools on it. -->
+      <shaderType>CutoutComplex</shaderType>
       <!-- drawSize deliberately equals size: the textures are authored at the footprint's exact
            3:1 aspect, so the art lands inside its own cells with no overhang. -->
       <drawSize>(3,1)</drawSize>
     </graphicData>
     <size>(3,1)</size>
+    <stuffCategories>
+      <li>Woody</li>
+      <li>Metallic</li>
+      <li>Stony</li>
+    </stuffCategories>
+    <costStuffCount>60</costStuffCount>
     <costList>
-      <WoodLog>60</WoodLog>
-      <Steel>20</Steel>
+      <Steel>15</Steel>
     </costList>
     <altitudeLayer>Building</altitudeLayer>
     <passability>PassThroughOnly</passability>
@@ -42,7 +54,6 @@
     <statBases>
       <MaxHitPoints>150</MaxHitPoints>
       <WorkToBuild>1800</WorkToBuild>
-      <Flammability>1.0</Flammability>
       <WorkTableWorkSpeedFactor>0.25</WorkTableWorkSpeedFactor>
       <WorkTableEfficiencyFactor>1.0</WorkTableEfficiencyFactor>
     </statBases>
@@ -81,11 +92,22 @@
     <graphicData>
       <texPath>Things/Building/Production/TableMending_Electric</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
+      <!-- CutoutComplex reads a companion mask, which the game looks for at
+           <texPath>_northm / _eastm / _southm - an "m" appended with NO separating
+           underscore (Graphic_Multi.Init builds it as path + "_north" + "m"). In that
+           mask the slab is red, so it takes the stuff colour, and everything standing on
+           the bench is black, so it keeps its own colours: a wooden bench still has steel
+           tools on it. -->
+      <shaderType>CutoutComplex</shaderType>
       <drawSize>(3,1)</drawSize>
     </graphicData>
     <size>(3,1)</size>
+    <stuffCategories>
+      <li>Metallic</li>
+      <li>Woody</li>
+    </stuffCategories>
+    <costStuffCount>60</costStuffCount>
     <costList>
-      <Steel>60</Steel>
       <ComponentIndustrial>2</ComponentIndustrial>
     </costList>
     <altitudeLayer>Building</altitudeLayer>
@@ -112,7 +134,6 @@
     <statBases>
       <MaxHitPoints>180</MaxHitPoints>
       <WorkToBuild>2400</WorkToBuild>
-      <Flammability>0.5</Flammability>
       <WorkTableWorkSpeedFactor>1.0</WorkTableWorkSpeedFactor>
       <WorkTableEfficiencyFactor>1.0</WorkTableEfficiencyFactor>
     </statBases>

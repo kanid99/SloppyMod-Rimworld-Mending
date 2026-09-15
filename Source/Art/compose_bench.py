@@ -1,6 +1,7 @@
 from psd_tools import PSDImage
 from PIL import Image, ImageFilter
 import numpy as np
+from maskmode import MASK, prep
 
 PSD = '/root/.claude/uploads/72994f15-0d28-544a-9ec4-c4b93575cdf3/07780ef2-TableTailorHand_north.psd'
 psd = PSDImage.open(PSD)
@@ -37,7 +38,7 @@ for name in ('border', 'base'):
     img, bbox = layer_img(name)
     inset_l, inset_r = bbox[0] - SLAB_X0, SLAB_X1 - bbox[2]
     new_w = OUT_W - round(inset_l * STRETCH) - round(inset_r * STRETCH)
-    frame.alpha_composite(hstretch_3slice(img, new_w),
+    frame.alpha_composite(prep(hstretch_3slice(img, new_w), slab=True),
                           (round(inset_l * STRETCH), bbox[1] - SLAB_Y0))
 
 def place(img, bbox_or_xy, size=None, shadow=True):
@@ -46,6 +47,7 @@ def place(img, bbox_or_xy, size=None, shadow=True):
     if size:
         img = img.resize(size, Image.LANCZOS)
     x, y = bbox_or_xy
+    img = prep(img)
     if shadow:
         a = np.asarray(img)[..., 3]
         sh = Image.fromarray(np.dstack([
@@ -79,5 +81,8 @@ TOOLS = [
 for path, size, xy in TOOLS:
     place(Image.open(path), xy, size)
 
-frame.resize((576, 192), Image.LANCZOS).save('TableMending_Manual_north.png')
+SUFFIX = 'm' if MASK else ''
+out = frame.resize((576, 192), Image.LANCZOS)
+out.save(f'TableMending_Manual_north{SUFFIX}.png')
+out.save(f'TableMending_Manual_south{SUFFIX}.png')
 print('built', frame.size, '-> (576, 192)  stretch %.3f' % STRETCH)

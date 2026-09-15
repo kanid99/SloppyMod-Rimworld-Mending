@@ -1,5 +1,6 @@
 from psd_tools import PSDImage
 from PIL import Image
+from maskmode import MASK, prep
 
 SRC = '/root/.claude/uploads/72994f15-0d28-544a-9ec4-c4b93575cdf3/0b343283-MendingBench_electric_north.psd'
 psd = PSDImage.open(SRC)
@@ -62,11 +63,11 @@ for name in ('border', 'base'):
     inset_r = SLAB_X1 - bbox[2]
     new_w = OUT_W - round(inset_l * STRETCH) - round(inset_r * STRETCH)
     wide = hstretch_3slice(img, new_w)
-    frame.alpha_composite(wide, (round(inset_l * STRETCH), SLAB_TOP + (bbox[1] - SLAB_Y0)))
+    frame.alpha_composite(prep(wide, slab=True), (round(inset_l * STRETCH), SLAB_TOP + (bbox[1] - SLAB_Y0)))
 
 # Everything on the slab keeps its own size; only its position is spread out,
 # so the extra width becomes breathing room between objects rather than stretch.
-def place(name, stretch_width=False):
+def place(name, stretch_width=False, slab=False):
     img, bbox = render(name)
     w = bbox[2] - bbox[0]
     centre = (bbox[0] + bbox[2]) / 2 - SLAB_X0
@@ -76,24 +77,24 @@ def place(name, stretch_width=False):
         img = img.resize((w, img.size[1]), Image.LANCZOS)
     x = round(new_centre - w / 2)
     y = SLAB_TOP + (bbox[1] - SLAB_Y0)
-    frame.alpha_composite(img, (x, y))
+    frame.alpha_composite(prep(img, slab=slab), (x, y))
 
-place('Panel', stretch_width=True)   # flat translucent work surface, safe to widen
+place('Panel', stretch_width=True, slab=True)   # bench surface, so it tints with the stuff
 for name in ('spools', 'Layer 2', 'scissor', 'steel', 'Layer 1', 'sewingMachine', 'allshad'):
     place(name)
 
 # --- output ----------------------------------------------------------------
 TARGET = (576, 192)
+SUFFIX = 'm' if MASK else ''
 north = frame.resize(TARGET, Image.LANCZOS)
-north.save('TableMending_Electric_north.png')
+north.save(f'TableMending_Electric_north{SUFFIX}.png')
 
 # South is the same bench seen from the other side, east is it turned a quarter
 # turn. Deriving both from this one image keeps the palette identical across
 # rotations - drawing them separately is what caused colour drift last time.
-north.rotate(180).save('TableMending_Electric_south.png')
-north.transpose(Image.ROTATE_270).save('TableMending_Electric_east.png')
+north.save(f'TableMending_Electric_south{SUFFIX}.png')
 
-for f in ('north', 'south', 'east'):
-    im = Image.open(f'TableMending_Electric_{f}.png')
+for f in ('north', 'south'):
+    im = Image.open(f'TableMending_Electric_{f}{SUFFIX}.png')
     print(f, im.size, im.mode)
 print('frame', frame.size, 'stretch %.3f' % STRETCH, 'top bleed', TOP_BLEED)

@@ -19,6 +19,23 @@ reason - the slab is stood on its end, fresh leg tabs are stamped underneath, an
 each object is moved to its quarter-turned position while staying upright. A
 toolbox seen from the side is still drawn the right way up.
 
+## Stuff masks
+
+Both benches are stuffable, so each texture has a companion mask. RimWorld reads the
+mask's RED channel as "tint this with the thing's colour" and leaves BLACK areas with
+the main texture's own colours, so the slab is red and everything standing on it is
+black - a wooden bench still has steel tools on it, and the electric bench keeps its
+red toolbox whatever it is built from.
+
+Run any script with `MENDING_MASK=1` to emit the mask instead of the artwork. The mask
+filename appends an `m` with **no separating underscore** (`TableMending_Manual_northm.png`):
+`Graphic_Multi.Init` builds the path as `path + "_north" + "m"`, and `_north_m` silently
+finds nothing and leaves the building untinted.
+
+```sh
+python3 rebuild.py && MENDING_MASK=1 python3 rebuild.py
+```
+
 ## Scripts
 
 | script | builds |

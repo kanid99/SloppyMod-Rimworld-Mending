@@ -1,6 +1,7 @@
 from psd_tools import PSDImage
 from PIL import Image, ImageFilter
 import numpy as np
+from maskmode import MASK, prep
 
 PSD = '/root/.claude/uploads/72994f15-0d28-544a-9ec4-c4b93575cdf3/07780ef2-TableTailorHand_north.psd'
 psd = PSDImage.open(PSD)
@@ -38,14 +39,14 @@ frame = Image.new('RGBA', (OUT_W, OUT_H), (0, 0, 0, 0))
 # Body on its end; legs re-stamped underneath so they stay at the bottom of the
 # sprite - the camera does not rotate with the building.
 body = border.crop((0, 0, border.size[0], leg_top)).transpose(Image.ROTATE_270)
-frame.alpha_composite(body.resize((OUT_W, OUT_H - LEG_H), Image.LANCZOS), (0, 0))
+frame.alpha_composite(prep(body.resize((OUT_W, OUT_H - LEG_H), Image.LANCZOS), slab=True), (0, 0))
 for x in (0, OUT_W - tab.size[0]):
-    frame.alpha_composite(tab, (x, OUT_H - LEG_H))
+    frame.alpha_composite(prep(tab, slab=True), (x, OUT_H - LEG_H))
 
 INSET = bsb[0] - SLAB_X0     # base sits this far inside the border
 base_body = base.crop((0, 0, base.size[0], leg_top - INSET)).transpose(Image.ROTATE_270)
 frame.alpha_composite(
-    base_body.resize((OUT_W - 2 * INSET, OUT_H - LEG_H - 2 * INSET), Image.LANCZOS),
+    prep(base_body.resize((OUT_W - 2 * INSET, OUT_H - LEG_H - 2 * INSET), Image.LANCZOS), slab=True),
     (INSET, INSET))
 
 def place(img, cx, cy, shadow=True):
@@ -55,6 +56,7 @@ def place(img, cx, cy, shadow=True):
     M = INSET + 3   # keep sprites off the slab's black border, not just inside it
     x = max(M, min(OUT_W - w - M, round(cy - w / 2)))
     y = max(M, min(OUT_H - LEG_H - h - M, round(cx - h / 2)))
+    img = prep(img)
     if shadow:
         a = np.asarray(img)[..., 3]
         z = np.zeros_like(a)
@@ -94,5 +96,6 @@ for path, size, (fx, fy) in TOOLS:
         img = img.transpose(Image.ROTATE_90)
     place(img, fx + size[0] / 2 + EAST_NUDGE.get(path, 0), fy + size[1] / 2)
 
-frame.resize((192, 576), Image.LANCZOS).save('TableMending_Manual_east.png')
+frame.resize((192, 576), Image.LANCZOS).save(
+    'TableMending_Manual_east' + ('m' if MASK else '') + '.png')
 print('east built', frame.size, 'legs', LEG_H, 'tabs', runs)

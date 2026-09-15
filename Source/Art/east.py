@@ -1,5 +1,6 @@
 from PIL import Image
 import numpy as np
+from maskmode import MASK, prep
 
 # Geometry measured off the PSD's own layers (see notes in rebuild.py).
 CROP_W, CROP_H = 192, 76          # psd.bbox space
@@ -25,16 +26,16 @@ frame = Image.new('RGBA', (OUT_W, OUT_H), (0, 0, 0, 0))
 LEG_H = BORDER_LEGS[1] - BORDER_LEGS[0]
 body = border.crop((0, BORDER_BODY[0], CROP_W, BORDER_BODY[1]))
 body = body.transpose(Image.ROTATE_270).resize((OUT_W, OUT_H - LEG_H), Image.LANCZOS)
-frame.alpha_composite(body, (0, 0))
+frame.alpha_composite(prep(body, slab=True), (0, 0))
 
 leg = border.crop((59, BORDER_LEGS[0], 71, BORDER_LEGS[1]))   # one clean tab
 for x in (0, OUT_W - leg.size[0]):
-    frame.alpha_composite(leg, (x, OUT_H - LEG_H))
+    frame.alpha_composite(prep(leg, slab=True), (x, OUT_H - LEG_H))
 
 base_body = base.crop((0, BORDER_BODY[0] + BASE_INSET, CROP_W, BORDER_BODY[1] - BASE_INSET))
 base_body = base_body.transpose(Image.ROTATE_270).resize(
     (OUT_W - 2 * BASE_INSET, OUT_H - LEG_H - 2 * BASE_INSET), Image.LANCZOS)
-frame.alpha_composite(base_body, (BASE_INSET, BASE_INSET))
+frame.alpha_composite(prep(base_body, slab=True), (BASE_INSET, BASE_INSET))
 
 # --- everything on the bench ------------------------------------------------
 # A quarter turn moves an object's POSITION but must not turn the object: a
@@ -79,7 +80,7 @@ for fname, bbox in LAYERS:
                              Image.LANCZOS)
         if rot:
             img = img.transpose(Image.ROTATE_90)
-        frame.alpha_composite(img, (sx, sy))
+        frame.alpha_composite(prep(img), (sx, sy))
         continue
     # The work panel is a flat translucent rectangle, so it turns with the bench
     # instead of staying upright - it is surface, not an object standing on it.
@@ -95,7 +96,8 @@ for fname, bbox in LAYERS:
     M = 5   # keep sprites clear of the slab's black border, not merely inside it
     nx = max(M, min(OUT_W - w - M, round(nx)))
     ny = max(M, min(OUT_H - LEG_H - h - M, round(ny)))
-    frame.alpha_composite(img, (nx, ny))
+    frame.alpha_composite(prep(img, slab=(fname == 'layer_2_Panel.png')), (nx, ny))
 
-frame.resize((192, 576), Image.LANCZOS).save('TableMending_Electric_east.png')
+frame.resize((192, 576), Image.LANCZOS).save(
+    'TableMending_Electric_east' + ('m' if MASK else '') + '.png')
 print('east built', frame.size, '->', (192, 576))
