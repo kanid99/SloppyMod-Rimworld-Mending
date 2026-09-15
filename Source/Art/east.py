@@ -40,9 +40,20 @@ frame.alpha_composite(base_body, (BASE_INSET, BASE_INSET))
 # A quarter turn moves an object's POSITION but must not turn the object: a
 # toolbox seen from the side is still drawn upright. So along-the-bench maps to
 # down-the-sprite, and across-the-bench maps to across-the-sprite.
-# A few objects sit at the same point ALONG the bench and only differ across it,
-# which a quarter turn stacks on top of each other; these nudge them apart.
-NUDGE = {'layer_7_allshad.png': (-6, 26)}
+NUDGE = {}
+
+# The toolbox and the terminal are BENCH-MOUNTED, not loose objects: in the north
+# view the toolbox sits against the back edge with the terminal on the front edge
+# beside it. A rigid quarter-turn cannot keep that - the toolbox alone is 58 of the
+# bench's 73 depth, so the terminal gets squeezed past it and lands on the short
+# end. So they are seated explicitly instead: toolbox against the back long edge,
+# terminal against the front long edge, level with each other. The terminal is a
+# flat panel let into the bench, so unlike a hammer it turns with the bench.
+EAST_SEAT = {
+    # file: (x across the bench, y along it, scale, rotate)
+    'layer_6_sewingMachine.png': (4,  148, 0.85, False),
+    'layer_7_allshad.png':       (50, 150, 1.00, True),
+}
 
 LAYERS = [
     ('layer_2_Panel.png',        (65, 36, 147, 81)),
@@ -60,6 +71,16 @@ CROP_OFF_X, CROP_OFF_Y = 16, 13       # psd.bbox origin
 for fname, bbox in LAYERS:
     img = Image.open(fname).crop((bbox[0] - CROP_OFF_X, bbox[1] - CROP_OFF_Y,
                                   bbox[2] - CROP_OFF_X, bbox[3] - CROP_OFF_Y))
+
+    if fname in EAST_SEAT:
+        sx, sy, scale, rot = EAST_SEAT[fname]
+        if scale != 1.0:
+            img = img.resize((round(img.size[0] * scale), round(img.size[1] * scale)),
+                             Image.LANCZOS)
+        if rot:
+            img = img.transpose(Image.ROTATE_90)
+        frame.alpha_composite(img, (sx, sy))
+        continue
     # The work panel is a flat translucent rectangle, so it turns with the bench
     # instead of staying upright - it is surface, not an object standing on it.
     if fname == 'layer_2_Panel.png':
@@ -71,8 +92,9 @@ for fname, bbox in LAYERS:
     dx, dy = NUDGE.get(fname, (0, 0))
     nx = cy - w / 2 + dx
     ny = cx * LENGTH_SCALE - h / 2 + dy
-    nx = max(2, min(OUT_W - w - 2, round(nx)))
-    ny = max(2, min(OUT_H - LEG_H - h - 1, round(ny)))
+    M = 5   # keep sprites clear of the slab's black border, not merely inside it
+    nx = max(M, min(OUT_W - w - M, round(nx)))
+    ny = max(M, min(OUT_H - LEG_H - h - M, round(ny)))
     frame.alpha_composite(img, (nx, ny))
 
 frame.resize((192, 576), Image.LANCZOS).save('TableMending_Electric_east.png')
