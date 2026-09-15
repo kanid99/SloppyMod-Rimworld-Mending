@@ -85,6 +85,30 @@ namespace MendingMod
             return true;
         }
 
+        // Names the project that makes an item count as unfamiliar, for the dev-mode breakdown.
+        // An item's info card never shows its recipe's research prerequisites, so "this has no
+        // research" is a reasonable-looking assumption that can quietly be wrong.
+        public static string MissingResearchFor(Thing item)
+        {
+            RecipeMakerProperties maker = item.def.recipeMaker;
+            if (maker == null)
+                return "no recipeMaker (counts as known)";
+
+            if (maker.researchPrerequisite != null && !maker.researchPrerequisite.IsFinished)
+                return maker.researchPrerequisite.defName;
+
+            if (maker.researchPrerequisites != null)
+            {
+                foreach (ResearchProjectDef research in maker.researchPrerequisites)
+                {
+                    if (!research.IsFinished)
+                        return research.defName;
+                }
+            }
+
+            return "none outstanding";
+        }
+
         public static bool IsUnfamiliar(Thing item)
         {
             return MendingModMain.Settings.enableTechRequirements
@@ -338,7 +362,9 @@ namespace MendingMod
                     .Select(c => $"{c.thingDef.defName} x{c.count}"));
 
             return $"{item.LabelShortCap}: hp {item.HitPoints}/{item.MaxHitPoints} (missing {missing:P0}) "
-                 + $"| skill {skillLevel} -> x{skillMult:F2} | unfamiliar {unfamiliar} "
+                 + $"| priced on {SkillDefOf.Crafting.defName} lvl {skillLevel} -> x{skillMult:F2} "
+                 + $"| unfamiliar {unfamiliar} (research: {MissingResearchFor(item)}) "
+                 + $"| degradation x{MendingModMain.Settings.degradationMultiplier:F2} "
                  + $"| raw {raw:F2} -> fraction {fraction:P0}{(raw > 1f ? " (CAPPED at build cost)" : "")} "
                  + $"| build cost [{baseList}] -> repair [{finalList}]";
         }
