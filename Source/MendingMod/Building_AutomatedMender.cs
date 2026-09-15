@@ -228,7 +228,17 @@ namespace MendingMod
 
             idleReason = null;
 
-            // Pass 2: only now consume, since pass 1 guaranteed every cost can be met.
+            // Draw the item in BEFORE paying for it. Consuming first and then failing to take the
+            // item would destroy the materials and leave the item sitting on the spot - and since
+            // the scan retries twice a second, it would eat every fresh stack put down after it.
+            if (!innerContainer.TryAddOrTransfer(damagedItem))
+            {
+                idleReason = "DynamicMending.MenderCannotTakeItem".Translate(damagedItem.LabelShortCap);
+                return;
+            }
+
+            // Pass 2: only now consume, since pass 1 guaranteed every cost can be met and the
+            // item is safely inside.
             foreach (ThingDefCountClass cost in costs)
             {
                 int remaining = cost.count;
@@ -241,15 +251,6 @@ namespace MendingMod
                     stack.SplitOff(take).Destroy(DestroyMode.Vanish);
                     remaining -= take;
                 }
-            }
-
-            // Bail before committing if the item can't actually be taken in: ThingOwner.TryDrop
-            // refuses to drop anything the container doesn't hold, so starting work on an item
-            // that never made it inside would repair it and then strand it on the input spot.
-            if (!innerContainer.TryAddOrTransfer(damagedItem))
-            {
-                idleReason = "DynamicMending.MenderCannotTakeItem".Translate(damagedItem.LabelShortCap);
-                return;
             }
 
             currentItem = damagedItem;

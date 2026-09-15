@@ -26,6 +26,11 @@
     <designationCategory>Production</designationCategory>
     <surfaceType>Item</surfaceType>
     <rotatable>true</rotatable>
+    <!-- Without hasInteractionCell, ThingUtility.InteractionCellWhenAt has no work spot to
+         return for a multi-cell building, so the game draws no work-spot circle and the pawn
+         ends up standing wherever it can touch the bench instead of in front of it. -->
+    <hasInteractionCell>true</hasInteractionCell>
+    <interactionCellOffset>(0,0,-1)</interactionCellOffset>
     <statBases>
       <MaxHitPoints>150</MaxHitPoints>
       <WorkToBuild>1800</WorkToBuild>
@@ -75,6 +80,11 @@
     <designationCategory>Production</designationCategory>
     <surfaceType>Item</surfaceType>
     <rotatable>true</rotatable>
+    <!-- Without hasInteractionCell, ThingUtility.InteractionCellWhenAt has no work spot to
+         return for a multi-cell building, so the game draws no work-spot circle and the pawn
+         ends up standing wherever it can touch the bench instead of in front of it. -->
+    <hasInteractionCell>true</hasInteractionCell>
+    <interactionCellOffset>(0,0,-1)</interactionCellOffset>
     <statBases>
       <MaxHitPoints>180</MaxHitPoints>
       <WorkToBuild>2400</WorkToBuild>
