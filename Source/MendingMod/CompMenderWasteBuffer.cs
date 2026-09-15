@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -12,7 +13,14 @@ namespace MendingMod
     {
         public float wasteBufferThreshold = 1f;
         public string toxicWasteDefName = "Wastepack";
-        public List<string> trashWasteDefNames = new List<string> { "VRE_Trash", "VRE_TrashBag", "Trash" };
+        // VRecyclingE_Trash is Vanilla Recycling Expanded's "trash"; the rest are fallbacks for
+        // other recycling mods. Wastepack is Biotech's own, so the toxic side always resolves.
+        public List<string> trashWasteDefNames =
+            new List<string> { "VRecyclingE_Trash", "VRE_Trash", "VRE_TrashBag", "Trash" };
+
+        // Last resort if every defName above misses - a rename upstream should degrade to
+        // "find the item actually called trash", not to silently producing wastepacks instead.
+        public string trashWasteLabel = "trash";
 
         public CompProperties_MenderWasteBuffer()
         {
@@ -187,6 +195,15 @@ namespace MendingMod
                 trashWasteDef = DefDatabase<ThingDef>.GetNamedSilentFail(candidate);
                 if (trashWasteDef != null)
                     break;
+            }
+
+            string label = Props?.trashWasteLabel;
+            if (trashWasteDef == null && !label.NullOrEmpty())
+            {
+                trashWasteDef = DefDatabase<ThingDef>.AllDefsListForReading.FirstOrDefault(d =>
+                    d.category == ThingCategory.Item
+                    && d.label != null
+                    && d.label.Equals(label, System.StringComparison.OrdinalIgnoreCase));
             }
 
             // Nothing in this install supplies a separate trash item, so ordinary repair waste

@@ -78,10 +78,12 @@
         <wasteBufferThreshold>1</wasteBufferThreshold>
         <toxicWasteDefName>Wastepack</toxicWasteDefName>
         <trashWasteDefNames>
+          <li>VRecyclingE_Trash</li>
           <li>VRE_Trash</li>
           <li>VRE_TrashBag</li>
           <li>Trash</li>
         </trashWasteDefNames>
+        <trashWasteLabel>trash</trashWasteLabel>
       </li>
     </comps>
     <inspectorTabs>
@@ -165,10 +167,12 @@
         <wasteBufferThreshold>1</wasteBufferThreshold>
         <toxicWasteDefName>Wastepack</toxicWasteDefName>
         <trashWasteDefNames>
+          <li>VRecyclingE_Trash</li>
           <li>VRE_Trash</li>
           <li>VRE_TrashBag</li>
           <li>Trash</li>
         </trashWasteDefNames>
+        <trashWasteLabel>trash</trashWasteLabel>
       </li>
     </comps>
     <inspectorTabs>
@@ -248,10 +252,12 @@
         <wasteBufferThreshold>1</wasteBufferThreshold>
         <toxicWasteDefName>Wastepack</toxicWasteDefName>
         <trashWasteDefNames>
+          <li>VRecyclingE_Trash</li>
           <li>VRE_Trash</li>
           <li>VRE_TrashBag</li>
           <li>Trash</li>
         </trashWasteDefNames>
+        <trashWasteLabel>trash</trashWasteLabel>
       </li>
     </comps>
   </ThingDef>
