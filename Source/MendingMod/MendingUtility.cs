@@ -64,33 +64,11 @@ namespace MendingMod
         // Whether the colony has researched how to build this thing. Items no recipe produces -
         // quest rewards, mechanoid gear, trader-only goods - have no research gate at all and
         // count as known, so they repair at normal rates.
-        private static TechLevel colonyTechCache = TechLevel.Undefined;
-        private static int colonyTechCachedAt = int.MinValue;
-
-        // Faction.OfPlayer.def.techLevel is what vanilla compares research costs against, but it
-        // is the SCENARIO's starting level and never advances - a tribal colony that has
-        // researched electricity still reports Neolithic - so the highest tier actually finished
-        // counts too. Cached for an in-game hour; this is read on every work-giver scan.
+        // See ColonyTech: the colony's level is judged by the balance of what it has researched,
+        // not by its single most advanced project, and is cached rather than recomputed here.
         public static TechLevel ColonyTechLevel()
         {
-            int now = Find.TickManager?.TicksGame ?? 0;
-            if (colonyTechCache != TechLevel.Undefined
-                && now >= colonyTechCachedAt
-                && now - colonyTechCachedAt < 2500)
-            {
-                return colonyTechCache;
-            }
-
-            TechLevel level = Faction.OfPlayer?.def?.techLevel ?? TechLevel.Undefined;
-            foreach (ResearchProjectDef project in DefDatabase<ResearchProjectDef>.AllDefsListForReading)
-            {
-                if (project.IsFinished && project.techLevel > level)
-                    level = project.techLevel;
-            }
-
-            colonyTechCache = level;
-            colonyTechCachedAt = now;
-            return level;
+            return ColonyTech.Level;
         }
 
         // The first unfinished prerequisite that still counts against the colony, or null if the
