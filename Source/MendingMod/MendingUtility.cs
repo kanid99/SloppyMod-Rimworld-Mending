@@ -64,25 +64,81 @@ namespace MendingMod
         // Whether the colony has researched how to build this thing. Items no recipe produces -
         // quest rewards, mechanoid gear, trader-only goods - have no research gate at all and
         // count as known, so they repair at normal rates.
-        public static bool ColonyHasTechFor(Thing item)
+        private static TechLevel colonyTechCache = TechLevel.Undefined;
+        private static int colonyTechCachedAt = int.MinValue;
+
+        // Faction.OfPlayer.def.techLevel is what vanilla compares research costs against, but it
+        // is the SCENARIO's starting level and never advances - a tribal colony that has
+        // researched electricity still reports Neolithic - so the highest tier actually finished
+        // counts too. Cached for an in-game hour; this is read on every work-giver scan.
+        public static TechLevel ColonyTechLevel()
+        {
+            int now = Find.TickManager?.TicksGame ?? 0;
+            if (colonyTechCache != TechLevel.Undefined
+                && now >= colonyTechCachedAt
+                && now - colonyTechCachedAt < 2500)
+            {
+                return colonyTechCache;
+            }
+
+            TechLevel level = Faction.OfPlayer?.def?.techLevel ?? TechLevel.Undefined;
+            foreach (ResearchProjectDef project in DefDatabase<ResearchProjectDef>.AllDefsListForReading)
+            {
+                if (project.IsFinished && project.techLevel > level)
+                    level = project.techLevel;
+            }
+
+            colonyTechCache = level;
+            colonyTechCachedAt = now;
+            return level;
+        }
+
+        // The first unfinished prerequisite that still counts against the colony, or null if the
+        // item is fair game. A project BELOW the colony's own tech level is waved through: a
+        // colony running electric smithies can work out a bow whether or not anyone ever clicked
+        // the research, and style variants of low-tech gear arrive constantly from quests and
+        // raids without the player ever unlocking the base item.
+        public static ResearchProjectDef BlockingResearchFor(Thing item)
         {
             RecipeMakerProperties maker = item.def.recipeMaker;
             if (maker == null)
-                return true;
+                return null;
 
-            if (maker.researchPrerequisite != null && !maker.researchPrerequisite.IsFinished)
-                return false;
+            TechLevel colony = ColonyTechLevel();
+
+            ResearchProjectDef blocked = StillCounts(maker.researchPrerequisite, colony);
+            if (blocked != null)
+                return blocked;
 
             if (maker.researchPrerequisites != null)
             {
                 foreach (ResearchProjectDef research in maker.researchPrerequisites)
                 {
-                    if (!research.IsFinished)
-                        return false;
+                    blocked = StillCounts(research, colony);
+                    if (blocked != null)
+                        return blocked;
                 }
             }
 
-            return true;
+            return null;
+        }
+
+        private static ResearchProjectDef StillCounts(ResearchProjectDef research, TechLevel colony)
+        {
+            if (research == null || research.IsFinished)
+                return null;
+
+            // Strictly below, so a project at the colony's own level still counts - not knowing
+            // a peer technology is exactly the case the penalty is for.
+            if (research.techLevel != TechLevel.Undefined && research.techLevel < colony)
+                return null;
+
+            return research;
+        }
+
+        public static bool ColonyHasTechFor(Thing item)
+        {
+            return BlockingResearchFor(item) == null;
         }
 
         // Names the project that makes an item count as unfamiliar, for the dev-mode breakdown.
@@ -90,23 +146,13 @@ namespace MendingMod
         // research" is a reasonable-looking assumption that can quietly be wrong.
         public static string MissingResearchFor(Thing item)
         {
-            RecipeMakerProperties maker = item.def.recipeMaker;
-            if (maker == null)
+            if (item.def.recipeMaker == null)
                 return "no recipeMaker (counts as known)";
 
-            if (maker.researchPrerequisite != null && !maker.researchPrerequisite.IsFinished)
-                return maker.researchPrerequisite.defName;
-
-            if (maker.researchPrerequisites != null)
-            {
-                foreach (ResearchProjectDef research in maker.researchPrerequisites)
-                {
-                    if (!research.IsFinished)
-                        return research.defName;
-                }
-            }
-
-            return "none outstanding";
+            ResearchProjectDef blocked = BlockingResearchFor(item);
+            return blocked == null
+                ? "nothing blocking"
+                : $"{blocked.defName} ({blocked.techLevel})";
         }
 
         public static bool IsUnfamiliar(Thing item)
@@ -363,7 +409,7 @@ namespace MendingMod
 
             return $"{item.LabelShortCap}: hp {item.HitPoints}/{item.MaxHitPoints} (missing {missing:P0}) "
                  + $"| priced on {SkillDefOf.Crafting.defName} lvl {skillLevel} -> x{skillMult:F2} "
-                 + $"| unfamiliar {unfamiliar} (research: {MissingResearchFor(item)}) "
+                 + $"| unfamiliar {unfamiliar} (colony tech {ColonyTechLevel()}, research: {MissingResearchFor(item)}) "
                  + $"| degradation x{MendingModMain.Settings.degradationMultiplier:F2} "
                  + $"| raw {raw:F2} -> fraction {fraction:P0}{(raw > 1f ? " (CAPPED at build cost)" : "")} "
                  + $"| build cost [{baseList}] -> repair [{finalList}]";
