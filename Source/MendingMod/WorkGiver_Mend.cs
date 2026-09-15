@@ -51,13 +51,22 @@ namespace MendingMod
             {
                 if (bill.recipe.workerClass != typeof(RecipeWorker_Mend))
                 {
-                    DevLog(thing, $"bill '{bill.Label}' workerClass is {bill.recipe.workerClass} not RecipeWorker_Mend");
+                    if (Prefs.DevMode)
+                        DevLog(thing, $"bill '{bill.Label}' workerClass is {bill.recipe.workerClass} not RecipeWorker_Mend");
+
                     continue;
                 }
 
-                if (!bill.ShouldDoNow() || !bill.PawnAllowedToStartAnew(pawn))
+                // Both calls are kept, not repeated inside a log string: PawnAllowedToStartAnew
+                // sets JobFailReason as a side effect, so calling it twice overwrote the reason
+                // with a second evaluation, and it ran even with dev mode off.
+                bool shouldDoNow = bill.ShouldDoNow();
+                bool pawnAllowed = shouldDoNow && bill.PawnAllowedToStartAnew(pawn);
+                if (!shouldDoNow || !pawnAllowed)
                 {
-                    DevLog(thing, $"bill '{bill.Label}' ShouldDoNow={bill.ShouldDoNow()} PawnAllowedToStartAnew={bill.PawnAllowedToStartAnew(pawn)}");
+                    if (Prefs.DevMode)
+                        DevLog(thing, $"bill '{bill.Label}' ShouldDoNow={shouldDoNow} PawnAllowedToStartAnew={pawnAllowed}");
+
                     continue;
                 }
 
@@ -120,7 +129,12 @@ namespace MendingMod
                 searchRadius,
                 t =>
                 {
-                    if (t.IsForbidden(pawn) || !pawn.CanReserve(t) || !targetFilter.filter.Allows(t) || !IsDamaged(t))
+                    // Ordered cheapest and most selective first: almost nothing on the map is
+                    // damaged gear, so reject on that before paying for a reservation lookup.
+                    if (!IsDamaged(t) || !targetFilter.filter.Allows(t))
+                        return false;
+
+                    if (t.IsForbidden(pawn) || !pawn.CanReserve(t))
                         return false;
 
                     if (!MendingUtility.CanBenchRepair(billGiver.def, t))
@@ -139,6 +153,7 @@ namespace MendingMod
 
             if (mendTarget == null)
             {
+
                 if (rejectedForComponents)
                 {
                     JobFailReason.Is("DynamicMending.NeedsPoweredBench".Translate());
@@ -153,7 +168,8 @@ namespace MendingMod
                     JobFailReason.Is("DynamicMending.NoIngredientsOrTarget".Translate());
                 }
 
-                DevLog(billGiver, $"no reachable damaged item matching bill '{bill.Label}' within radius {searchRadius}");
+                if (Prefs.DevMode)
+                    DevLog(billGiver, $"no reachable damaged item matching bill '{bill.Label}' within radius {searchRadius}");
                 return false;
             }
 
@@ -167,15 +183,23 @@ namespace MendingMod
                 List<ThingCount> found = new List<ThingCount>();
                 if (!TryFindMaterial(cost.thingDef, cost.count, pawn, billGiver, searchRadius, found))
                 {
-                    DevLog(billGiver, $"found target {mendTarget.LabelShort} but missing material {cost.thingDef.defName} x{cost.count} within radius {searchRadius}");
+                    if (Prefs.DevMode)
+                        DevLog(billGiver, $"found target {mendTarget.LabelShort} but missing material {cost.thingDef.defName} x{cost.count} within radius {searchRadius}");
                     return false;
                 }
 
                 chosen.AddRange(found);
             }
 
-            DevLog(billGiver, "job ready: " + MendingUtility.DescribeCost(
-                mendTarget, MendingUtility.GetSkillLevel(mendTarget, pawn)));
+            // DescribeCost recomputes the whole cost breakdown and allocates its way through two
+            // LINQ projections; without this guard it ran on every job created, with the result
+            // thrown away unless dev mode was on.
+            if (Prefs.DevMode)
+            {
+                DevLog(billGiver, "job ready: " + MendingUtility.DescribeCost(
+                    mendTarget, MendingUtility.GetSkillLevel(mendTarget, pawn)));
+            }
+
             return true;
         }
 
@@ -184,20 +208,44 @@ namespace MendingMod
             return t.def.useHitPoints && t.HitPoints < t.MaxHitPoints;
         }
 
+        // Walks the map's index of this material instead of every cell around the bench.
+        // GenRadial.RadialDistinctThingsAround, which this used, sweeps the whole disc: at the
+        // bill's default "unlimited" radius that is the radius-200 clamp, about 125,000 cells -
+        // per material, per bill, per scan, and the full sweep runs every time whenever the
+        // colony is short of a material, because the search can only fail after visiting all of
+        // them. ThingsOfDef visits the handful of stacks that actually exist.
         private static bool TryFindMaterial(ThingDef materialDef, int countNeeded, Pawn pawn, Thing billGiver, float searchRadius, List<ThingCount> found)
         {
-            int remaining = countNeeded;
+            List<Thing> stacks = billGiver.Map.listerThings.ThingsOfDef(materialDef);
+            if (stacks.NullOrEmpty())
+                return false;
 
-            foreach (Thing candidate in GenRadial.RadialDistinctThingsAround(billGiver.Position, billGiver.Map, searchRadius, true))
+            float radiusSquared = searchRadius * searchRadius;
+            IntVec3 origin = billGiver.Position;
+
+            // Nearest first, matching what the radial sweep gave for free. The candidate list is
+            // the stacks of one material on the map, so this is a short sort.
+            List<Thing> reachable = new List<Thing>();
+            foreach (Thing candidate in stacks)
             {
-                if (remaining <= 0)
-                    break;
-
-                if (candidate.def != materialDef)
+                if ((candidate.Position - origin).LengthHorizontalSquared > radiusSquared)
                     continue;
 
                 if (candidate.IsForbidden(pawn) || !pawn.CanReserve(candidate))
                     continue;
+
+                reachable.Add(candidate);
+            }
+
+            reachable.Sort((a, b) =>
+                (a.Position - origin).LengthHorizontalSquared.CompareTo(
+                (b.Position - origin).LengthHorizontalSquared));
+
+            int remaining = countNeeded;
+            foreach (Thing candidate in reachable)
+            {
+                if (remaining <= 0)
+                    break;
 
                 int take = Mathf.Min(remaining, candidate.stackCount);
                 found.Add(new ThingCount(candidate, take));
