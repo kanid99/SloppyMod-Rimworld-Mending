@@ -8,9 +8,11 @@ namespace MendingMod
 {
     // Pairs with WorkGiver_Mend/JobDriver_DoMend: the mend target is identified as the only
     // ingredient with useHitPoints and current HitPoints < MaxHitPoints, so ordering of
-    // `ingredients` doesn't matter. XP is granted here (not by the vanilla per-recipe skill)
-    // so it always lands on the mended item's own recipeMaker.workSkill, not a flat
-    // Tailoring/Smithing value shared by the whole RecipeDef.
+    // `ingredients` doesn't matter. XP is granted here rather than by the vanilla per-recipe
+    // path, so it lands on the mended item's own recipeMaker.workSkill. In practice that is
+    // Crafting for vanilla apparel and weapons alike - RimWorld has no Tailoring or Smithing
+    // SKILL, only work types of those names - but a modded item that declares something else
+    // trains that instead.
     //
     // JobDriver_DoMend does NOT route through Toils_Recipe.FinishRecipeAndStartStoringProduct
     // (which is what would normally invoke ConsumeIngredient/Notify_IterationCompleted below) -

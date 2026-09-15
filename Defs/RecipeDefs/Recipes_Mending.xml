@@ -8,11 +8,16 @@
     (both confirmed by decompiling them), so leaving it unset - as this did - silently means
     no slider and no gate.
 
+    Both recipes use Crafting, because RimWorld has no Smithing SKILL - Smithing is a
+    WorkTypeDef only, and smithing work trains Crafting (confirmed against SkillDefOf, which
+    lists no such skill). Naming it here resolved to null, which is exactly the same as
+    leaving workSkill unset: no slider on the mend weapon bill, and no gate.
+
     It costs nothing here: vanilla's per-recipe XP is granted by Toils_Recipe.DoRecipeWork,
     which JobDriver_DoMend replaces wholesale, so setting workSkill adds no second XP source.
     XP is still granted once, by RecipeWorker_Mend, against the mended item's OWN
-    recipeMaker.workSkill - so a mended plasteel spear still trains Smithing whichever bill
-    produced the job.
+    recipeMaker.workSkill - which for vanilla weapons and apparel alike is Crafting, so the
+    skill the bill gates on and the skill the repair trains are the same one.
   -->
 
   <RecipeDef>
@@ -54,7 +59,7 @@
     <label>mend weapon</label>
     <description>Repair a damaged weapon. Material and work-time costs scale dynamically with how much HP is missing.</description>
     <jobString>Mending weapon.</jobString>
-    <workSkill>Smithing</workSkill>
+    <workSkill>Crafting</workSkill>
     <workerClass>MendingMod.RecipeWorker_Mend</workerClass>
     <workAmount>300</workAmount>
     <effectWorking>Smith</effectWorking>
