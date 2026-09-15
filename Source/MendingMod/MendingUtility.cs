@@ -85,13 +85,15 @@ namespace MendingMod
 
         public static bool IsUnfamiliar(Thing item)
         {
-            return MendingModMain.Settings.penaliseUnresearched && !ColonyHasTechFor(item);
+            return MendingModMain.Settings.enableTechRequirements
+                && MendingModMain.Settings.penaliseUnresearched
+                && !ColonyHasTechFor(item);
         }
 
         // Undefined means "nothing known and no spacer materials found", which stays allowed.
         public static bool CanBenchRepair(ThingDef benchDef, Thing item)
         {
-            if (!MendingModMain.Settings.enforceTechLimits)
+            if (!MendingModMain.Settings.enableTechRequirements || !MendingModMain.Settings.enforceTechLimits)
                 return true;
 
             TechLevel cap = benchDef?.GetModExtension<MendingTechLimitExtension>()?.maxTechLevel
@@ -203,18 +205,36 @@ namespace MendingMod
             {
                 item.HitPoints = item.MaxHitPoints;
             }
-            else
+            else if (MendingModMain.Settings.hpLossOnFailure)
             {
                 int hpLoss = Mathf.RoundToInt(item.MaxHitPoints * missingHpFraction * failChance * 0.5f * MendingModMain.Settings.degradationMultiplier);
                 item.HitPoints = Mathf.Max(1, item.HitPoints - hpLoss);
             }
+            // Otherwise a failure costs the work and the materials but leaves the item as it was.
 
-            float severityScale = success ? 1f : 2f;
-            bool qualityDropped = TryRollQualityDrop(item, missingHpFraction, failChance, severityScale);
+            bool qualityDropped = false;
+            if (QualityLossAllowed(success))
+            {
+                float severityScale = success ? 1f : 2f;
+                qualityDropped = TryRollQualityDrop(item, missingHpFraction, failChance, severityScale);
+            }
 
             result.success = success;
             result.qualityDropped = qualityDropped;
             return result;
+        }
+
+        private static bool QualityLossAllowed(bool success)
+        {
+            switch (MendingModMain.Settings.qualityLossMode)
+            {
+                case QualityLossMode.Never:
+                    return false;
+                case QualityLossMode.FailureOnly:
+                    return !success;
+                default:
+                    return true;
+            }
         }
 
         private static bool TryRollQualityDrop(Thing item, float missingHpFraction, float skillFactor, float severityScale)
@@ -252,6 +272,12 @@ namespace MendingMod
         public static List<ThingDefCountClass> GetDynamicIngredientCosts(Thing item, int skillLevel)
         {
             List<ThingDefCountClass> result = new List<ThingDefCountClass>();
+
+            // Free repairs: an empty cost list flows through every caller cleanly - the work giver
+            // looks for no materials, the job driver consumes none, and the automated mender's
+            // stock check passes trivially.
+            if (!MendingModMain.Settings.requireResources)
+                return result;
 
             // The fraction of the item that's actually missing is what a flawless repair costs;
             // everything above that is the mender's waste. Capped at the whole build cost, since
