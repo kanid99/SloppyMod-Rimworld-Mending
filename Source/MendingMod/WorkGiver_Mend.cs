@@ -174,7 +174,8 @@ namespace MendingMod
                 chosen.AddRange(found);
             }
 
-            DevLog(billGiver, $"job ready: mend {mendTarget.LabelShort}");
+            DevLog(billGiver, "job ready: " + MendingUtility.DescribeCost(
+                mendTarget, MendingUtility.GetSkillLevel(mendTarget, pawn)));
             return true;
         }
 

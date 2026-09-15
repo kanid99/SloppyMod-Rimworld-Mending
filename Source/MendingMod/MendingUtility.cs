@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -139,6 +140,8 @@ namespace MendingMod
             return false;
         }
 
+        // Which skill a repair TRAINS: the item's own, so a modded item that declares something
+        // unusual grants XP there. Only used for the XP award.
         public static SkillDef GetRelevantWorkSkill(Thing item)
         {
             return item.def.recipeMaker?.workSkill ?? SkillDefOf.Crafting;
@@ -300,9 +303,44 @@ namespace MendingMod
         // plasteel vs steel); it knows nothing about damage, so the missing-HP fraction is
         // applied here on top. It's a static method on CostListCalculator, not an instance
         // method on ThingDef.
+        // Which skill a repair is PRICED against. Deliberately Crafting, not the item's own
+        // recipe skill, for two reasons.
+        //
+        // First, it has to be the skill the bill gates on, or a pawn can pass an "allowed skill
+        // range" check and then be charged as though they were someone else.
+        //
+        // Second, GetRelevantWorkSkill can name a skill this pawn does not have - a modded item
+        // declaring a modded skill - and Pawn_SkillTracker.GetSkill does NOT return null for
+        // that. It logs an error and hands back skills[0], which is Shooting. A Crafting 11
+        // colonist was then priced as though unskilled, and since the cost fraction is capped at
+        // the item's whole build cost, a moderately damaged item cost exactly as much to repair
+        // as to build new.
         public static int GetSkillLevel(Thing item, Pawn pawn)
         {
-            return pawn?.skills?.GetSkill(GetRelevantWorkSkill(item))?.Level ?? 0;
+            return pawn?.skills?.GetSkill(SkillDefOf.Crafting)?.Level ?? 0;
+        }
+
+        // Dev-mode breakdown, so a surprising number can be read rather than guessed at.
+        public static string DescribeCost(Thing item, int skillLevel, bool ignoreResearch = false)
+        {
+            float missing = GetMissingHpFraction(item);
+            float skillMult = SkillWasteMultiplier(skillLevel);
+            bool unfamiliar = Unfamiliar(item, ignoreResearch);
+            float raw = missing * skillMult * (unfamiliar ? UnfamiliarCostFactor : 1f);
+            float fraction = Mathf.Clamp01(raw) * MendingModMain.Settings.degradationMultiplier;
+
+            List<ThingDefCountClass> baseCosts = CostListCalculator.CostListAdjusted(item);
+            string baseList = baseCosts.NullOrEmpty()
+                ? "none"
+                : string.Join(", ", baseCosts.Select(c => $"{c.thingDef.defName} x{c.count}"));
+            string finalList = string.Join(", ",
+                GetDynamicIngredientCosts(item, skillLevel, ignoreResearch)
+                    .Select(c => $"{c.thingDef.defName} x{c.count}"));
+
+            return $"{item.LabelShortCap}: hp {item.HitPoints}/{item.MaxHitPoints} (missing {missing:P0}) "
+                 + $"| skill {skillLevel} -> x{skillMult:F2} | unfamiliar {unfamiliar} "
+                 + $"| raw {raw:F2} -> fraction {fraction:P0}{(raw > 1f ? " (CAPPED at build cost)" : "")} "
+                 + $"| build cost [{baseList}] -> repair [{finalList}]";
         }
 
         // skillLevel has to come from whoever is actually doing the repair, and the work giver
@@ -390,7 +428,16 @@ namespace MendingMod
             if (pawn?.skills == null)
                 return;
 
-            pawn.skills.Learn(GetRelevantWorkSkill(item), xpAmount);
+            SkillDef skill = GetRelevantWorkSkill(item);
+
+            // Same trap as the pricing path: Pawn_SkillTracker.Learn routes through GetSkill,
+            // which for a skill this pawn does not have logs an error and dumps the XP into
+            // skills[0] - Shooting. A modded item naming a modded skill would quietly train the
+            // wrong one and spam the log every repair, so fall back on purpose instead.
+            if (!pawn.skills.skills.Any(record => record.def == skill))
+                skill = SkillDefOf.Crafting;
+
+            pawn.skills.Learn(skill, xpAmount);
         }
     }
 }
