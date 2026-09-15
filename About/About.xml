@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-  <name>Dynamic Mending</name>
+  <name>SloppyMods Mending Solutions</name>
   <author>SloppyMod</author>
   <packageId>sloppymod.dynamicmending</packageId>
   <supportedVersions>
@@ -8,7 +8,7 @@
     <li>1.5</li>
     <li>1.6</li>
   </supportedVersions>
-  <description>Repair damaged apparel and weapons at a manual or electric mending table, or a fully automated hopper-fed mending station at higher tech. Material and work-time costs scale dynamically with missing HP, and failed or risky repairs can cost HP or item quality. Requires Biotech and Vanilla Recycling Expanded: repair work always produces real waste byproducts (Wastepacks and recyclable trash) as a core mechanic, not an optional extra.</description>
+  <description>Repair damaged apparel and weapons at a hand mending station, an electrical mending station, or a fully automated industrial repair center at higher tech. Material cost, work time, waste and the risk of a botched repair all scale with how damaged the item is and how skilled the mender is. Requires Biotech and Vanilla Recycling Expanded: repair work always produces real waste byproducts (Wastepacks and recyclable trash) as a core mechanic, not an optional extra.</description>
   <modDependencies>
     <li>
       <packageId>Ludeon.RimWorld.Biotech</packageId>

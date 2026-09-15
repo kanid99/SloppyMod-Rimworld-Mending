@@ -4,7 +4,7 @@
   <ResearchProjectDef>
     <defName>BasicMending</defName>
     <label>basic mending</label>
-    <description>Repair worn apparel and weapons at a simple, unpowered mending table.</description>
+    <description>Repair worn apparel and weapons at a simple, unpowered hand mending station.</description>
     <baseCost>400</baseCost>
     <techLevel>Medieval</techLevel>
     <researchViewX>0</researchViewX>
@@ -13,8 +13,8 @@
 
   <ResearchProjectDef>
     <defName>ElectricMending</defName>
-    <label>electric mending</label>
-    <description>Upgrade to a powered mending table for faster repairs.</description>
+    <label>electrical mending</label>
+    <description>Upgrade to a powered electrical mending station for much faster repairs.</description>
     <baseCost>800</baseCost>
     <techLevel>Industrial</techLevel>
     <prerequisites>
@@ -27,7 +27,7 @@
   <ResearchProjectDef>
     <defName>AutomatedMending</defName>
     <label>automated mending</label>
-    <description>Construct a fully automated mending station that repairs items left on its input spots, with no pawn labor required.</description>
+    <description>Construct a fully automated industrial repair center that repairs items left on its input spots, with no pawn labor required.</description>
     <baseCost>2200</baseCost>
     <techLevel>Spacer</techLevel>
     <prerequisites>

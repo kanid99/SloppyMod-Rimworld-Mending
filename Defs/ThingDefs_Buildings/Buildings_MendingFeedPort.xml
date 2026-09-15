@@ -15,7 +15,7 @@
   <ThingDef ParentName="BuildingBase">
     <defName>MendingFeedPort</defName>
     <label>mending feed port</label>
-    <description>A small intake tile for the automated mender. Build it on one of the mender's spots and haulers - or a conveyor belt - can fill it, and the mender will draw from it. Placed on the mender's output spot instead, it catches repaired gear for a belt to carry away.</description>
+    <description>A small intake tile for the industrial repair center. Build it on one of its spots and haulers - or a conveyor belt - can fill it, and the repair center will draw from it. Placed on its output spot instead, it catches repaired gear for a belt to carry away.</description>
     <thingClass>Building_Storage</thingClass>
     <graphicData>
       <texPath>Things/Building/Production/MendingFeedPort</texPath>
