@@ -141,14 +141,17 @@ namespace MendingMod
 
         // Only apparel and weapons are mendable (matching the two recipes), and checking that
         // rather than useHitPoints alone keeps deteriorated resource stacks out of the input.
-        // The tech cap is honoured here too, though this building carries no limit by default.
+        //
+        // Deliberately NOT gated on research. Once this machine is built it repairs anything put
+        // in front of it; its one limitation is that it always works at skill 10, never better.
+        // The bench tech cap is still consulted so a def that declares one is honoured, but this
+        // building carries no cap by default.
         private bool IsMendable(Thing thing)
         {
             return (thing.def.IsApparel || thing.def.IsWeapon)
                 && thing.def.useHitPoints
                 && thing.HitPoints < thing.MaxHitPoints
-                && MendingUtility.CanBenchRepair(def, thing)
-                && !MendingUtility.IsUnfamiliar(thing);
+                && MendingUtility.CanBenchRepair(def, thing);
         }
 
         // Same test minus the tech gates, so a rejected item can be named as rejected rather
@@ -173,13 +176,13 @@ namespace MendingMod
             {
                 Thing rejected = ThingsOn(ItemInputCell).FirstOrDefault(IsDamagedGear);
                 idleReason = rejected != null
-                    ? "DynamicMending.MenderUnknownTech".Translate(rejected.LabelShortCap)
+                    ? "DynamicMending.MenderCannotRepair".Translate(rejected.LabelShortCap)
                     : "DynamicMending.MenderNoItem".Translate();
                 return;
             }
 
             List<Thing> available = ThingsOn(ResourceInputCells).Where(t => t != damagedItem).ToList();
-            List<ThingDefCountClass> costs = MendingUtility.GetDynamicIngredientCosts(damagedItem, FixedSkillLevel);
+            List<ThingDefCountClass> costs = MendingUtility.GetDynamicIngredientCosts(damagedItem, FixedSkillLevel, ignoreResearch: true);
 
             // Pass 1: verify every material is available before touching anything.
             Dictionary<ThingDef, int> stock = new Dictionary<ThingDef, int>();
@@ -230,7 +233,7 @@ namespace MendingMod
 
             currentItem = damagedItem;
 
-            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.GetDynamicWorkAmount(currentItem, FixedSkillLevel)));
+            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.GetDynamicWorkAmount(currentItem, FixedSkillLevel, ignoreResearch: true)));
             workTicksRemaining = workTicksTotal;
             state = MenderState.Working;
         }
@@ -282,7 +285,7 @@ namespace MendingMod
         private void FinishMend()
         {
             GetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(currentItem, FixedSkillLevel);
-            MendingUtility.ResolveRepair(currentItem, FixedSkillLevel);
+            MendingUtility.ResolveRepair(currentItem, FixedSkillLevel, ignoreResearch: true);
 
             state = MenderState.Ejecting;
             TryEject();

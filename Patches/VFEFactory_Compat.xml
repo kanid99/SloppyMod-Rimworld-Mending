@@ -42,7 +42,7 @@
         <li Class="PatchOperationReplace">
           <xpath>/Defs/ThingDef[defName="AutomatedMender"]/description</xpath>
           <value>
-            <description>An industrial repair line that mends worn gear with no pawn labor, working as a skill 10 mender. Select it to see its spots: gear and materials feed in along the back, and finished items come out of the single port at the front. Put one damaged weapon or piece of apparel on the cyan spot, repair materials on any of the eight green spots, and collect repaired gear from the orange spot. Every spot accepts loose items on the ground or any storage building sitting on it. To run it off conveyors, build a factory hopper on a spot and point the belt at that - a belt aimed straight at the machine has nowhere to unload and will stall.</description>
+            <description>An industrial repair line that mends worn gear with no pawn labor. It always works as a skill 10 mender - never better, however good your crafters are - but that is its only limit: it will repair anything put in front of it, including gear your colony has no idea how to build. Select it to see its spots: gear and materials feed in along the back, and finished items come out of the single port at the front. Put one damaged weapon or piece of apparel on the cyan spot, repair materials on any of the eight green spots, and collect repaired gear from the orange spot. Every spot accepts loose items on the ground or any storage building sitting on it. To run it off conveyors, build a factory hopper on a spot and point the belt at that - a belt aimed straight at the machine has nowhere to unload and will stall.</description>
           </value>
         </li>
 

@@ -90,6 +90,15 @@ namespace MendingMod
                 && !ColonyHasTechFor(item);
         }
 
+        // The automated repair center passes ignoreResearch. Working blind is a statement about a
+        // COLONIST - they have never built the thing and are guessing - and it does not transfer to
+        // a machine that measures what is in front of it and works to a fixed tolerance. Once the
+        // machine is built its only limit is that it always works at skill 10.
+        private static bool Unfamiliar(Thing item, bool ignoreResearch)
+        {
+            return !ignoreResearch && IsUnfamiliar(item);
+        }
+
         // Undefined means "nothing known and no spacer materials found", which stays allowed.
         public static bool CanBenchRepair(ThingDef benchDef, Thing item)
         {
@@ -175,7 +184,7 @@ namespace MendingMod
         // repair fell through to a flat 300 ticks and finished in a couple of seconds. The
         // bench's own WorkTableWorkSpeedFactor is applied by the caller, not here, so the
         // automated mender and the two tables can differ.
-        public static float GetDynamicWorkAmount(Thing item, int skillLevel)
+        public static float GetDynamicWorkAmount(Thing item, int skillLevel, bool ignoreResearch = false)
         {
             if (item == null)
                 return 300f;
@@ -193,14 +202,14 @@ namespace MendingMod
 
             return baseWork * DamageWorkCurve(GetMissingHpFraction(item)) * qualityFactor
                 * SkillEffortFactor(skillLevel)
-                * (IsUnfamiliar(item) ? UnfamiliarTimeFactor : 1f)
+                * (Unfamiliar(item, ignoreResearch) ? UnfamiliarTimeFactor : 1f)
                 * MendingModMain.Settings.repairWorkMultiplier;
         }
 
         // Skill is the dominant term, then how much of the item is being rebuilt, then how fine
         // it is. Tuned around skill 10 as the normal case: on a 20%-damaged normal-quality item
         // that's roughly 1% failure at skill 20, 13% at skill 10 and 25% at skill 1.
-        private static float FailureChance(Thing item, int skillLevel, float missingHpFraction)
+        private static float FailureChance(Thing item, int skillLevel, float missingHpFraction, bool ignoreResearch)
         {
             item.TryGetQuality(out QualityCategory quality);
 
@@ -209,11 +218,11 @@ namespace MendingMod
             float qualityFactor = 1f + (int)quality * 0.05f;
 
             return Mathf.Clamp01(skillChance * damageFactor * qualityFactor
-                * (IsUnfamiliar(item) ? UnfamiliarRiskFactor : 1f)
+                * (Unfamiliar(item, ignoreResearch) ? UnfamiliarRiskFactor : 1f)
                 * MendingModMain.Settings.degradationMultiplier);
         }
 
-        public static MendResult ResolveRepair(Thing item, int skillLevel)
+        public static MendResult ResolveRepair(Thing item, int skillLevel, bool ignoreResearch = false)
         {
             float missingHpFraction = GetMissingHpFraction(item);
             MendResult result = default;
@@ -224,7 +233,7 @@ namespace MendingMod
                 return result;
             }
 
-            float failChance = FailureChance(item, skillLevel, missingHpFraction);
+            float failChance = FailureChance(item, skillLevel, missingHpFraction, ignoreResearch);
             bool success = !Rand.Chance(failChance);
 
             if (success)
@@ -295,7 +304,7 @@ namespace MendingMod
         // skillLevel has to come from whoever is actually doing the repair, and the work giver
         // and the job driver must pass the same pawn: the driver consumes exactly the list the
         // work giver priced, so a mismatch would leave materials behind or come up short.
-        public static List<ThingDefCountClass> GetDynamicIngredientCosts(Thing item, int skillLevel)
+        public static List<ThingDefCountClass> GetDynamicIngredientCosts(Thing item, int skillLevel, bool ignoreResearch = false)
         {
             List<ThingDefCountClass> result = new List<ThingDefCountClass>();
 
@@ -310,7 +319,7 @@ namespace MendingMod
             // past that point rebuilding the item outright would be cheaper than repairing it.
             float costFraction = Mathf.Clamp01(GetMissingHpFraction(item)
                     * SkillWasteMultiplier(skillLevel)
-                    * (IsUnfamiliar(item) ? UnfamiliarCostFactor : 1f))
+                    * (Unfamiliar(item, ignoreResearch) ? UnfamiliarCostFactor : 1f))
                 * MendingModMain.Settings.degradationMultiplier;
 
             if (MendingModMain.Settings.simpleMode)

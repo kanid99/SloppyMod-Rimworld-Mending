@@ -17,7 +17,7 @@
   <DynamicMending.WasteBuffered>Waste container: {0}</DynamicMending.WasteBuffered>
   <DynamicMending.DumpWasteLabel>Dump waste</DynamicMending.DumpWasteLabel>
   <DynamicMending.DumpWasteDesc>Dump the accumulated waste onto the ground now, without waiting for a hauler. Rounds up to whole items and deducts the full amount, so dumping early is borrowed against later repairs rather than free.</DynamicMending.DumpWasteDesc>
-  <DynamicMending.MenderUnknownTech>Idle: {0} is beyond your colony's research - it can't be repaired here.</DynamicMending.MenderUnknownTech>
+  <DynamicMending.MenderCannotRepair>Idle: {0} is beyond what this machine can repair.</DynamicMending.MenderCannotRepair>
   <DynamicMending.TooAdvancedForBench>Too advanced for this station (repairs up to {0} tech).</DynamicMending.TooAdvancedForBench>
 
 </LanguageData>
