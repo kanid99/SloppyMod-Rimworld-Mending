@@ -74,7 +74,7 @@ namespace MendingMod
 
                 // TryBuildMendIngredients reports its own reason - it knows whether the bench
                 // found nothing at all or rejected what it found as too advanced.
-                if (!TryBuildMendIngredients(bill, pawn, thing, chosen))
+                if (!TryBuildMendIngredients(bill, pawn, thing, chosen, forced))
                     continue;
 
                 Job job = JobMaker.MakeJob(MendingDefOf.DoMend, thing);
@@ -97,11 +97,25 @@ namespace MendingMod
         // TryFindBestBillIngredients(Bill, Pawn, Thing, List<ThingCount>, List<IngredientCount>)
         // - that one searches recipe.ingredients filters, which this recipe doesn't declare
         // material entries for at all (the C# computes them dynamically instead).
-        private bool TryBuildMendIngredients(Bill bill, Pawn pawn, Thing billGiver, List<ThingCount> chosen)
+        // Vanilla's own throttle for exactly this, which this work giver never used because it
+        // replaced WorkGiver_DoBill.StartOrResumeBillJob wholesale. A bill with nothing to repair
+        // is the normal resting state and also the most expensive one: ClosestThingReachable runs
+        // a 30-region BFS and then, finding nothing, falls back to scanning the WHOLE group
+        // globally - re-run for every bill on every pawn's work scan. Vanilla stamps a failed
+        // bill with nextTickToSearchForIngredients and leaves it alone for 500-600 ticks; the
+        // field is public, saves with the game, and a float-menu query bypasses it so right-click
+        // never lies to the player.
+        private static readonly IntRange ReCheckFailedBillTicksRange = new IntRange(500, 600);
+
+        private bool TryBuildMendIngredients(Bill bill, Pawn pawn, Thing billGiver, List<ThingCount> chosen, bool forced)
         {
             chosen.Clear();
 
             if (bill.recipe.ingredients.NullOrEmpty())
+                return false;
+
+            bool interactive = forced || FloatMenuMakerMap.makingFor == pawn;
+            if (!interactive && Find.TickManager.TicksGame <= bill.nextTickToSearchForIngredients)
                 return false;
 
             // GenRadial's cell lookup table is capped at radius 200 (confirmed by decompiling
@@ -123,7 +137,7 @@ namespace MendingMod
             Thing mendTarget = GenClosest.ClosestThingReachable(
                 billGiver.Position,
                 billGiver.Map,
-                ThingRequest.ForGroup(ThingRequestGroup.HaulableEver),
+                ThingRequest.ForGroup(TargetGroupFor(bill.recipe)),
                 PathEndMode.ClosestTouch,
                 TraverseParms.For(pawn),
                 searchRadius,
@@ -153,7 +167,6 @@ namespace MendingMod
 
             if (mendTarget == null)
             {
-
                 if (rejectedForComponents)
                 {
                     JobFailReason.Is("DynamicMending.NeedsPoweredBench".Translate());
@@ -170,6 +183,11 @@ namespace MendingMod
 
                 if (Prefs.DevMode)
                     DevLog(billGiver, $"no reachable damaged item matching bill '{bill.Label}' within radius {searchRadius}");
+
+                if (!interactive)
+                    bill.nextTickToSearchForIngredients =
+                        Find.TickManager.TicksGame + ReCheckFailedBillTicksRange.RandomInRange;
+
                 return false;
             }
 
@@ -185,6 +203,11 @@ namespace MendingMod
                 {
                     if (Prefs.DevMode)
                         DevLog(billGiver, $"found target {mendTarget.LabelShort} but missing material {cost.thingDef.defName} x{cost.count} within radius {searchRadius}");
+
+                    if (!interactive)
+                        bill.nextTickToSearchForIngredients =
+                            Find.TickManager.TicksGame + ReCheckFailedBillTicksRange.RandomInRange;
+
                     return false;
                 }
 
@@ -201,6 +224,44 @@ namespace MendingMod
             }
 
             return true;
+        }
+
+        // HaulableEver is every wood log, meal, chunk and steel bar on the map - thousands of
+        // things on a developed colony, walked per bill, per bench, per pawn work scan. A mend
+        // bill only ever wants apparel or a weapon, and both are region-indexed groups
+        // (ThingRequestGroupUtility.StoreInRegion), so the search can be an order of magnitude
+        // smaller AND still use the region traversal rather than a global sweep.
+        private static readonly Dictionary<RecipeDef, ThingRequestGroup> targetGroupCache =
+            new Dictionary<RecipeDef, ThingRequestGroup>();
+
+        private static ThingRequestGroup TargetGroupFor(RecipeDef recipe)
+        {
+            if (targetGroupCache.TryGetValue(recipe, out ThingRequestGroup cached))
+                return cached;
+
+            bool anyApparel = false;
+            bool anyWeapon = false;
+
+            foreach (ThingDef def in recipe.fixedIngredientFilter.AllowedThingDefs)
+            {
+                if (def.IsApparel)
+                    anyApparel = true;
+                else if (def.IsWeapon)
+                    anyWeapon = true;
+
+                if (anyApparel && anyWeapon)
+                    break;
+            }
+
+            // A filter that spans both, or matches neither, falls back to the broad group rather
+            // than quietly missing valid targets.
+            ThingRequestGroup group =
+                anyApparel && !anyWeapon ? ThingRequestGroup.Apparel :
+                anyWeapon && !anyApparel ? ThingRequestGroup.Weapon :
+                ThingRequestGroup.HaulableEver;
+
+            targetGroupCache[recipe] = group;
+            return group;
         }
 
         private static bool IsDamaged(Thing t)
