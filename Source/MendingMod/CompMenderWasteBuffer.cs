@@ -31,6 +31,47 @@ namespace MendingMod
 
         public CompProperties_MenderWasteBuffer Props => (CompProperties_MenderWasteBuffer)props;
 
+        public override IEnumerable<Gizmo> CompGetGizmosExtra()
+        {
+            if (!MendingModMain.Settings.generateWaste || parent.Map == null)
+                yield break;
+
+            if (toxicBuffer <= 0f && trashBuffer <= 0f)
+                yield break;
+
+            yield return new Command_Action
+            {
+                defaultLabel = "DynamicMending.DumpWasteLabel".Translate(),
+                defaultDesc = "DynamicMending.DumpWasteDesc".Translate(),
+                icon = TexCommand.Install,
+                action = DumpBufferedWaste,
+            };
+        }
+
+        // Rounds up to a whole item but subtracts the whole rounded amount, letting the buffer go
+        // negative. Dumping early therefore borrows against later repairs rather than conjuring
+        // waste from nothing, so it can't be cycled to farm recyclable trash.
+        private void DumpBufferedWaste()
+        {
+            ResolveWasteDefsOnce();
+
+            float threshold = Mathf.Max(0.01f, Props?.wasteBufferThreshold ?? 1f);
+
+            if (toxicBuffer > 0f && toxicWasteDefCache != null)
+            {
+                int count = Mathf.CeilToInt(toxicBuffer / threshold);
+                if (SpawnWaste(toxicWasteDefCache, count))
+                    toxicBuffer -= count * threshold;
+            }
+
+            if (trashBuffer > 0f && trashWasteDefCache != null)
+            {
+                int count = Mathf.CeilToInt(trashBuffer / threshold);
+                if (SpawnWaste(trashWasteDefCache, count))
+                    trashBuffer -= count * threshold;
+            }
+        }
+
         // Buffers fill per repair, not per tick, so there is no honest countdown to show - what
         // matters is how close each is to spilling and roughly how many more repairs that takes.
         public override string CompInspectStringExtra()

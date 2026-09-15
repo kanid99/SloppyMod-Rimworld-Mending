@@ -23,7 +23,6 @@ namespace MendingMod
     public class Building_AutomatedMender : Building, IThingHolder
     {
         private const int FixedSkillLevel = 10;
-        private const int ResourceSpots = 8;
 
         // Built in a static constructor context so the materials are created after the graphics
         // system is up, which is what [StaticConstructorOnStartup] guarantees.
@@ -100,98 +99,13 @@ namespace MendingMod
             }
         }
 
-        // The row of cells just outside one end of the footprint: everything feeds in along the
-        // back edge and comes out of the front, the way the Vanilla Furniture Expanded factory
-        // machines are laid out, so a belt can run into the back and away from the front.
-        private List<IntVec3> EdgeCells(bool front)
-        {
-            CellRect rect = this.OccupiedRect();
-            IntVec3 dir = front ? Rotation.FacingCell : Rotation.Opposite.FacingCell;
-            List<IntVec3> cells = new List<IntVec3>();
+        private CellRect Footprint => this.OccupiedRect();
 
-            if (dir.x != 0)
-            {
-                int x = dir.x > 0 ? rect.maxX + 1 : rect.minX - 1;
-                for (int z = rect.minZ; z <= rect.maxZ; z++)
-                    cells.Add(new IntVec3(x, 0, z));
-            }
-            else
-            {
-                int z = dir.z > 0 ? rect.maxZ + 1 : rect.minZ - 1;
-                for (int x = rect.minX; x <= rect.maxX; x++)
-                    cells.Add(new IntVec3(x, 0, z));
-            }
+        public IntVec3 ItemInputCell => MenderSpots.ItemInputCell(Footprint, Rotation);
 
-            return cells;
-        }
+        public IEnumerable<IntVec3> ResourceInputCells => MenderSpots.ResourceInputCells(Footprint, Rotation);
 
-        // Damaged gear goes on the middle of the back edge.
-        public IntVec3 ItemInputCell
-        {
-            get
-            {
-                List<IntVec3> back = EdgeCells(front: false);
-                return back[back.Count / 2];
-            }
-        }
-
-        // The cells down the building's two long sides, paired up and ordered from the back
-        // forwards, so taking the first N keeps the spots bunched at the intake end and leaves
-        // the front clear for the output port.
-        private List<IntVec3> SideCells()
-        {
-            CellRect rect = this.OccupiedRect();
-            IntVec3 back = Rotation.Opposite.FacingCell;
-            List<IntVec3> cells = new List<IntVec3>();
-
-            if (back.x != 0)
-            {
-                int startX = back.x > 0 ? rect.maxX : rect.minX;
-                int step = back.x > 0 ? -1 : 1;
-                for (int k = 0; k < rect.Width; k++)
-                {
-                    int x = startX + step * k;
-                    cells.Add(new IntVec3(x, 0, rect.minZ - 1));
-                    cells.Add(new IntVec3(x, 0, rect.maxZ + 1));
-                }
-            }
-            else
-            {
-                int startZ = back.z > 0 ? rect.maxZ : rect.minZ;
-                int step = back.z > 0 ? -1 : 1;
-                for (int k = 0; k < rect.Height; k++)
-                {
-                    int z = startZ + step * k;
-                    cells.Add(new IntVec3(rect.minX - 1, 0, z));
-                    cells.Add(new IntVec3(rect.maxX + 1, 0, z));
-                }
-            }
-
-            return cells;
-        }
-
-        // Eight material spots: the back edge either side of the item port, plus the two
-        // rear-most cells down each flank.
-        public IEnumerable<IntVec3> ResourceInputCells
-        {
-            get
-            {
-                List<IntVec3> back = EdgeCells(front: false);
-                int middle = back.Count / 2;
-                return back.Where((cell, i) => i != middle)
-                    .Concat(SideCells().Take(ResourceSpots - (back.Count - 1)));
-            }
-        }
-
-        // Single output port at the middle of the front edge.
-        public IntVec3 OutputCell
-        {
-            get
-            {
-                List<IntVec3> front = EdgeCells(front: true);
-                return front[front.Count / 2];
-            }
-        }
+        public IntVec3 OutputCell => MenderSpots.OutputCell(Footprint, Rotation);
 
         private IEnumerable<Thing> ThingsOn(IntVec3 cell)
         {
@@ -430,20 +344,9 @@ namespace MendingMod
             if (Map == null)
                 return;
 
-            // Rings rather than filled cell edges, matching how the vanilla-expanded factory
-            // machines mark their own intake and output spots.
-            DrawSpotRing(ItemInputCell, SimpleColor.Cyan);
-            foreach (IntVec3 cell in ResourceInputCells)
-                DrawSpotRing(cell, SimpleColor.Green);
-            DrawSpotRing(OutputCell, SimpleColor.Orange);
-        }
-
-        private void DrawSpotRing(IntVec3 cell, SimpleColor colour)
-        {
-            if (!cell.InBounds(Map))
-                return;
-
-            GenDraw.DrawCircleOutline(cell.ToVector3Shifted(), 0.44f, colour);
+            // Same rings the place worker draws, so a built machine and one on the cursor
+            // mark their spots identically.
+            MenderSpots.DrawRings(Footprint, Rotation);
         }
 
         public override string GetInspectString()

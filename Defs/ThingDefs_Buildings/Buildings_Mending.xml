@@ -159,6 +159,11 @@
     <neverMultiSelect>true</neverMultiSelect>
     <uiIconScale>0.8</uiIconScale>
     <constructionSkillPrerequisite>6</constructionSkillPrerequisite>
+    <!-- Draws the input and output spots while the building is still on the cursor, so its
+         orientation can be judged before it is committed. -->
+    <placeWorkers>
+      <li>MendingMod.PlaceWorker_MenderSpots</li>
+    </placeWorkers>
     <statBases>
       <Mass>40</Mass>
       <Beauty>-8</Beauty>
