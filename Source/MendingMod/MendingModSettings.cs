@@ -10,6 +10,7 @@ namespace MendingMod
         public bool simpleMode = false;
         public float simpleModeSteelPerRepair = 10f;
         public float repairWorkMultiplier = 0.35f;
+        public bool enforceTechLimits = true;
 
         public override void ExposeData()
         {
@@ -19,6 +20,7 @@ namespace MendingMod
             Scribe_Values.Look(ref simpleMode, "simpleMode", false);
             Scribe_Values.Look(ref simpleModeSteelPerRepair, "simpleModeSteelPerRepair", 10f);
             Scribe_Values.Look(ref repairWorkMultiplier, "repairWorkMultiplier", 0.35f);
+            Scribe_Values.Look(ref enforceTechLimits, "enforceTechLimits", true);
         }
     }
 
@@ -50,6 +52,16 @@ namespace MendingMod
 
             listing.Label($"Repair time: {Settings.repairWorkMultiplier:F2}x the item's full build time");
             Settings.repairWorkMultiplier = listing.Slider(Settings.repairWorkMultiplier, 0.02f, 2.0f);
+
+            listing.Gap();
+
+            listing.CheckboxLabeled(
+                "Restrict benches by tech level",
+                ref Settings.enforceTechLimits,
+                "When enabled, the hand mending station can only repair industrial-tier gear or "
+                + "lower. Items that declare no tech level are judged by their materials - needing "
+                + "plasteel, synthread, hyperweave or advanced components counts as spacer-tier. "
+                + "Turn this off to let every station repair anything.");
 
             listing.Gap();
 

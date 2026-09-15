@@ -56,6 +56,9 @@ namespace MendingMod
         // Undefined means "nothing known and no spacer materials found", which stays allowed.
         public static bool CanBenchRepair(ThingDef benchDef, Thing item)
         {
+            if (!MendingModMain.Settings.enforceTechLimits)
+                return true;
+
             TechLevel cap = benchDef?.GetModExtension<MendingTechLimitExtension>()?.maxTechLevel
                 ?? TechLevel.Archotech;
             TechLevel tech = GetEffectiveTechLevel(item);
