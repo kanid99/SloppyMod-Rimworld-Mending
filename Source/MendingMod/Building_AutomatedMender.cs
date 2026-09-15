@@ -231,7 +231,7 @@ namespace MendingMod
             // Draw the item in BEFORE paying for it. Consuming first and then failing to take the
             // item would destroy the materials and leave the item sitting on the spot - and since
             // the scan retries twice a second, it would eat every fresh stack put down after it.
-            if (!innerContainer.TryAddOrTransfer(damagedItem))
+            if (!TryTakeIn(damagedItem))
             {
                 idleReason = "DynamicMending.MenderCannotTakeItem".Translate(damagedItem.LabelShortCap);
                 return;
@@ -258,6 +258,35 @@ namespace MendingMod
             workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.GetDynamicWorkAmount(currentItem, FixedSkillLevel)));
             workTicksRemaining = workTicksTotal;
             state = MenderState.Working;
+        }
+
+        // Not ThingOwner.TryAddOrTransfer: a spawned thing belongs to the map's own ThingOwner
+        // (Map.spawnedThings), and TryAddOrTransfer routes anything with a holdingOwner through
+        // TryTransferToContainer, which refuses outright when either side is a Map - it logs
+        // "Can't transfer items to or from Maps directly. They must be spawned or despawned
+        // manually" and returns false. So it can never lift an item off the ground or off a
+        // shelf, which is what left items sitting on the input spot. Despawning first and then
+        // adding is what that warning asks for.
+        private bool TryTakeIn(Thing item)
+        {
+            if (!item.Spawned)
+            {
+                if (item.holdingOwner != null)
+                    return item.holdingOwner.TryTransferToContainer(item, innerContainer, item.stackCount, out _, false) > 0;
+
+                return innerContainer.TryAdd(item, canMergeWithExistingStacks: false);
+            }
+
+            IntVec3 cell = item.Position;
+            Map map = item.Map;
+            item.DeSpawn();
+
+            if (innerContainer.TryAdd(item, canMergeWithExistingStacks: false))
+                return true;
+
+            // Put it back rather than leaving it despawned and orphaned.
+            GenPlace.TryPlaceThing(item, cell, map, ThingPlaceMode.Direct);
+            return false;
         }
 
         private void TickWork()
