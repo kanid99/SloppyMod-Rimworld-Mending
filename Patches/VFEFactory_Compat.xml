@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+
+  <!--
+    PipeSystem.FactoryHopperExtension lives in Vanilla Expanded Framework, so naming the class in
+    a def would break loading for anyone without it. PatchOperationFindMod only applies when the
+    named mod is actually loaded, which keeps this a soft dependency: the feed port is ordinary
+    storage on its own, and becomes a conveyor-pullable factory hopper when VFE Factory is there.
+  -->
+  <Operation Class="PatchOperationFindMod">
+    <mods>
+      <li>Vanilla Furniture Expanded - Factory</li>
+    </mods>
+    <match Class="PatchOperationAdd">
+      <xpath>/Defs/ThingDef[defName="MendingFeedPort"]</xpath>
+      <value>
+        <modExtensions>
+          <li Class="PipeSystem.FactoryHopperExtension">
+            <isfactoryHopper>true</isfactoryHopper>
+          </li>
+        </modExtensions>
+      </value>
+    </match>
+  </Operation>
+
+</Patch>

@@ -23,6 +23,7 @@ namespace MendingMod
     public class Building_AutomatedMender : Building, IThingHolder
     {
         private const int FixedSkillLevel = 10;
+        private const int ResourceSpots = 8;
 
         // Built in a static constructor context so the materials are created after the graphics
         // system is up, which is what [StaticConstructorOnStartup] guarantees.
@@ -134,14 +135,51 @@ namespace MendingMod
             }
         }
 
-        // The rest of the back edge takes repair materials.
+        // The cells down the building's two long sides, paired up and ordered from the back
+        // forwards, so taking the first N keeps the spots bunched at the intake end and leaves
+        // the front clear for the output port.
+        private List<IntVec3> SideCells()
+        {
+            CellRect rect = this.OccupiedRect();
+            IntVec3 back = Rotation.Opposite.FacingCell;
+            List<IntVec3> cells = new List<IntVec3>();
+
+            if (back.x != 0)
+            {
+                int startX = back.x > 0 ? rect.maxX : rect.minX;
+                int step = back.x > 0 ? -1 : 1;
+                for (int k = 0; k < rect.Width; k++)
+                {
+                    int x = startX + step * k;
+                    cells.Add(new IntVec3(x, 0, rect.minZ - 1));
+                    cells.Add(new IntVec3(x, 0, rect.maxZ + 1));
+                }
+            }
+            else
+            {
+                int startZ = back.z > 0 ? rect.maxZ : rect.minZ;
+                int step = back.z > 0 ? -1 : 1;
+                for (int k = 0; k < rect.Height; k++)
+                {
+                    int z = startZ + step * k;
+                    cells.Add(new IntVec3(rect.minX - 1, 0, z));
+                    cells.Add(new IntVec3(rect.maxX + 1, 0, z));
+                }
+            }
+
+            return cells;
+        }
+
+        // Eight material spots: the back edge either side of the item port, plus the two
+        // rear-most cells down each flank.
         public IEnumerable<IntVec3> ResourceInputCells
         {
             get
             {
                 List<IntVec3> back = EdgeCells(front: false);
                 int middle = back.Count / 2;
-                return back.Where((cell, i) => i != middle);
+                return back.Where((cell, i) => i != middle)
+                    .Concat(SideCells().Take(ResourceSpots - (back.Count - 1)));
             }
         }
 

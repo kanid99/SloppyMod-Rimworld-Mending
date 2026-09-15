@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    A plain 1x1 storage tile meant to be built on the automated mender's spots. It exists purely
+    as an adapter: the mender already reads loose items and any storage sitting on its spots, but
+    Vanilla Furniture Expanded - Factory conveyors will only PULL from a storage building whose
+    def carries PipeSystem.FactoryHopperExtension. A belt pointed straight at the mender jams
+    instead, because the conveyor's GetDumpCapability refuses any edifice that is neither a
+    Building_Storage nor refuelable. Putting one of these between the belt and the mender gives
+    the belt something it can both fill and empty. The extension itself is attached by
+    Patches/VFEFactory_Compat.xml, which only applies when that mod is loaded, so this stays a
+    perfectly ordinary storage tile without it.
+  -->
+  <ThingDef ParentName="BuildingBase">
+    <defName>MendingFeedPort</defName>
+    <label>mending feed port</label>
+    <description>A small intake tile for the automated mender. Build it on one of the mender's spots and haulers - or a conveyor belt - can fill it, and the mender will draw from it. Placed on the mender's output spot instead, it catches repaired gear for a belt to carry away.</description>
+    <thingClass>Building_Storage</thingClass>
+    <graphicData>
+      <texPath>Things/Building/Production/MendingFeedPort</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <drawSize>(1,1)</drawSize>
+    </graphicData>
+    <size>(1,1)</size>
+    <altitudeLayer>BuildingOnTop</altitudeLayer>
+    <passability>Standable</passability>
+    <fillPercent>0.4</fillPercent>
+    <pathCost>42</pathCost>
+    <canOverlapZones>false</canOverlapZones>
+    <drawerType>MapMeshAndRealTime</drawerType>
+    <rotatable>false</rotatable>
+    <surfaceType>Item</surfaceType>
+    <constructEffect>ConstructMetal</constructEffect>
+    <designationCategory>Production</designationCategory>
+    <uiIconScale>0.85</uiIconScale>
+    <costList>
+      <Steel>20</Steel>
+    </costList>
+    <statBases>
+      <MaxHitPoints>150</MaxHitPoints>
+      <WorkToBuild>400</WorkToBuild>
+      <Flammability>0.5</Flammability>
+    </statBases>
+    <researchPrerequisites>
+      <li>AutomatedMending</li>
+    </researchPrerequisites>
+    <building>
+      <isHopper>true</isHopper>
+      <blueprintClass>Blueprint_Storage</blueprintClass>
+      <preventDeteriorationOnTop>true</preventDeteriorationOnTop>
+      <ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
+      <maxItemsInCell>1</maxItemsInCell>
+      <defaultStorageSettings>
+        <priority>Low</priority>
+        <filter>
+          <categories>
+            <li>Root</li>
+          </categories>
+        </filter>
+      </defaultStorageSettings>
+      <buildingTags>
+        <li>Production</li>
+      </buildingTags>
+    </building>
+    <inspectorTabs>
+      <li>ITab_Storage</li>
+    </inspectorTabs>
+  </ThingDef>
+
+</Defs>
