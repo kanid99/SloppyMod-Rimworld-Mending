@@ -20,6 +20,14 @@ namespace MendingMod
                 return null;
             }
 
+            // A full waste container stops the bench until someone empties it.
+            if (thing.TryGetComp<CompMenderWasteBuffer>()?.IsFull == true)
+            {
+                JobFailReason.Is("DynamicMending.WasteFull".Translate());
+                DevLog(thing, "waste container full");
+                return null;
+            }
+
             // Covers "the power is out" for the electric table, plus breakdown and refuelling -
             // without it a pawn will happily walk over and mend at a dead bench.
             if (!billGiver.CurrentlyUsableForBills())

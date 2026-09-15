@@ -7,4 +7,10 @@
     <reportString>mending TargetA.</reportString>
   </JobDef>
 
+  <JobDef>
+    <defName>EmptyMenderWaste</defName>
+    <driverClass>MendingMod.JobDriver_EmptyMenderWaste</driverClass>
+    <reportString>emptying waste from TargetA.</reportString>
+  </JobDef>
+
 </Defs>

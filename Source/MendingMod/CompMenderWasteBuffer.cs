@@ -31,6 +31,13 @@ namespace MendingMod
 
         public CompProperties_MenderWasteBuffer Props => (CompProperties_MenderWasteBuffer)props;
 
+        private float Threshold => Mathf.Max(0.01f, Props?.wasteBufferThreshold ?? 1f);
+
+        // Once either buffer reaches its threshold the building stops taking work until someone
+        // empties it - otherwise "a pawn has to remove the waste" carries no weight.
+        public bool IsFull => MendingModMain.Settings.generateWaste
+            && (toxicBuffer >= Threshold || trashBuffer >= Threshold);
+
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
             if (!MendingModMain.Settings.generateWaste || parent.Map == null)
@@ -51,11 +58,11 @@ namespace MendingMod
         // Rounds up to a whole item but subtracts the whole rounded amount, letting the buffer go
         // negative. Dumping early therefore borrows against later repairs rather than conjuring
         // waste from nothing, so it can't be cycled to farm recyclable trash.
-        private void DumpBufferedWaste()
+        public void DumpBufferedWaste()
         {
             ResolveWasteDefsOnce();
 
-            float threshold = Mathf.Max(0.01f, Props?.wasteBufferThreshold ?? 1f);
+            float threshold = Threshold;
 
             if (toxicBuffer > 0f && toxicWasteDefCache != null)
             {
@@ -81,7 +88,7 @@ namespace MendingMod
 
             ResolveWasteDefsOnce();
 
-            float threshold = Mathf.Max(0.01f, Props?.wasteBufferThreshold ?? 1f);
+            float threshold = Threshold;
             List<string> parts = new List<string>();
 
             if (toxicWasteDefCache != null)
@@ -90,9 +97,17 @@ namespace MendingMod
             if (trashWasteDefCache != null)
                 parts.Add(BufferReadout(trashWasteDefCache.label, trashBuffer, threshold));
 
-            return parts.Count > 0
-                ? "DynamicMending.WasteBuffered".Translate(string.Join(", ", parts))
-                : null;
+            if (parts.Count == 0)
+                return null;
+
+            string line = "DynamicMending.WasteBuffered".Translate(string.Join(", ", parts)).ToString();
+
+            // Without this the building just sits there doing nothing with no stated reason - the
+            // work giver's fail reason is only visible on a right-click menu nobody thinks to open.
+            if (IsFull)
+                line += "\n" + "DynamicMending.WasteFull".Translate();
+
+            return line;
         }
 
         private static string BufferReadout(string label, float buffer, float threshold)
@@ -134,8 +149,6 @@ namespace MendingMod
             {
                 trashBuffer += wasteAmount;
             }
-
-            TryDropWaste();
         }
 
         private static bool UsesToxicIngredients(ThingDef itemDef, ThingDef stuffDef)
@@ -160,27 +173,6 @@ namespace MendingMod
             return def == ThingDefOf.ComponentIndustrial
                 || def == ThingDefOf.ComponentSpacer
                 || def == ThingDefOf.Uranium;
-        }
-
-        private void TryDropWaste()
-        {
-            ResolveWasteDefsOnce();
-
-            float threshold = Props?.wasteBufferThreshold ?? 1f;
-
-            if (toxicBuffer >= threshold && toxicWasteDefCache != null)
-            {
-                int count = Mathf.FloorToInt(toxicBuffer / threshold);
-                if (SpawnWaste(toxicWasteDefCache, count))
-                    toxicBuffer -= count * threshold;
-            }
-
-            if (trashBuffer >= threshold && trashWasteDefCache != null)
-            {
-                int count = Mathf.FloorToInt(trashBuffer / threshold);
-                if (SpawnWaste(trashWasteDefCache, count))
-                    trashBuffer -= count * threshold;
-            }
         }
 
         private static void ResolveWasteDefsOnce()

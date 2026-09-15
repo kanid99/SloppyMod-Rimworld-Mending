@@ -7,6 +7,7 @@ namespace MendingMod
     public static class MendingDefOf
     {
         public static JobDef DoMend;
+        public static JobDef EmptyMenderWaste;
 
         static MendingDefOf()
         {

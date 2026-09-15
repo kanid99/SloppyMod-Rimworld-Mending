@@ -42,4 +42,17 @@
     </requiredCapacities>
   </WorkGiverDef>
 
+  <WorkGiverDef>
+    <defName>EmptyMenderWaste</defName>
+    <label>empty mending waste</label>
+    <giverClass>MendingMod.WorkGiver_EmptyMenderWaste</giverClass>
+    <workType>Hauling</workType>
+    <verb>empty</verb>
+    <gerund>emptying waste from</gerund>
+    <priorityInType>90</priorityInType>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+  </WorkGiverDef>
+
 </Defs>

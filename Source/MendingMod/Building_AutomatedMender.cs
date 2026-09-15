@@ -107,6 +107,8 @@ namespace MendingMod
 
         public IntVec3 OutputCell => MenderSpots.OutputCell(Footprint, Rotation);
 
+        public bool IsRepairing => state == MenderState.Working;
+
         private IEnumerable<Thing> ThingsOn(IntVec3 cell)
         {
             if (!cell.InBounds(Map))
@@ -160,6 +162,12 @@ namespace MendingMod
 
         private void TryStartMend()
         {
+            if (GetComp<CompMenderWasteBuffer>()?.IsFull == true)
+            {
+                idleReason = "DynamicMending.WasteFull".Translate();
+                return;
+            }
+
             Thing damagedItem = ThingsOn(ItemInputCell).FirstOrDefault(IsMendable);
             if (damagedItem == null)
             {
