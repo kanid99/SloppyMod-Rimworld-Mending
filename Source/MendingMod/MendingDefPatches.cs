@@ -31,10 +31,10 @@ namespace MendingMod
             // work to build the control hardware.
             AddPrerequisites("AutomatedMending", missing, "AdvancedFabrication", "BasicMechtech");
 
-            // A machine brain of some kind drives the repair line. The exact def varies by install,
-            // so the first of these that exists is used and the rest ignored.
-            AddBuildCost("AutomatedMender", 1, missing,
-                "SubcoreBasic", "BasicSubcore", "Subcore", "SignalChip", "MachineBrain");
+            // A basic subcore is the machine brain that drives the repair line. Biotech is already
+            // a hard dependency, and the subcore comes from the same Basic Mechtech work the
+            // research above requires, so it is always available by the time this is buildable.
+            AddBuildCost("AutomatedMender", 1, "basic subcore", missing, "SubcoreBasic", "BasicSubcore");
 
             if (Prefs.DevMode && missing.Count > 0)
             {
@@ -86,19 +86,17 @@ namespace MendingMod
             return false;
         }
 
-        private static void AddBuildCost(string thingDefName, int count, List<string> missing, params string[] candidates)
+        private static void AddBuildCost(string thingDefName, int count, string label, List<string> missing, params string[] candidates)
         {
             ThingDef building = DefDatabase<ThingDef>.GetNamedSilentFail(thingDefName);
             if (building == null)
                 return;
 
-            ThingDef ingredient = candidates
-                .Select(DefDatabase<ThingDef>.GetNamedSilentFail)
-                .FirstOrDefault(d => d != null);
+            ThingDef ingredient = ResolveIngredient(label, candidates);
 
             if (ingredient == null)
             {
-                missing.Add(string.Join("/", candidates));
+                missing.Add(label);
                 return;
             }
 
@@ -109,6 +107,24 @@ namespace MendingMod
                 return;
 
             building.costList.Add(new ThingDefCountClass(ingredient, count));
+        }
+
+        // defName first because it is exact and cheap, then the item's visible label as a fallback:
+        // a def can be spelled SubcoreBasic or BasicSubcore depending on version, but what the
+        // player sees in the build cost is the label, and matching on it survives either spelling.
+        private static ThingDef ResolveIngredient(string label, string[] candidates)
+        {
+            foreach (string candidate in candidates)
+            {
+                ThingDef byName = DefDatabase<ThingDef>.GetNamedSilentFail(candidate);
+                if (byName != null)
+                    return byName;
+            }
+
+            return DefDatabase<ThingDef>.AllDefsListForReading.FirstOrDefault(d =>
+                d.category == ThingCategory.Item
+                && d.label != null
+                && d.label.Equals(label, System.StringComparison.OrdinalIgnoreCase));
         }
     }
 }

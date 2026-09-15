@@ -153,6 +153,8 @@
       <Steel>250</Steel>
       <ComponentIndustrial>6</ComponentIndustrial>
       <ComponentSpacer>4</ComponentSpacer>
+      <!-- A basic subcore is added at startup by MendingMod.MendingDefPatches rather than named
+           here, so the def is resolved against whatever this install actually has. -->
     </costList>
     <altitudeLayer>Building</altitudeLayer>
     <passability>PassThroughOnly</passability>
