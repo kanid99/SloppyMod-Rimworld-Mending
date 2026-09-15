@@ -53,6 +53,41 @@ namespace MendingMod
             return TechLevel.Undefined;
         }
 
+        // Working blind on gear the colony can't yet build: materials wasted, time taken, and the
+        // odds of ruining it all scale by these.
+        private const float UnfamiliarCostFactor = 2.0f;
+        private const float UnfamiliarRiskFactor = 2.5f;
+        private const float UnfamiliarTimeFactor = 1.5f;
+
+        // Whether the colony has researched how to build this thing. Items no recipe produces -
+        // quest rewards, mechanoid gear, trader-only goods - have no research gate at all and
+        // count as known, so they repair at normal rates.
+        public static bool ColonyHasTechFor(Thing item)
+        {
+            RecipeMakerProperties maker = item.def.recipeMaker;
+            if (maker == null)
+                return true;
+
+            if (maker.researchPrerequisite != null && !maker.researchPrerequisite.IsFinished)
+                return false;
+
+            if (maker.researchPrerequisites != null)
+            {
+                foreach (ResearchProjectDef research in maker.researchPrerequisites)
+                {
+                    if (!research.IsFinished)
+                        return false;
+                }
+            }
+
+            return true;
+        }
+
+        public static bool IsUnfamiliar(Thing item)
+        {
+            return MendingModMain.Settings.penaliseUnresearched && !ColonyHasTechFor(item);
+        }
+
         // Undefined means "nothing known and no spacer materials found", which stays allowed.
         public static bool CanBenchRepair(ThingDef benchDef, Thing item)
         {
@@ -130,6 +165,7 @@ namespace MendingMod
 
             return baseWork * DamageWorkCurve(GetMissingHpFraction(item)) * qualityFactor
                 * SkillEffortFactor(skillLevel)
+                * (IsUnfamiliar(item) ? UnfamiliarTimeFactor : 1f)
                 * MendingModMain.Settings.repairWorkMultiplier;
         }
 
@@ -145,6 +181,7 @@ namespace MendingMod
             float qualityFactor = 1f + (int)quality * 0.05f;
 
             return Mathf.Clamp01(skillChance * damageFactor * qualityFactor
+                * (IsUnfamiliar(item) ? UnfamiliarRiskFactor : 1f)
                 * MendingModMain.Settings.degradationMultiplier);
         }
 
@@ -219,7 +256,9 @@ namespace MendingMod
             // The fraction of the item that's actually missing is what a flawless repair costs;
             // everything above that is the mender's waste. Capped at the whole build cost, since
             // past that point rebuilding the item outright would be cheaper than repairing it.
-            float costFraction = Mathf.Clamp01(GetMissingHpFraction(item) * SkillWasteMultiplier(skillLevel))
+            float costFraction = Mathf.Clamp01(GetMissingHpFraction(item)
+                    * SkillWasteMultiplier(skillLevel)
+                    * (IsUnfamiliar(item) ? UnfamiliarCostFactor : 1f))
                 * MendingModMain.Settings.degradationMultiplier;
 
             if (MendingModMain.Settings.simpleMode)

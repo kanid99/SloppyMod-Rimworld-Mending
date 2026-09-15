@@ -8,10 +8,11 @@
   <DynamicMending.MenderRepairing>Repairing {0}: {1}</DynamicMending.MenderRepairing>
   <DynamicMending.MenderNoItem>Idle: no damaged weapon or apparel on the item spot (cyan).</DynamicMending.MenderNoItem>
   <DynamicMending.MenderNeedsMaterial>Idle: to repair {0} it needs {1} {2} on the material spots (green) - has {3}.</DynamicMending.MenderNeedsMaterial>
-  <DynamicMending.MenderOutputBlocked>Finished {0} - waiting for the output spot (yellow) to clear.</DynamicMending.MenderOutputBlocked>
+  <DynamicMending.MenderOutputBlocked>Finished {0} - waiting for the output spot (orange) to clear.</DynamicMending.MenderOutputBlocked>
   <DynamicMending.MenderCannotTakeItem>Idle: can't draw {0} in from the item spot (cyan).</DynamicMending.MenderCannotTakeItem>
-  <DynamicMending.MenderSpotLegend>Cyan spot: damaged item in. Green spots: repair materials in. Yellow spot: repaired item out.</DynamicMending.MenderSpotLegend>
+  <DynamicMending.MenderSpotLegend>Cyan spot: damaged item in. Green spots: repair materials in. Orange spot: repaired item out.</DynamicMending.MenderSpotLegend>
 
+  <DynamicMending.MenderUnknownTech>Idle: {0} is beyond your colony's research - it can't be repaired here.</DynamicMending.MenderUnknownTech>
   <DynamicMending.TooAdvancedForBench>Too advanced for this station (repairs up to {0} tech).</DynamicMending.TooAdvancedForBench>
 
 </LanguageData>

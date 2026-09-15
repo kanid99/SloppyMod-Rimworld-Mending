@@ -4,22 +4,49 @@
   <!--
     PipeSystem.FactoryHopperExtension lives in Vanilla Expanded Framework, so naming the class in
     a def would break loading for anyone without it. PatchOperationFindMod only applies when the
-    named mod is actually loaded, which keeps this a soft dependency: the feed port is ordinary
-    storage on its own, and becomes a conveyor-pullable factory hopper when VFE Factory is there.
+    named mod is actually loaded, which keeps this a soft dependency.
   -->
   <Operation Class="PatchOperationFindMod">
     <mods>
       <li>Vanilla Furniture Expanded - Factory</li>
     </mods>
-    <match Class="PatchOperationAdd">
-      <xpath>/Defs/ThingDef[defName="MendingFeedPort"]</xpath>
-      <value>
-        <modExtensions>
-          <li Class="PipeSystem.FactoryHopperExtension">
-            <isfactoryHopper>true</isfactoryHopper>
-          </li>
-        </modExtensions>
-      </value>
+    <match Class="PatchOperationSequence">
+      <operations>
+
+        <!--
+          Keep marking the feed port as a factory hopper even though it is dropped from the build
+          menu below: any already built before this mod was added stays belt-compatible rather
+          than silently going inert.
+        -->
+        <li Class="PatchOperationAdd">
+          <xpath>/Defs/ThingDef[defName="MendingFeedPort"]</xpath>
+          <value>
+            <modExtensions>
+              <li Class="PipeSystem.FactoryHopperExtension">
+                <isfactoryHopper>true</isfactoryHopper>
+              </li>
+            </modExtensions>
+          </value>
+        </li>
+
+        <!--
+          With that mod present its own factory hopper does this job better - it is belt-aware,
+          has the storage group tag the rest of the factory chain expects, and is what players
+          already know. Dropping designationCategory removes ours from the architect menu without
+          deleting the def, so existing saves keep any that are already built.
+        -->
+        <li Class="PatchOperationRemove">
+          <xpath>/Defs/ThingDef[defName="MendingFeedPort"]/designationCategory</xpath>
+        </li>
+
+        <li Class="PatchOperationReplace">
+          <xpath>/Defs/ThingDef[defName="AutomatedMender"]/description</xpath>
+          <value>
+            <description>An industrial repair line that mends worn gear with no pawn labor, working as a skill 10 mender. Select it to see its spots: gear and materials feed in along the back, and finished items come out of the single port at the front. Put one damaged weapon or piece of apparel on the cyan spot, repair materials on any of the eight green spots, and collect repaired gear from the orange spot. Every spot accepts loose items on the ground or any storage building sitting on it. To run it off conveyors, build a factory hopper on a spot and point the belt at that - a belt aimed straight at the machine has nowhere to unload and will stall.</description>
+          </value>
+        </li>
+
+      </operations>
     </match>
   </Operation>
 

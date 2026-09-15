@@ -231,7 +231,17 @@ namespace MendingMod
             return (thing.def.IsApparel || thing.def.IsWeapon)
                 && thing.def.useHitPoints
                 && thing.HitPoints < thing.MaxHitPoints
-                && MendingUtility.CanBenchRepair(def, thing);
+                && MendingUtility.CanBenchRepair(def, thing)
+                && !MendingUtility.IsUnfamiliar(thing);
+        }
+
+        // Same test minus the tech gates, so a rejected item can be named as rejected rather
+        // than reported as "no item present", which is what the player would otherwise see.
+        private static bool IsDamagedGear(Thing thing)
+        {
+            return (thing.def.IsApparel || thing.def.IsWeapon)
+                && thing.def.useHitPoints
+                && thing.HitPoints < thing.MaxHitPoints;
         }
 
         private void TryStartMend()
@@ -239,7 +249,10 @@ namespace MendingMod
             Thing damagedItem = ThingsOn(ItemInputCell).FirstOrDefault(IsMendable);
             if (damagedItem == null)
             {
-                idleReason = "DynamicMending.MenderNoItem".Translate();
+                Thing rejected = ThingsOn(ItemInputCell).FirstOrDefault(IsDamagedGear);
+                idleReason = rejected != null
+                    ? "DynamicMending.MenderUnknownTech".Translate(rejected.LabelShortCap)
+                    : "DynamicMending.MenderNoItem".Translate();
                 return;
             }
 
@@ -417,9 +430,20 @@ namespace MendingMod
             if (Map == null)
                 return;
 
-            GenDraw.DrawFieldEdges(new List<IntVec3> { ItemInputCell }, Color.cyan);
-            GenDraw.DrawFieldEdges(ResourceInputCells.Where(c => c.InBounds(Map)).ToList(), Color.green);
-            GenDraw.DrawFieldEdges(new List<IntVec3> { OutputCell }, Color.yellow);
+            // Rings rather than filled cell edges, matching how the vanilla-expanded factory
+            // machines mark their own intake and output spots.
+            DrawSpotRing(ItemInputCell, SimpleColor.Cyan);
+            foreach (IntVec3 cell in ResourceInputCells)
+                DrawSpotRing(cell, SimpleColor.Green);
+            DrawSpotRing(OutputCell, SimpleColor.Orange);
+        }
+
+        private void DrawSpotRing(IntVec3 cell, SimpleColor colour)
+        {
+            if (!cell.InBounds(Map))
+                return;
+
+            GenDraw.DrawCircleOutline(cell.ToVector3Shifted(), 0.44f, colour);
         }
 
         public override string GetInspectString()

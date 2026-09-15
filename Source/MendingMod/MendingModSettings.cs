@@ -11,6 +11,7 @@ namespace MendingMod
         public float simpleModeSteelPerRepair = 10f;
         public float repairWorkMultiplier = 0.35f;
         public bool enforceTechLimits = true;
+        public bool penaliseUnresearched = true;
 
         public override void ExposeData()
         {
@@ -21,6 +22,7 @@ namespace MendingMod
             Scribe_Values.Look(ref simpleModeSteelPerRepair, "simpleModeSteelPerRepair", 10f);
             Scribe_Values.Look(ref repairWorkMultiplier, "repairWorkMultiplier", 0.35f);
             Scribe_Values.Look(ref enforceTechLimits, "enforceTechLimits", true);
+            Scribe_Values.Look(ref penaliseUnresearched, "penaliseUnresearched", true);
         }
     }
 
@@ -62,6 +64,16 @@ namespace MendingMod
                 + "lower. Items that declare no tech level are judged by their materials - needing "
                 + "plasteel, synthread, hyperweave or advanced components counts as spacer-tier. "
                 + "Turn this off to let every station repair anything.");
+
+            listing.Gap();
+
+            listing.CheckboxLabeled(
+                "Penalise repairs beyond your research",
+                ref Settings.penaliseUnresearched,
+                "When enabled, repairing gear your colony has not researched how to build costs "
+                + "double the materials, takes half again as long, and is far likelier to lose hit "
+                + "points or quality. The industrial repair center refuses such items outright. "
+                + "Items no recipe produces - quest rewards, mechanoid gear - are never penalised.");
 
             listing.Gap();
 
