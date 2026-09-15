@@ -305,7 +305,8 @@ namespace MendingMod
         private void FinishMend()
         {
             GetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(currentItem, FixedSkillLevel);
-            MendingUtility.ResolveRepair(currentItem, FixedSkillLevel, ignoreResearch: true);
+            MendResult result = MendingUtility.ResolveRepair(currentItem, FixedSkillLevel, ignoreResearch: true);
+            MendingUtility.ShowRepairResult(result, this);
 
             state = MenderState.Ejecting;
             TryEject();

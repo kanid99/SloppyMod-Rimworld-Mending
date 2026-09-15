@@ -9,6 +9,7 @@ namespace MendingMod
     {
         public bool success;
         public bool qualityDropped;
+        public QualityCategory newQuality;
     }
 
     // Shared by RecipeWorker_Mend (pawn skill) and Building_AutomatedMender (fixed skill 10)
@@ -254,6 +255,9 @@ namespace MendingMod
                 qualityDropped = TryRollQualityDrop(item, missingHpFraction, failChance, severityScale);
             }
 
+            if (qualityDropped)
+                item.TryGetQuality(out result.newQuality);
+
             result.success = success;
             result.qualityDropped = qualityDropped;
             return result;
@@ -340,6 +344,45 @@ namespace MendingMod
             }
 
             return result;
+        }
+
+        private static readonly Color MoteSuccess = new Color(0.45f, 0.85f, 0.45f);
+        private static readonly Color MoteFailure = new Color(0.90f, 0.35f, 0.30f);
+        private static readonly Color MoteQuality = new Color(0.95f, 0.70f, 0.25f);
+
+        // Floating text over whoever did the work - the pawn at a bench, the machine itself for
+        // the repair center. Without it a failed repair and a quality loss are both silent, and
+        // the only way to notice is to check the item's hit points afterwards.
+        public static void ShowRepairResult(MendResult result, Thing at)
+        {
+            if (at?.Map == null)
+                return;
+
+            string text;
+            Color colour;
+
+            if (!result.success && result.qualityDropped)
+            {
+                text = "DynamicMending.MoteFailedQuality".Translate(result.newQuality.GetLabel());
+                colour = MoteFailure;
+            }
+            else if (!result.success)
+            {
+                text = "DynamicMending.MoteFailed".Translate();
+                colour = MoteFailure;
+            }
+            else if (result.qualityDropped)
+            {
+                text = "DynamicMending.MoteQualityLost".Translate(result.newQuality.GetLabel());
+                colour = MoteQuality;
+            }
+            else
+            {
+                text = "DynamicMending.MoteRepaired".Translate();
+                colour = MoteSuccess;
+            }
+
+            MoteMaker.ThrowText(at.DrawPos + new Vector3(0f, 0f, 0.6f), at.Map, text, colour);
         }
 
         public static void AwardSkillXp(Thing item, Pawn pawn, float xpAmount)

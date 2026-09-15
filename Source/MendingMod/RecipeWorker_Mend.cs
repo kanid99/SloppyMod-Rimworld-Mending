@@ -51,7 +51,8 @@ namespace MendingMod
             // fraction it reads would already be zero.
             billGiverThing?.TryGetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(targetItem, skillLevel);
 
-            MendingUtility.ResolveRepair(targetItem, skillLevel);
+            MendResult result = MendingUtility.ResolveRepair(targetItem, skillLevel);
+            MendingUtility.ShowRepairResult(result, actor ?? billGiverThing);
 
             MendingUtility.AwardSkillXp(targetItem, actor, BaseXpPerMend);
         }

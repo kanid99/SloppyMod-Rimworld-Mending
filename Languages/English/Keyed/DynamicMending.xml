@@ -14,6 +14,11 @@
 
   <DynamicMending.NeedsPoweredBench>Contains components - needs a powered mending station.</DynamicMending.NeedsPoweredBench>
   <DynamicMending.WasteFull>Waste container full - must be emptied before more repairs.</DynamicMending.WasteFull>
+  <DynamicMending.WasteEmpty>Waste container: empty</DynamicMending.WasteEmpty>
+  <DynamicMending.MoteRepaired>Repaired</DynamicMending.MoteRepaired>
+  <DynamicMending.MoteFailed>Repair failed</DynamicMending.MoteFailed>
+  <DynamicMending.MoteQualityLost>Quality lost: {0}</DynamicMending.MoteQualityLost>
+  <DynamicMending.MoteFailedQuality>Repair failed - now {0}</DynamicMending.MoteFailedQuality>
   <DynamicMending.WasteBuffered>Waste container: {0}</DynamicMending.WasteBuffered>
   <DynamicMending.DumpWasteLabel>Dump waste</DynamicMending.DumpWasteLabel>
   <DynamicMending.DumpWasteDesc>Dump the accumulated waste onto the ground now, without waiting for a hauler. Rounds up to whole items and deducts the full amount, so dumping early is borrowed against later repairs rather than free.</DynamicMending.DumpWasteDesc>

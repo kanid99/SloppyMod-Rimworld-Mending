@@ -25,9 +25,9 @@ namespace MendingMod
         private float toxicBuffer;
         private float trashBuffer;
 
-        private static ThingDef toxicWasteDefCache;
-        private static ThingDef trashWasteDefCache;
-        private static bool wasteDefsResolved;
+        private ThingDef toxicWasteDef;
+        private ThingDef trashWasteDef;
+        private bool wasteDefsResolved;
 
         public CompProperties_MenderWasteBuffer Props => (CompProperties_MenderWasteBuffer)props;
 
@@ -36,7 +36,8 @@ namespace MendingMod
         // Once either buffer reaches its threshold the building stops taking work until someone
         // empties it - otherwise "a pawn has to remove the waste" carries no weight.
         public bool IsFull => MendingModMain.Settings.generateWaste
-            && (toxicBuffer >= Threshold || trashBuffer >= Threshold);
+            && ((toxicBuffer >= Threshold && HasDefFor(toxic: true))
+                || (trashBuffer >= Threshold && HasDefFor(toxic: false)));
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
@@ -64,17 +65,17 @@ namespace MendingMod
 
             float threshold = Threshold;
 
-            if (toxicBuffer > 0f && toxicWasteDefCache != null)
+            if (toxicBuffer > 0f && toxicWasteDef != null)
             {
                 int count = Mathf.CeilToInt(toxicBuffer / threshold);
-                if (SpawnWaste(toxicWasteDefCache, count))
+                if (SpawnWaste(toxicWasteDef, count))
                     toxicBuffer -= count * threshold;
             }
 
-            if (trashBuffer > 0f && trashWasteDefCache != null)
+            if (trashBuffer > 0f && trashWasteDef != null)
             {
                 int count = Mathf.CeilToInt(trashBuffer / threshold);
-                if (SpawnWaste(trashWasteDefCache, count))
+                if (SpawnWaste(trashWasteDef, count))
                     trashBuffer -= count * threshold;
             }
         }
@@ -91,14 +92,17 @@ namespace MendingMod
             float threshold = Threshold;
             List<string> parts = new List<string>();
 
-            if (toxicWasteDefCache != null)
-                parts.Add(BufferReadout(toxicWasteDefCache.label, toxicBuffer, threshold));
+            // Only what has actually accumulated. Listing every waste type at 0% was noise -
+            // a hand bench turns away anything with components in it, so the toxic line sat at
+            // zero forever unless someone mended a uranium weapon on it.
+            if (toxicBuffer > 0f && toxicWasteDef != null)
+                parts.Add(BufferReadout(toxicWasteDef.label, toxicBuffer, threshold));
 
-            if (trashWasteDefCache != null)
-                parts.Add(BufferReadout(trashWasteDefCache.label, trashBuffer, threshold));
+            if (trashBuffer > 0f && trashWasteDef != null && trashWasteDef != toxicWasteDef)
+                parts.Add(BufferReadout(trashWasteDef.label, trashBuffer, threshold));
 
             if (parts.Count == 0)
-                return null;
+                return "DynamicMending.WasteEmpty".Translate();
 
             string line = "DynamicMending.WasteBuffered".Translate(string.Join(", ", parts)).ToString();
 
@@ -141,14 +145,7 @@ namespace MendingMod
                 * MendingUtility.SkillEffortFactor(skillLevel)
                 * MendingModMain.Settings.degradationMultiplier;
 
-            if (UsesToxicIngredients(item.def, item.Stuff))
-            {
-                toxicBuffer += wasteAmount;
-            }
-            else
-            {
-                trashBuffer += wasteAmount;
-            }
+            AddWaste(wasteAmount, UsesToxicIngredients(item.def, item.Stuff));
         }
 
         private static bool UsesToxicIngredients(ThingDef itemDef, ThingDef stuffDef)
@@ -175,20 +172,52 @@ namespace MendingMod
                 || def == ThingDefOf.Uranium;
         }
 
-        private static void ResolveWasteDefsOnce()
+        // Reads the comp's own Props rather than a hardcoded list, which is what the XML fields
+        // always claimed to do. Per instance, not static: two buildings may name different defs.
+        private void ResolveWasteDefsOnce()
         {
             if (wasteDefsResolved)
                 return;
 
             wasteDefsResolved = true;
-            toxicWasteDefCache = DefDatabase<ThingDef>.GetNamedSilentFail("Wastepack");
+            toxicWasteDef = DefDatabase<ThingDef>.GetNamedSilentFail(Props?.toxicWasteDefName ?? "Wastepack");
 
-            foreach (string candidate in new[] { "VRE_Trash", "VRE_TrashBag", "Trash" })
+            foreach (string candidate in Props?.trashWasteDefNames ?? new List<string>())
             {
-                trashWasteDefCache = DefDatabase<ThingDef>.GetNamedSilentFail(candidate);
-                if (trashWasteDefCache != null)
+                trashWasteDef = DefDatabase<ThingDef>.GetNamedSilentFail(candidate);
+                if (trashWasteDef != null)
                     break;
             }
+
+            // Nothing in this install supplies a separate trash item, so ordinary repair waste
+            // shares the toxic def. Leaving it unresolved was a soft-lock: waste still went into
+            // the trash buffer, DumpBufferedWaste skipped it for having no def so it could never
+            // drain, and IsFull eventually stopped the building with no readout to explain why.
+            if (trashWasteDef == null)
+                trashWasteDef = toxicWasteDef;
+        }
+
+        // Routes an amount to whichever buffer actually has somewhere to put it. A buffer with no
+        // def accumulates forever and can never be emptied, so it is simply never filled.
+        private void AddWaste(float amount, bool toxic)
+        {
+            ResolveWasteDefsOnce();
+
+            ThingDef target = toxic ? toxicWasteDef : trashWasteDef;
+            if (target == null)
+                return;
+
+            if (target == toxicWasteDef)
+                toxicBuffer += amount;
+            else
+                trashBuffer += amount;
+        }
+
+        // Only a buffer that can actually be emptied counts towards stopping the building.
+        private bool HasDefFor(bool toxic)
+        {
+            ResolveWasteDefsOnce();
+            return (toxic ? toxicWasteDef : trashWasteDef) != null;
         }
 
         private bool SpawnWaste(ThingDef wasteDef, int count)
