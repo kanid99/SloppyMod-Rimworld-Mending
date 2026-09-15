@@ -38,6 +38,10 @@
     <designationCategory>Production</designationCategory>
     <surfaceType>Item</surfaceType>
     <rotatable>true</rotatable>
+    <!-- Uninstall and reinstall, carrying the building's own state with it: a bench keeps its
+         bill list, and the repair center drops whatever it was holding before it goes in the
+         crate (see Building_AutomatedMender.DeSpawn). -->
+    <minifiedDef>MinifiedThing</minifiedDef>
     <!-- Without hasInteractionCell, ThingUtility.InteractionCellWhenAt has no work spot to
          return for a multi-cell building, so the game draws no work-spot circle and the pawn
          ends up standing wherever it can touch the bench instead of in front of it. -->
@@ -54,6 +58,7 @@
     <statBases>
       <MaxHitPoints>150</MaxHitPoints>
       <WorkToBuild>1800</WorkToBuild>
+      <Mass>35</Mass>
       <WorkTableWorkSpeedFactor>0.25</WorkTableWorkSpeedFactor>
       <WorkTableEfficiencyFactor>1.0</WorkTableEfficiencyFactor>
     </statBases>
@@ -118,6 +123,10 @@
     <designationCategory>Production</designationCategory>
     <surfaceType>Item</surfaceType>
     <rotatable>true</rotatable>
+    <!-- Uninstall and reinstall, carrying the building's own state with it: a bench keeps its
+         bill list, and the repair center drops whatever it was holding before it goes in the
+         crate (see Building_AutomatedMender.DeSpawn). -->
+    <minifiedDef>MinifiedThing</minifiedDef>
     <!-- Without hasInteractionCell, ThingUtility.InteractionCellWhenAt has no work spot to
          return for a multi-cell building, so the game draws no work-spot circle and the pawn
          ends up standing wherever it can touch the bench instead of in front of it. -->
@@ -134,6 +143,7 @@
     <statBases>
       <MaxHitPoints>180</MaxHitPoints>
       <WorkToBuild>2400</WorkToBuild>
+      <Mass>45</Mass>
       <WorkTableWorkSpeedFactor>1.0</WorkTableWorkSpeedFactor>
       <WorkTableEfficiencyFactor>1.0</WorkTableEfficiencyFactor>
     </statBases>
@@ -201,6 +211,10 @@
     <constructEffect>ConstructMetal</constructEffect>
     <designationCategory>Production</designationCategory>
     <rotatable>true</rotatable>
+    <!-- Uninstall and reinstall, carrying the building's own state with it: a bench keeps its
+         bill list, and the repair center drops whatever it was holding before it goes in the
+         crate (see Building_AutomatedMender.DeSpawn). -->
+    <minifiedDef>MinifiedThing</minifiedDef>
     <neverMultiSelect>true</neverMultiSelect>
     <uiIconScale>0.8</uiIconScale>
     <constructionSkillPrerequisite>6</constructionSkillPrerequisite>

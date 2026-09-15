@@ -74,6 +74,26 @@ namespace MendingMod
             }
         }
 
+        // Uninstalling or destroying the machine comes through here - MinifyUtility.MakeMinified
+        // deinstalls with DeSpawnOrDeselect before wrapping the building up - and anything still
+        // inside would travel into the minified crate with it: unreachable while it sits there,
+        // and destroyed outright if that crate ever is. So the item goes back on the floor first.
+        // The state machine is reset too, or a reinstalled machine wakes up believing it is
+        // mid-repair on something it no longer holds, and jams on "output blocked" forever.
+        public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
+        {
+            if (Spawned && innerContainer.Count > 0)
+                innerContainer.TryDropAll(Position, Map, ThingPlaceMode.Near);
+
+            currentItem = null;
+            workTicksRemaining = 0;
+            workTicksTotal = 0;
+            idleReason = null;
+            state = MenderState.Idle;
+
+            base.DeSpawn(mode);
+        }
+
         protected override void Tick()
         {
             base.Tick();
