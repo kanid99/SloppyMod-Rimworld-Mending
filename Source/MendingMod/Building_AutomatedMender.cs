@@ -225,11 +225,13 @@ namespace MendingMod
 
         // Only apparel and weapons are mendable (matching the two recipes), and checking that
         // rather than useHitPoints alone keeps deteriorated resource stacks out of the input.
-        private static bool IsMendable(Thing thing)
+        // The tech cap is honoured here too, though this building carries no limit by default.
+        private bool IsMendable(Thing thing)
         {
             return (thing.def.IsApparel || thing.def.IsWeapon)
                 && thing.def.useHitPoints
-                && thing.HitPoints < thing.MaxHitPoints;
+                && thing.HitPoints < thing.MaxHitPoints
+                && MendingUtility.CanBenchRepair(def, thing);
         }
 
         private void TryStartMend()

@@ -12,4 +12,6 @@
   <DynamicMending.MenderCannotTakeItem>Idle: can't draw {0} in from the item spot (cyan).</DynamicMending.MenderCannotTakeItem>
   <DynamicMending.MenderSpotLegend>Cyan spot: damaged item in. Green spots: repair materials in. Yellow spot: repaired item out.</DynamicMending.MenderSpotLegend>
 
+  <DynamicMending.TooAdvancedForBench>Too advanced for this station (repairs up to {0} tech).</DynamicMending.TooAdvancedForBench>
+
 </LanguageData>

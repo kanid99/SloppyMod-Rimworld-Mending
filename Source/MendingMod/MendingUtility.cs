@@ -15,6 +15,54 @@ namespace MendingMod
     // so the two repair paths can never drift into different odds for the same job.
     public static class MendingUtility
     {
+        // The vanilla spacer-tier materials. Used only as a fallback: an item that declares no
+        // tech level of its own is judged by whether it actually needs any of these to build.
+        private static readonly HashSet<string> SpacerMaterials = new HashSet<string>
+        {
+            "Plasteel", "Synthread", "Hyperweave", "ComponentSpacer"
+        };
+
+        // An item's own techLevel ignores what it's made of - a plasteel knife is a Neolithic
+        // def carrying a spacer-tier material - so the stuff counts too, whichever is higher.
+        // RimWorld only config-errors on weapons missing a tech level, so apparel (especially
+        // modded) is routinely Undefined; that case falls through to the material check rather
+        // than being treated as too advanced, which would quietly block a lot of modded gear.
+        public static TechLevel GetEffectiveTechLevel(Thing item)
+        {
+            TechLevel tech = item.def.techLevel;
+
+            if (item.Stuff != null && item.Stuff.techLevel > tech)
+                tech = item.Stuff.techLevel;
+
+            if (tech != TechLevel.Undefined)
+                return tech;
+
+            if (item.Stuff != null && SpacerMaterials.Contains(item.Stuff.defName))
+                return TechLevel.Spacer;
+
+            List<ThingDefCountClass> costs = CostListCalculator.CostListAdjusted(item);
+            if (!costs.NullOrEmpty())
+            {
+                foreach (ThingDefCountClass cost in costs)
+                {
+                    if (SpacerMaterials.Contains(cost.thingDef.defName))
+                        return TechLevel.Spacer;
+                }
+            }
+
+            return TechLevel.Undefined;
+        }
+
+        // Undefined means "nothing known and no spacer materials found", which stays allowed.
+        public static bool CanBenchRepair(ThingDef benchDef, Thing item)
+        {
+            TechLevel cap = benchDef?.GetModExtension<MendingTechLimitExtension>()?.maxTechLevel
+                ?? TechLevel.Archotech;
+            TechLevel tech = GetEffectiveTechLevel(item);
+
+            return tech == TechLevel.Undefined || tech <= cap;
+        }
+
         public static SkillDef GetRelevantWorkSkill(Thing item)
         {
             return item.def.recipeMaker?.workSkill ?? SkillDefOf.Crafting;

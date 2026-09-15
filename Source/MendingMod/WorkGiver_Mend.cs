@@ -54,11 +54,11 @@ namespace MendingMod
                 }
 
                 List<ThingCount> chosen = new List<ThingCount>();
+
+                // TryBuildMendIngredients reports its own reason - it knows whether the bench
+                // found nothing at all or rejected what it found as too advanced.
                 if (!TryBuildMendIngredients(bill, pawn, thing, chosen))
-                {
-                    JobFailReason.Is("DynamicMending.NoIngredientsOrTarget".Translate());
                     continue;
-                }
 
                 Job job = JobMaker.MakeJob(MendingDefOf.DoMend, thing);
                 job.bill = bill;
@@ -95,6 +95,11 @@ namespace MendingMod
             float searchRadius = Mathf.Min(bill.ingredientSearchRadius, 200f);
 
             IngredientCount targetFilter = bill.recipe.ingredients[0];
+
+            // Tracked so a bench that rejected everything on tech level can say so, rather than
+            // reporting the same "nothing in range" as an empty stockpile would.
+            bool rejectedForTech = false;
+
             Thing mendTarget = GenClosest.ClosestThingReachable(
                 billGiver.Position,
                 billGiver.Map,
@@ -102,10 +107,32 @@ namespace MendingMod
                 PathEndMode.ClosestTouch,
                 TraverseParms.For(pawn),
                 searchRadius,
-                t => !t.IsForbidden(pawn) && pawn.CanReserve(t) && targetFilter.filter.Allows(t) && IsDamaged(t));
+                t =>
+                {
+                    if (t.IsForbidden(pawn) || !pawn.CanReserve(t) || !targetFilter.filter.Allows(t) || !IsDamaged(t))
+                        return false;
+
+                    if (!MendingUtility.CanBenchRepair(billGiver.def, t))
+                    {
+                        rejectedForTech = true;
+                        return false;
+                    }
+
+                    return true;
+                });
 
             if (mendTarget == null)
             {
+                if (rejectedForTech)
+                {
+                    TechLevel cap = billGiver.def.GetModExtension<MendingTechLimitExtension>().maxTechLevel;
+                    JobFailReason.Is("DynamicMending.TooAdvancedForBench".Translate(cap.ToStringHuman()));
+                }
+                else
+                {
+                    JobFailReason.Is("DynamicMending.NoIngredientsOrTarget".Translate());
+                }
+
                 DevLog(billGiver, $"no reachable damaged item matching bill '{bill.Label}' within radius {searchRadius}");
                 return false;
             }
