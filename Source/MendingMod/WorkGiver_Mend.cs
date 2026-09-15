@@ -105,8 +105,11 @@ namespace MendingMod
             IngredientCount targetFilter = bill.recipe.ingredients[0];
 
             // Tracked so a bench that rejected everything on tech level can say so, rather than
-            // reporting the same "nothing in range" as an empty stockpile would.
+            // reporting the same "nothing in range" as an empty stockpile would. Components are
+            // tracked separately because "needs a powered bench" is a different fix for the player
+            // than "this is beyond what hand tools reach".
             bool rejectedForTech = false;
+            bool rejectedForComponents = false;
 
             Thing mendTarget = GenClosest.ClosestThingReachable(
                 billGiver.Position,
@@ -122,7 +125,12 @@ namespace MendingMod
 
                     if (!MendingUtility.CanBenchRepair(billGiver.def, t))
                     {
-                        rejectedForTech = true;
+                        MendingTechLimitExtension limits = billGiver.def.GetModExtension<MendingTechLimitExtension>();
+                        if (limits != null && !limits.allowComponents && MendingUtility.NeedsComponents(t))
+                            rejectedForComponents = true;
+                        else
+                            rejectedForTech = true;
+
                         return false;
                     }
 
@@ -131,7 +139,11 @@ namespace MendingMod
 
             if (mendTarget == null)
             {
-                if (rejectedForTech)
+                if (rejectedForComponents)
+                {
+                    JobFailReason.Is("DynamicMending.NeedsPoweredBench".Translate());
+                }
+                else if (rejectedForTech)
                 {
                     TechLevel cap = billGiver.def.GetModExtension<MendingTechLimitExtension>().maxTechLevel;
                     JobFailReason.Is("DynamicMending.TooAdvancedForBench".Translate(cap.ToStringHuman()));

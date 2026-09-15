@@ -12,6 +12,7 @@
   <DynamicMending.MenderCannotTakeItem>Idle: can't draw {0} in from the item spot (cyan).</DynamicMending.MenderCannotTakeItem>
   <DynamicMending.MenderSpotLegend>Cyan spot: damaged item in. Green spots: repair materials in. Orange spot: repaired item out.</DynamicMending.MenderSpotLegend>
 
+  <DynamicMending.NeedsPoweredBench>Contains components - needs a powered mending station.</DynamicMending.NeedsPoweredBench>
   <DynamicMending.WasteFull>Waste container full - must be emptied before more repairs.</DynamicMending.WasteFull>
   <DynamicMending.WasteBuffered>Waste container: {0}</DynamicMending.WasteBuffered>
   <DynamicMending.DumpWasteLabel>Dump waste</DynamicMending.DumpWasteLabel>

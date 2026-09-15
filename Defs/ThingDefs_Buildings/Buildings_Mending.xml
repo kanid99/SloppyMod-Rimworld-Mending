@@ -4,7 +4,7 @@
   <ThingDef ParentName="BuildingBase">
     <defName>TableMending_Manual</defName>
     <label>hand mending station</label>
-    <description>A simple, unpowered station for repairing worn apparel and weapons by hand. Hand tools cannot work spacer-tier gear - anything built from plasteel, synthread, hyperweave or advanced components needs a powered station.</description>
+    <description>A simple, unpowered station for repairing worn apparel and weapons by hand. Hand tools only go so far: anything spacer-tier, and anything built around components, needs a powered station.</description>
     <thingClass>Building_WorkTable</thingClass>
     <graphicData>
       <texPath>Things/Building/Production/TableMending_Manual</texPath>
@@ -46,6 +46,7 @@
     <modExtensions>
       <li Class="MendingMod.MendingTechLimitExtension">
         <maxTechLevel>Industrial</maxTechLevel>
+        <allowComponents>false</allowComponents>
       </li>
     </modExtensions>
     <comps>
@@ -67,7 +68,7 @@
   <ThingDef ParentName="BuildingBase">
     <defName>TableMending_Electric</defName>
     <label>electrical mending station</label>
-    <description>A powered mending station. Repairs apparel and weapons four times as fast as working by hand. Runs warm while powered, so give it some ventilation.</description>
+    <description>A powered mending station. Repairs apparel and weapons four times as fast as working by hand, with no restriction on tech level or components. Runs warm while powered, so give it some ventilation.</description>
     <thingClass>Building_WorkTable</thingClass>
     <graphicData>
       <texPath>Things/Building/Production/TableMending_Electric</texPath>
@@ -151,7 +152,7 @@
     <costList>
       <Steel>250</Steel>
       <ComponentIndustrial>6</ComponentIndustrial>
-      <ComponentSpacer>2</ComponentSpacer>
+      <ComponentSpacer>4</ComponentSpacer>
     </costList>
     <altitudeLayer>Building</altitudeLayer>
     <passability>PassThroughOnly</passability>

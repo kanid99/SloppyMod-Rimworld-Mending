@@ -96,11 +96,37 @@ namespace MendingMod
             if (!MendingModMain.Settings.enableTechRequirements || !MendingModMain.Settings.enforceTechLimits)
                 return true;
 
-            TechLevel cap = benchDef?.GetModExtension<MendingTechLimitExtension>()?.maxTechLevel
-                ?? TechLevel.Archotech;
+            MendingTechLimitExtension limits = benchDef?.GetModExtension<MendingTechLimitExtension>();
+
+            // Separate from the tech-level cap on purpose: plenty of industrial-tier gear is built
+            // around components, and a bench with no power has no way to rebuild one.
+            if (limits != null && !limits.allowComponents && NeedsComponents(item))
+                return false;
+
+            TechLevel cap = limits?.maxTechLevel ?? TechLevel.Archotech;
             TechLevel tech = GetEffectiveTechLevel(item);
 
             return tech == TechLevel.Undefined || tech <= cap;
+        }
+
+        // Reads the stuff-adjusted cost list rather than the raw def, so a component only counts
+        // when this particular item actually needed one.
+        public static bool NeedsComponents(Thing item)
+        {
+            if (item.Stuff == ThingDefOf.ComponentIndustrial || item.Stuff == ThingDefOf.ComponentSpacer)
+                return true;
+
+            List<ThingDefCountClass> costs = CostListCalculator.CostListAdjusted(item);
+            if (costs.NullOrEmpty())
+                return false;
+
+            foreach (ThingDefCountClass cost in costs)
+            {
+                if (cost.thingDef == ThingDefOf.ComponentIndustrial || cost.thingDef == ThingDefOf.ComponentSpacer)
+                    return true;
+            }
+
+            return false;
         }
 
         public static SkillDef GetRelevantWorkSkill(Thing item)
