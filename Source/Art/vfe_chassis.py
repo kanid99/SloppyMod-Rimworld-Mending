@@ -127,6 +127,90 @@ class Chassis:
             self.vgrad([a + self.r(5), d0 + self.r(4), a + w - self.r(5), d0 + (d1 - d0) * 0.34],
                        (126, 120, 112), (110, 104, 97), radius=int(self.r(5)))
 
+    # -- structural modules -------------------------------------------------
+    # The factory machines do not read as "a machine sitting on a plate". They are built from
+    # repeated, mirrored structure: a block at each corner, a framed bay in the middle, rails
+    # down the flanks. These draw that structure, so the symmetry is guaranteed rather than
+    # left to whatever the generator returned.
+
+    def block(self, box, lit=(164, 158, 150), dark=(84, 79, 74), rad=None):
+        """One raised block: a soft top-light ramp into a dark lower edge, and nothing else.
+
+        It used to carry a 3px grey border all round. Against a light top face that border is a
+        step of well over a hundred levels, and with a block at each corner, a rail down each
+        flank and a pair beside the spine it put the sprite's hard-edge count back above VFE's
+        range. Their blocks meet the deck on tone alone; so do these.
+        """
+        rad = int(self.r(10)) if rad is None else rad
+        x0, y0, x1, y1 = box
+        self.vgrad([x0, y0, x1, y1], lit, dark, radius=rad)
+        self.vgrad([x0 + self.r(7), y0 + self.r(6), x1 - self.r(7), y0 + (y1 - y0) * 0.40],
+                   tuple(min(255, c + 16) for c in lit), lit, radius=int(self.r(7)))
+
+    def corner_blocks(self, size_cells=0.82, inset_cells=0.10):
+        w = size_cells * self.px
+        i = inset_cells * self.px
+        for cx in (self.x0 + i, self.x1 - i - w):
+            for cy in (self.y0 + i, self.y1 - i - w):
+                self.block([cx, cy, cx + w, cy + w])
+
+    def flank_rails(self, y0, y1, width_cells=0.30, inset_cells=0.12):
+        """A matched rail down each flank, mirrored - the repeated structure their machines
+        carry between the corner housings."""
+        w = width_cells * self.px
+        i = inset_cells * self.px
+        for x in (self.x0 + i, self.x1 - i - w):
+            self.block([x, y0, x + w, y1], lit=(144, 138, 131), dark=(74, 70, 66))
+
+    def slats(self, box, n=4, horizontal=True):
+        """A row of soft slats on a block - the repeated plain detail their casings carry.
+        Each slat is a gentle ramp, separated by the chassis's dark grey, never by black."""
+        x0, y0, x1, y1 = box
+        span = (y1 - y0) if horizontal else (x1 - x0)
+        gap = self.r(7)
+        w = (span - gap * (n - 1)) / n
+        for i in range(n):
+            a = (y0 if horizontal else x0) + i * (w + gap)
+            b = a + w
+            sub = [x0, a, x1, b] if horizontal else [a, y0, b, y1]
+            self.vgrad(sub, (118, 112, 105), (80, 76, 71), radius=int(self.r(5)))
+
+    def spine(self, box, accent=(175, 120, 65)):
+        """A recessed channel carrying finished work from the machine to the output port, with
+        a matched block either side. The repeated mirrored pair is what reads as a production
+        line rather than an object parked on a plate."""
+        x0, y0, x1, y1 = box
+        f = self.r(10)
+        self.fill([x0 - f, y0 - f, x1 + f, y1 + f], SEAM, radius=int(self.r(10)))
+        self.vgrad([x0, y0, x1, y1], (58, 55, 52), (78, 74, 70), radius=int(self.r(8)))
+        # A roller run, drawn exactly as the port beds are, with a thin accent rail either
+        # side - so the channel reads as the same conveyor the ports are, carrying work out.
+        rail = self.r(9)
+        self.fill([x0 + self.r(6), y0 + self.r(6), x1 - self.r(6), y1 - self.r(6)], accent)
+        bx0, bx1 = x0 + self.r(6) + rail, x1 - self.r(6) - rail
+        period = self.r(ROLLER_PERIOD)
+        d0, d1 = y0 + self.r(6), y1 - self.r(6)
+        n = int((d1 - d0) / period) + 1
+        for i in range(n):
+            for f0, f1, col in ROLLER:
+                a = d0 + (i + f0) * period
+                b = min(d0 + (i + f1) * period, d1)
+                if b <= a:
+                    continue
+                self.fill([bx0, a, bx1, b], col)
+
+    def inner_bay(self, box, rad=None):
+        """A recessed working bay with a chamfered frame - what the machine sits inside."""
+        rad = int(self.r(12)) if rad is None else rad
+        x0, y0, x1, y1 = box
+        f = self.r(13)
+        self.vgrad([x0 - f, y0 - f, x1 + f, y1 + f], (146, 141, 134), (104, 99, 93), radius=rad + int(f))
+        # A mid grey, not the 49 used between two ports: against the bay frame's light face
+        # a 49 step is over a hundred levels, and this ring runs the whole way round.
+        self.fill([x0 - self.r(3), y0 - self.r(3), x1 + self.r(3), y1 + self.r(3)],
+                  (82, 78, 74), radius=rad)
+        self.vgrad([x0, y0, x1, y1], (70, 66, 62), (88, 83, 78), radius=rad)
+
     # -- one ingress/egress port --------------------------------------------
     def port(self, along, side, rail, chevron=True):
         """`along` is the port's centre on the edge's own axis, in canvas pixels.

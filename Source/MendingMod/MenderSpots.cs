@@ -78,13 +78,26 @@ namespace MendingMod
             return back[back.Count / 2];
         }
 
-        // The back edge either side of the item port, plus the rear-most cells down each flank.
+        // Two cells on the back edge, one either side of the item port, and the rest spread down
+        // the two flanks - three a side on a five-deep footprint.
+        //
+        // These used to fill the whole back edge first and only spill onto the flanks. That put
+        // seven bays shoulder to shoulder along one edge and one on each flank, which is not a
+        // layout any of the factory machines use: theirs are mirror-symmetric, with their ports
+        // spread around the perimeter rather than crowded onto the intake side.
         public static IEnumerable<IntVec3> ResourceInputCells(CellRect rect, Rot4 rot)
         {
             List<IntVec3> back = EdgeCells(rect, rot, front: false);
             int middle = back.Count / 2;
-            return back.Where((cell, i) => i != middle)
-                .Concat(SideCells(rect, rot).Take(ResourceSpots - (back.Count - 1)));
+            List<IntVec3> cells = new List<IntVec3>();
+
+            if (middle - 1 >= 0)
+                cells.Add(back[middle - 1]);
+            if (middle + 1 < back.Count)
+                cells.Add(back[middle + 1]);
+
+            cells.AddRange(SideCells(rect, rot).Take(ResourceSpots - cells.Count));
+            return cells;
         }
 
         public static IntVec3 OutputCell(CellRect rect, Rot4 rot)

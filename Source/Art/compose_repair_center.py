@@ -10,11 +10,13 @@ Two things this does differently from the first pass:
 """
 import glob, os
 import fit as _fit
+from scipy import ndimage
+from vfe_chassis import SEAM as VC_SEAM
 import numpy as np
 from PIL import Image, ImageDraw
 
 PX = 192                      # pixels per map cell
-CW, CH = 7, 5                 # the repair centre's FOOTPRINT, in cells
+CW, CH = 5, 5                 # the repair centre's FOOTPRINT, in cells
 # VFE draw a 5x5 machine at drawSize (6,6): the art overhangs the footprint by half a cell on
 # every side, and their ingress and egress bays live in that overhang, protruding out over the
 # very cells items are placed on. Drawing at drawSize == size is what made ours look small and
@@ -210,33 +212,81 @@ def port(img, cx, cy, colour, facing, long_=None, deep_=None):
     d.polygon(pts, fill=colour, outline=OUTLINE)
 
 
+def symmetrise(im):
+    """Mirror the body's left half onto its right.
+
+    Every factory machine in VFE is mirror-symmetric about its vertical centre line. Asking the
+    generator for symmetry gets it approximately; taking one half and reflecting it gets it
+    exactly, and an exactly symmetric machine is most of what reads as "factory" rather than
+    "object".
+    """
+    a = np.asarray(im)
+    h, w = a.shape[:2]
+    half = w // 2
+    left = a[:, :half]
+    out = np.concatenate([left, left[:, ::-1][:, w - 2 * half:]], axis=1) if w % 2 == 0 \
+        else np.concatenate([left, a[:, half:half + 1], left[:, ::-1]], axis=1)
+    return Image.fromarray(out[:, :w], 'RGBA')
+
+
+def soften_rim(im, band=5):
+    """Lift the body's own black silhouette ring to the chassis's dark grey.
+
+    Measured against VFE: pure black belongs to the OUTER silhouette of the whole building and
+    nowhere else. The generated body arrives with a heavy black ring of its own, and once it is
+    composited onto the deck that ring is an interior outline - the one style cue the sprite was
+    still breaking.
+    """
+    a = np.asarray(im).astype(np.float32)
+    rgb, al = a[..., :3].copy(), a[..., 3]
+    solid = al > 90
+    rim = solid & ~ndimage.binary_erosion(solid, np.ones((3, 3)), iterations=band)
+    lum = rgb @ np.array([0.299, 0.587, 0.114])
+    hit = rim & (lum < 40)
+    rgb[hit] = np.array(VC_SEAM, np.float32)
+    return Image.fromarray(np.dstack([rgb, al]).astype(np.uint8), 'RGBA')
+
+
 def build(body_path, profile):
-    """The chassis and its ports come from vfe_chassis, which draws VFE's measured anatomy;
-    only the machine body is generated."""
+    """The chassis, its structure and its ports are all drawn; only the centrepiece machine
+    comes from the generator, and it is mirrored to be exactly symmetric."""
     import vfe_chassis as VC
     c = VC.Chassis(CW, CH, px=PX, margin=MARGIN)
     c.base()
 
-    # Fill the deck's width first - the generator returns anywhere from 2:1 to 3:1 and fitting
-    # by whichever axis is tighter left a small machine adrift on a large plate.
+    bay = [c.x0 + int(PX * 0.92), c.y0 + int(PX * 0.80),
+           c.x1 - int(PX * 0.92), c.y0 + int(PX * 2.95)]
+    c.flank_rails(c.y0 + int(PX * 0.86), c.y1 - int(PX * 0.86), width_cells=0.24, inset_cells=0.13)
+    c.corner_blocks(size_cells=0.66, inset_cells=0.12)
+    c.inner_bay(bay)
+
     body = to_vfe_palette(_fit.key(body_path), profile)
-    scale = int(CW * PX * 0.95) / body.width
-    if body.height * scale > CH * PX * 0.66:
-        scale = CH * PX * 0.66 / body.height
+    bw_max, bh_max = bay[2] - bay[0] - int(PX * 0.12), bay[3] - bay[1] - int(PX * 0.12)
+    scale = min(bw_max / body.width, bh_max / body.height)
     bw, bh = int(body.width * scale), int(body.height * scale)
-    body = kill_chroma(body.resize((bw, bh), Image.LANCZOS))
-    top = c.y0 + int(PX * 0.18)
-    c.paste(body, ((c.W - bw) // 2, top))
+    body = soften_rim(symmetrise(kill_chroma(body.resize((bw, bh), Image.LANCZOS))))
+    c.paste(body, ((c.W - bw) // 2, (bay[1] + bay[3]) // 2 - bh // 2))
 
-    c.deck_plates(top + bh + int(PX * 0.22), c.y1 - int(PX * 0.40), n=6)
+    # From the machine down to the output port: a matched block either side of a recessed
+    # channel, centred on the same axis as the output bay.
+    sy0, sy1 = c.y0 + int(PX * 3.22), c.y1 - int(PX * 0.30)
+    for sx in (c.x0 + int(PX * 1.02), c.x1 - int(PX * 1.02) - int(PX * 1.05)):
+        box = [sx, sy0, sx + int(PX * 1.05), sy1]
+        c.block(box, lit=(148, 142, 135), dark=(76, 72, 67))
+        c.slats([box[0] + int(PX * 0.14), box[1] + int(PX * 0.16),
+                 box[2] - int(PX * 0.14), box[3] - int(PX * 0.16)], n=3)
+    c.spine([c.W // 2 - int(PX * 0.31), sy0 + int(PX * 0.06),
+             c.W // 2 + int(PX * 0.31), sy1 + int(PX * 0.12)])
 
-    # Six material bays across the back plus the gear-in bay at its centre, one material bay a
-    # cell in from each front corner, and the single output bay at the front.
+    # Three bays on the intake edge - the item port at centre with a material port either side -
+    # three more down each flank, and the single output bay opposite. Mirror-symmetric about the
+    # vertical centre line, the way every one of their machines is.
     mid = CW // 2
-    for i in range(CW):
+    for i in (mid - 1, mid, mid + 1):
         c.port(c.x0 + int((i + 0.5) * PX), 'top', 'cyan' if i == mid else 'green')
     for side in ('left', 'right'):
-        c.port(c.y0 + int(1.5 * PX), side, 'green')
+        for j in (1, 2, 3):
+            c.port(c.y0 + int((j + 0.5) * PX), side, 'green')
     c.port(c.x0 + int((mid + 0.5) * PX), 'bottom', 'orange')
     return c.image()
 

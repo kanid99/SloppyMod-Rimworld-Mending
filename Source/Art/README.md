@@ -60,12 +60,37 @@ procedurally drawn chassis with the ingress and egress bays at exact cell positi
 
 ### drawSize is one cell larger than size
 
-Every VFE Factory machine draws at one cell larger than its footprint - their 5x5 assembler
-has `drawSize (6,6)` - so the art overhangs half a cell all round and their conveyor bays live
-in that overhang, protruding out over the very cells items are placed on. The repair centre
-now does the same: `size (5,5)`, `drawSize (6,6)`, a 1152x1152 sprite whose chassis occupies
-the inner five cells. Drawing at `drawSize == size` is what made it read as a small machine
-with cramped ports however large the footprint was.
+Every VFE Factory machine draws at one cell larger than its footprint - their 5x5 assembler has
+`drawSize (6,6)` - so the art overhangs half a cell all round and their conveyor bays live in
+that overhang, protruding out over the very cells items are placed on. The repair centre does
+the same: `size (5,5)`, `drawSize (6,6)`, a 1152x1152 sprite whose chassis occupies the inner
+five cells. Drawing at `drawSize == size` is what made it read as a small machine with cramped
+ports however large the footprint was.
+
+### The ports are spread round the perimeter, not queued on one edge
+
+Three bays on the intake edge - the item port at centre with a material port either side -
+three more down each flank, and the single output bay opposite. Mirror-symmetric about the
+vertical centre line, which is what every one of their machines is.
+
+They used to fill the whole back edge first and only spill onto the flanks, which put seven
+bays shoulder to shoulder along one edge. `MenderSpots.ResourceInputCells` now takes two cells
+from the back edge and the rest from the flanks, and `SideCells` starts a cell in from the
+corner so no two ports meet corner to corner. The count is unchanged: eight material spots, one
+item spot, one output.
+
+Note the sprite carries TEN bays where a VFE machine carries three or four. Port bays are
+high-contrast by construction, so ours sits at the top of their hard-edge range rather than the
+middle; that is the cost of ten spots, not a drawing error.
+
+### The structure is drawn, not generated
+
+A machine sitting on a plate does not read as a factory building. Theirs are built from
+repeated mirrored structure, so `vfe_chassis.py` draws that: a housing at each corner, a rail
+down each flank, a framed bay holding the machine, and a pair of slatted blocks either side of
+a recessed conveyor spine that carries work out through the output port. Only the centrepiece
+comes from the generator, and `symmetrise` reflects its left half onto its right so the mirror
+symmetry is exact rather than approximate.
 
 ### The ports are drawn to VFE's measured anatomy
 
@@ -118,7 +143,7 @@ matching what the shipped textures already used.
 ```sh
 python3 gen_repair_center.py         # from this directory, needs a Gemini key
 python3 compose_repair_center.py     # builds and scores every variant
-python3 compose_repair_center.py export repair_s3
+python3 compose_repair_center.py export repair_s4
 ```
 
 ## Store page art
@@ -143,7 +168,7 @@ python3 Source/Art/make_about_art.py      # from the repo root
 | `gen_bench_objects.py` | generates the object sprites (Gemini) |
 | `gen_tools.py` | generates the metalworking tool sprites (Gemini) |
 | `fit.py` | keys a generated body off its background and crops it to the real silhouette |
-| `vfe_chassis.py` | the chassis and the ingress/egress bays, at VFE's measured proportions |
+| `vfe_chassis.py` | the chassis, its structure and the ingress/egress bays, at VFE's measured proportions |
 | `cut.py` | chroma-keys a generated sheet and cuts it into individual objects |
 
 `gen_bench_objects.py` and `gen_tools.py` need a Gemini API key; the cut object PNGs they
