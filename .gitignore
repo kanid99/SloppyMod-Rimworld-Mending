@@ -3,3 +3,4 @@ obj/
 bin/
 Assemblies/
 *.user
+__pycache__/

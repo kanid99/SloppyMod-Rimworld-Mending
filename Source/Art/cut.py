@@ -33,7 +33,8 @@ def components(img, min_px=1500):
     boxes.sort(key=lambda b: b[0])
     return boxes
 
-for sheet in ('metaltools_a', 'metaltools_b'):
+import sys
+for sheet in (sys.argv[1:] or ['metaltools_a', 'metaltools_b']):
     img = key_out(f'out/{sheet}.png')
     img.save(f'out/{sheet}_keyed.png')
     for i, (x0, y0, x1, y1, n) in enumerate(components(img)):
