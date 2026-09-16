@@ -11,12 +11,15 @@ namespace MendingMod
     {
         public const int ResourceSpots = 8;
 
-        // The row of cells just outside one end of the footprint. Everything feeds in along the
-        // back edge and leaves by the front, the way the vanilla-expanded factory machines are
-        // laid out, so a belt can run into the back and away from the front.
-        public static List<IntVec3> EdgeCells(CellRect rect, Rot4 rot, bool front)
+        // The row of cells just outside one end of the footprint.
+        //
+        // `intake` is the side the building FACES. That is the vanilla-expanded factory
+        // convention - point one of their machines north and it takes material in along its
+        // north edge - and it used to be the other way round here, so a repair centre dropped
+        // into a belt line laid out for their machines ran backwards.
+        public static List<IntVec3> EdgeCells(CellRect rect, Rot4 rot, bool intake)
         {
-            IntVec3 dir = front ? rot.FacingCell : rot.Opposite.FacingCell;
+            IntVec3 dir = intake ? rot.FacingCell : rot.Opposite.FacingCell;
             List<IntVec3> cells = new List<IntVec3>();
 
             if (dir.x != 0)
@@ -43,7 +46,7 @@ namespace MendingMod
         // corner with the back row's, which is something the factory machines never do.
         private static List<IntVec3> SideCells(CellRect rect, Rot4 rot)
         {
-            IntVec3 back = rot.Opposite.FacingCell;
+            IntVec3 back = rot.FacingCell;
             List<IntVec3> cells = new List<IntVec3>();
 
             if (back.x != 0)
@@ -74,11 +77,11 @@ namespace MendingMod
 
         public static IntVec3 ItemInputCell(CellRect rect, Rot4 rot)
         {
-            List<IntVec3> back = EdgeCells(rect, rot, front: false);
-            return back[back.Count / 2];
+            List<IntVec3> intake = EdgeCells(rect, rot, intake: true);
+            return intake[intake.Count / 2];
         }
 
-        // Two cells on the back edge, one either side of the item port, and the rest spread down
+        // Two cells on the intake edge, one either side of the item port, and the rest spread down
         // the two flanks - three a side on a five-deep footprint.
         //
         // These used to fill the whole back edge first and only spill onto the flanks. That put
@@ -87,14 +90,14 @@ namespace MendingMod
         // spread around the perimeter rather than crowded onto the intake side.
         public static IEnumerable<IntVec3> ResourceInputCells(CellRect rect, Rot4 rot)
         {
-            List<IntVec3> back = EdgeCells(rect, rot, front: false);
-            int middle = back.Count / 2;
+            List<IntVec3> intake = EdgeCells(rect, rot, intake: true);
+            int middle = intake.Count / 2;
             List<IntVec3> cells = new List<IntVec3>();
 
             if (middle - 1 >= 0)
-                cells.Add(back[middle - 1]);
-            if (middle + 1 < back.Count)
-                cells.Add(back[middle + 1]);
+                cells.Add(intake[middle - 1]);
+            if (middle + 1 < intake.Count)
+                cells.Add(intake[middle + 1]);
 
             cells.AddRange(SideCells(rect, rot).Take(ResourceSpots - cells.Count));
             return cells;
@@ -102,8 +105,8 @@ namespace MendingMod
 
         public static IntVec3 OutputCell(CellRect rect, Rot4 rot)
         {
-            List<IntVec3> front = EdgeCells(rect, rot, front: true);
-            return front[front.Count / 2];
+            List<IntVec3> far = EdgeCells(rect, rot, intake: false);
+            return far[far.Count / 2];
         }
 
         public static void DrawRings(CellRect rect, Rot4 rot)

@@ -33,7 +33,7 @@ def shadow(img, blur=7, alpha=130, off=(3, 5)):
 
 # The repair centre is square now (5x5 drawn at 6x6), not the old 5x3 letterbox, so it is
 # sized off the card's height rather than its width.
-auto = fit('AutomatedMender_south.png', 280)
+auto = fit('AutomatedMender_north.png', 280)
 hand = fit('TableMending_Manual_north.png', 236)
 elec = fit('TableMending_Electric_north.png', 236)
 placements = ((auto, (340, 40)), (hand, (30, 190)), (elec, (30, 274)))
@@ -58,7 +58,7 @@ card.convert('RGB').save('About/Preview.png')
 # ModMetaData.ModIconImagePath - shown small and square in the mod list.
 ICON = 256
 icon = Image.new('RGBA', (ICON, ICON), (0, 0, 0, 0))
-src = Image.open(TEX + 'AutomatedMender_south.png').convert('RGBA')
+src = Image.open(TEX + 'AutomatedMender_north.png').convert('RGBA')
 src = src.crop(src.getbbox())
 scale = min(ICON / src.width, ICON / src.height) * 0.98
 small = src.resize((round(src.width * scale), round(src.height * scale)), Image.LANCZOS)

@@ -86,15 +86,19 @@ def contrast(im):
 
 
 def export(outdir):
-    """south is the composed sprite; north is its 180 turn and east its quarter turn.
+    """The sprite is drawn intake-up, which is the NORTH view: MenderSpots takes material in on
+    the side the building faces, so a north-facing machine feeds from its north edge.
 
-    This mapping is not arbitrary - it is what the shipped textures already use, and the C#
-    derives its spot cells from the building's rotation, so changing it here would put the drawn
-    bays on different cells than the ones MenderSpots actually reads."""
+    south is its 180 turn, and east its quarter turn clockwise - PIL's rotate() is
+    counter-clockwise for a positive angle, so -90 is what carries the intake edge to the right,
+    where a machine facing east wants it. Getting that sign wrong is not cosmetic: it drew the
+    item port on the cell the C# reads as the output, which is exactly what the shipped east
+    texture did until this was verified cell by cell against MenderSpots.
+    """
     sprite = build()
     os.makedirs(outdir, exist_ok=True)
-    sprite.save(f"{outdir}/AutomatedMender_south.png")
-    sprite.rotate(180, expand=True).save(f"{outdir}/AutomatedMender_north.png")
+    sprite.save(f"{outdir}/AutomatedMender_north.png")
+    sprite.rotate(180, expand=True).save(f"{outdir}/AutomatedMender_south.png")
     sprite.rotate(-90, expand=True).save(f"{outdir}/AutomatedMender_east.png")
     return sprite
 

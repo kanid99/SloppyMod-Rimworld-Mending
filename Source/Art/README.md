@@ -95,6 +95,26 @@ is a smooth `(138,134,132)` to `(119,115,113)` ramp over ~25px, and nothing is o
 it read as raised. Outlining every element in black once gave this sprite a hard-edge density
 of 70.7 per unit side against their 9.0-34.6.
 
+### Orientation, and how it is checked
+
+The machine takes material in on the side it FACES, which is the factory mod's convention -
+point one of their machines north and it feeds from its north edge. Ours was the other way
+round, so a repair centre dropped into a belt line laid out for their machines ran backwards.
+
+The sprite is therefore drawn intake-up, which is the north view; south is its 180 turn and
+east its quarter turn CLOCKWISE. PIL's `rotate()` is counter-clockwise for a positive angle, so
+that is `rotate(-90)`. This sign is not cosmetic: the shipped east texture had it the other way
+and drew the item port on the cell the C# reads as the OUTPUT, so an east or west facing
+machine wanted gear on its output spot. Nobody caught it by looking.
+
+`verify_spots.py` reimplements `MenderSpots` from the C# and samples the real texture at every
+spot's position on the chassis edge, for all four rotations, checking the rail colour there is
+the one that spot expects. Run it after any change to either side:
+
+```sh
+python3 Source/Art/verify_spots.py flipped
+```
+
 ### Layout
 
 Three bays on the intake edge - the item port at centre with a material port either side -
