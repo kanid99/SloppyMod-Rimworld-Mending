@@ -192,15 +192,17 @@
       <texPath>Things/Building/Production/AutomatedMender</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
       <!-- Matched to the largest of VFE Factory's own machines (they run 3x3 up to 5x5 and
-           7x3). At 5x3 the deck between the back intake and the front output was only three
-           cells, which left no room to draw the ingress and egress bays at their size.
+           7x3). Seven cells across the back gives six of the eight material spots their own
+           ingress bay at VFE's own port width - one cell each - with the remaining two on the
+           flanks; at 5x3 the back edge could not hold them and the flanks had to share one
+           long bay between two spots.
 
            drawSize is deliberately ONE CELL LARGER than size, which is what VFE do on every
            one of their machines: the art overhangs the footprint by half a cell all round and
            the ingress and egress bays live in that overhang, protruding out over the very
            cells items are placed on. Drawing at drawSize == size is what made this read as a
            small machine with cramped ports however large the footprint got. -->
-      <drawSize>(6,6)</drawSize>
+      <drawSize>(8,6)</drawSize>
       <damageData>
         <cornerTL>Damage/Corner</cornerTL>
         <cornerTR>Damage/Corner</cornerTR>
@@ -208,7 +210,7 @@
         <cornerBR>Damage/Corner</cornerBR>
       </damageData>
     </graphicData>
-    <size>(5,5)</size>
+    <size>(7,5)</size>
     <costList>
       <Steel>250</Steel>
       <ComponentIndustrial>6</ComponentIndustrial>

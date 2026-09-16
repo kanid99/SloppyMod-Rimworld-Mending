@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 PX = 192                      # pixels per map cell
-CW, CH = 5, 5                 # the repair centre's FOOTPRINT, in cells
+CW, CH = 7, 5                 # the repair centre's FOOTPRINT, in cells
 # VFE draw a 5x5 machine at drawSize (6,6): the art overhangs the footprint by half a cell on
 # every side, and their ingress and egress bays live in that overhang, protruding out over the
 # very cells items are placed on. Drawing at drawSize == size is what made ours look small and
@@ -69,31 +69,57 @@ def clean(path):
     return out.crop(out.getbbox())
 
 
-def to_vfe_palette(im, profile):
+def kill_chroma(im):
+    """Neutralise magenta/violet pixels.
+
+    LANCZOS rings: downscaling an orange accent against a dark neighbour overshoots each
+    channel independently, and the undershoot on the warm channels next to the overshoot on
+    blue lands as a violet fringe. It is created by the RESIZE, so it has to be cleaned after
+    it, not before - which is why neutralising the source alone never shifted the count.
+    """
     a = np.asarray(im).astype(np.float32)
     rgb, al = a[..., :3].copy(), a[..., 3]
-    vis = al > 90
-    if vis.sum() == 0:
+    r_, g_, b_ = rgb[..., 0] / 255.0, rgb[..., 1] / 255.0, rgb[..., 2] / 255.0
+    bad = (r_ > g_ + 0.04) & (b_ > g_ + 0.02)
+    lum = rgb @ np.array([0.299, 0.587, 0.114])
+    rgb[bad] = np.repeat(lum[..., None], 3, axis=-1)[bad]
+    return Image.fromarray(np.dstack([rgb, al]).astype(np.uint8), 'RGBA')
+
+
+def to_vfe_palette(im, profile):
+    """Neutralise the body's colour and match its luminance to VFE's own distribution.
+
+    Two things here are load-bearing:
+
+      * The colour work runs on EVERY pixel, including fully transparent ones. The keyer only
+        sets alpha - a transparent pixel keeps the model's magenta in its RGB - and LANCZOS
+        resamples RGB and alpha independently, so that magenta gets pulled into the opaque rim
+        when the body is scaled. Neutralising only the solid pixels is what left a coloured
+        fringe all round the machine.
+      * The luminance statistics still come from the SOLID pixels only, or the transparent
+        surround would drag the histogram.
+    """
+    a = np.asarray(im).astype(np.float32)
+    rgb, al = a[..., :3].copy(), a[..., 3]
+    solid = al > 90
+    if solid.sum() == 0:
         return im
 
     mx, mn = rgb.max(2), rgb.min(2)
     sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
-    # Was cyan-only (blue above red). The industrial bodies use a dull amber instead, so the
-    # accent test is on saturation alone - whatever single colour the body carries survives,
-    # and every stray colour cast still goes neutral. Magenta is the exception: the model
-    # sometimes paints a pipe stub or a highlight in its own background colour, and with a
-    # hue-blind accent rule that chroma leaked through onto the finished sprite as pink blobs.
+    # The accent test is on saturation alone, so whatever single colour the body carries
+    # survives and every stray cast goes neutral - except magenta, which is the model's own
+    # background and must never be treated as an accent.
     r_, g_, b_ = rgb[..., 0] / 255.0, rgb[..., 1] / 255.0, rgb[..., 2] / 255.0
     chroma = (r_ > g_ + 0.10) & (b_ > g_ + 0.05)
-    accent = vis & (sat > 0.42) & ~chroma   # VFE use orange in thin strips, not over a whole casing
+    accent = (sat > 0.42) & ~chroma          # VFE use orange in thin strips, not whole casings
 
-    # Everything that is not the accent goes neutral, so stray colour casts do not survive.
     lum = rgb @ np.array([0.299, 0.587, 0.114])
     grey = np.repeat(lum[..., None], 3, axis=-1)
-    rgb[vis & ~accent] = grey[vis & ~accent]
+    rgb[~accent] = grey[~accent]
 
     # Histogram-match onto VFE's curve: same quantile, their value.
-    src = lum[vis]
+    src = lum[solid]
     order = np.argsort(src)
     ranks = np.empty(order.size, dtype=np.float64)
     ranks[order] = np.arange(order.size)
@@ -101,7 +127,7 @@ def to_vfe_palette(im, profile):
     target = np.interp(q, np.linspace(0, 1, profile.size), profile)
 
     scale = np.ones_like(lum)
-    scale[vis] = target / np.maximum(src, 1.0)
+    scale[solid] = target / np.maximum(src, 1.0)
     rgb = np.clip(rgb * scale[..., None], 0, 255)
     return Image.fromarray(np.dstack([rgb, al]).astype(np.uint8), 'RGBA')
 
@@ -184,67 +210,35 @@ def port(img, cx, cy, colour, facing, long_=None, deep_=None):
     d.polygon(pts, fill=colour, outline=OUTLINE)
 
 
-def fin_bank(d, x0, y0, x1, y1, n=6):
-    """The row of rounded vertical fin blocks VFE put across the front of their larger
-    machines. Without it a 5x5 deck is mostly bare plate below the machine body."""
-    d.rounded_rectangle([x0 - 14, y0 - 14, x1 + 14, y1 + 14], radius=16, fill=OUTLINE)
-    d.rounded_rectangle([x0 - 8, y0 - 8, x1 + 8, y1 + 8], radius=12, fill=FIELD_DRK)
-    gap = 12
-    w = ((x1 - x0) - gap * (n - 1)) / n
-    for i in range(n):
-        a = x0 + i * (w + gap)
-        d.rounded_rectangle([a - 5, y0 - 5, a + w + 5, y1 + 5], radius=14, fill=OUTLINE)
-        d.rounded_rectangle([a, y0, a + w, y1], radius=10, fill=(104, 99, 92, 255))
-        d.rounded_rectangle([a + 6, y0 + 6, a + w - 6, y0 + (y1 - y0) * 0.42],
-                            radius=8, fill=(134, 128, 120, 255))
-        d.rounded_rectangle([a + 6, y1 - (y1 - y0) * 0.22, a + w - 6, y1 - 6],
-                            radius=8, fill=(68, 64, 59, 255))
-
-
 def build(body_path, profile):
-    """A chassis inset half a cell inside the canvas, with the port bays protruding out of it.
+    """The chassis and its ports come from vfe_chassis, which draws VFE's measured anatomy;
+    only the machine body is generated."""
+    import vfe_chassis as VC
+    c = VC.Chassis(CW, CH, px=PX, margin=MARGIN)
+    c.base()
 
-    Measured off VFE's own sprites: a thin lit strip around the chassis edge, a deck darker
-    than anything standing on it, and bays that straddle the edge rather than sitting inside a
-    wide pale border.
-    """
-    slab = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(slab)
-
-    x0, y0, x1, y1 = MX, MY, W - MX - 1, H - MY - 1
-    d.rounded_rectangle([x0 - 9, y0 - 9, x1 + 9, y1 + 9], radius=24, fill=OUTLINE)
-    d.rounded_rectangle([x0, y0, x1, y1], radius=18, fill=FRAME)
-    d.rounded_rectangle([x0 + 20, y0 + 20, x1 - 20, y1 - 20], radius=12, fill=FIELD)
-    d.rectangle([x0 + 20, y0 + 20, x1 - 20, y0 + 44], fill=FIELD_LIT)
-    d.rectangle([x0 + 20, y1 - 44, x1 - 20, y1 - 20], fill=FIELD_DRK)
-    for i in range(1, CW):                                   # deck seams on the cell lines
-        x = x0 + i * PX
-        d.line([(x, y0 + 44), (x, y1 - 44)], fill=SEAM, width=4)
-
+    # Fill the deck's width first - the generator returns anywhere from 2:1 to 3:1 and fitting
+    # by whichever axis is tighter left a small machine adrift on a large plate.
     body = to_vfe_palette(_fit.key(body_path), profile)
-    max_w, max_h = int(CW * PX * 0.99), int(CH * PX * 0.58)
-    scale = min(max_w / body.width, max_h / body.height)
+    scale = int(CW * PX * 0.95) / body.width
+    if body.height * scale > CH * PX * 0.66:
+        scale = CH * PX * 0.66 / body.height
     bw, bh = int(body.width * scale), int(body.height * scale)
-    body = body.resize((bw, bh), Image.LANCZOS)
-    slab.alpha_composite(body, ((W - bw) // 2, y0 + int(CH * PX * 0.33) - bh // 2))
+    body = kill_chroma(body.resize((bw, bh), Image.LANCZOS))
+    top = c.y0 + int(PX * 0.18)
+    c.paste(body, ((c.W - bw) // 2, top))
 
-    # The fin bank fills the front rows, the way VFE fill the front of their 5x5 machines.
-    fin_bank(d, x0 + int(PX * 0.30), y0 + int(CH * PX * 0.67),
-                x1 - int(PX * 0.30), y0 + int(CH * PX * 0.87), n=7)
+    c.deck_plates(top + bh + int(PX * 0.22), c.y1 - int(PX * 0.40), n=6)
 
-    # Five bays across the back - the middle one is where gear goes in - one long bay down each
-    # flank covering the two rear spot rows, and the single output bay at the front. The flanks
-    # get one bay rather than one per cell: at VFE's port size a per-cell bay collides with the
-    # back row's corner bay, and that corner cell is fed by either of them anyway.
+    # Six material bays across the back plus the gear-in bay at its centre, one material bay a
+    # cell in from each front corner, and the single output bay at the front.
     mid = CW // 2
-    lip = int(PX * 0.08)
     for i in range(CW):
-        cx = x0 + int((i + 0.5) * PX)
-        port(slab, cx, y0 - lip, CYAN if i == mid else GREEN, "down")
-    for cx, facing in ((x0 - lip, "right"), (x1 + lip, "left")):
-        port(slab, cx, y0 + int(PX * 1.0), GREEN, facing, long_=int(PX * 1.55))
-    port(slab, x0 + int((mid + 0.5) * PX), y1 + lip, ORANGE, "down")
-    return slab
+        c.port(c.x0 + int((i + 0.5) * PX), 'top', 'cyan' if i == mid else 'green')
+    for side in ('left', 'right'):
+        c.port(c.y0 + int(1.5 * PX), side, 'green')
+    c.port(c.x0 + int((mid + 0.5) * PX), 'bottom', 'orange')
+    return c.image()
 
 
 def contrast(im):

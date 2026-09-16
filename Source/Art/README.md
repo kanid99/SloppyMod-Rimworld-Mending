@@ -67,18 +67,34 @@ now does the same: `size (5,5)`, `drawSize (6,6)`, a 1152x1152 sprite whose chas
 the inner five cells. Drawing at `drawSize == size` is what made it read as a small machine
 with cramped ports however large the footprint was.
 
-### The ports are conveyor bays, not markers
+### The ports are drawn to VFE's measured anatomy
 
-They were coloured arrows on a flat plate. Measured against VFE's own sprites, a port is a bay
-cut through the chassis frame: a roller bed of identical plain bars running across the
-direction of travel, a coloured rail down each inner edge, pale end blocks outside those, all
-inside a thick black outline, with a small chevron on the deck pointing the way items move.
-Ours keeps the mod's own legend - green for material intake, cyan for the gear-in spot, orange
-for the output - drawn in that form.
+They are not styled after VFE's ports - they are the same construction, read off their sprites
+pixel by pixel with `vfe_chassis.py` reproducing it. Their machines are authored at 128px per
+map cell; ours at 192, so every number scales by 1.5.
 
-The flanks get ONE long bay per side rather than one per spot cell. At VFE's port size a
-per-cell bay collides with the back row's corner bay, and that corner cell is fed by either of
-them anyway.
+Across a port, as fractions of one cell: divider `.047` | cap `.094` | rail `.055` |
+roller bed `.609` | rail `.055` | cap `.094` | divider `.047`. Neighbouring bays share their
+divider, so ports sit flush at exactly one per cell. A bay runs the full half-cell overhang,
+from the canvas edge to the chassis face.
+
+A roller is a six-step ramp from a `(97,106,119)` crown to a `(60,63,68)` trough, repeating
+every `.125` cell, **with no separator between one roller and the next** - the trough is the
+line. The whole bed darkens by about 38% towards the machine. The chevron on the deck is a
+flat triangle with no outline at all.
+
+### Black is the silhouette, and nothing else
+
+The single biggest style error in the earlier version. Measured against VFE: pure black
+appears only on the outer silhouette, ~7px at their scale. Every division inside the sprite -
+between two adjacent ports, around a bay, between panels - is a 3px `(49,49,49)` dark grey.
+Depth comes from tone: their chassis face is a smooth `(138,134,132)` to `(119,115,113)` ramp
+over ~25px, and nothing is outlined to make it read as raised.
+
+Outlining every element in black gave our sprite a hard-edge density of 70.7 per unit side
+against their 9.0-34.6, and 10.4% near-black pixels against their 6.5%. Drawing it their way
+brought both inside their range (33.6 and 6.1%). The body prompt carries the same rule now:
+one black outline on the silhouette, dark grey or nothing inside it, depth from soft ramps.
 
 ### Palette and contrast
 
@@ -87,7 +103,13 @@ fixed band. The old squeeze into 36-132 left the sprite with no true black outli
 highlights - p1 26, p99 121, against VFE's 0 and 196 - which is what made it read as a flat
 plate beside their machines. The accent test keeps any single saturated colour the body
 carries but excludes magenta hues, because the model sometimes paints a pipe stub in its own
-background colour and that chroma otherwise survives as pink blobs.
+background colour.
+
+`kill_chroma` runs AFTER the body is resized, not before. LANCZOS rings: downscaling a
+saturated orange accent against a dark neighbour overshoots each channel independently, and
+the undershoot on the warm channels beside the overshoot on blue lands as a violet fringe.
+That fringe is created by the resize, so cleaning the source alone never moved the count -
+it went from 3938 stray pixels to 235 once the pass was moved after the resize.
 
 The markers are drawn, not generated, because the C# derives its spot cells from the
 building's rotation; south is the composed chassis, north its 180 turn, east its quarter turn,
@@ -96,7 +118,7 @@ matching what the shipped textures already used.
 ```sh
 python3 gen_repair_center.py         # from this directory, needs a Gemini key
 python3 compose_repair_center.py     # builds and scores every variant
-python3 compose_repair_center.py export repair_w1
+python3 compose_repair_center.py export repair_s3
 ```
 
 ## Store page art
@@ -121,6 +143,7 @@ python3 Source/Art/make_about_art.py      # from the repo root
 | `gen_bench_objects.py` | generates the object sprites (Gemini) |
 | `gen_tools.py` | generates the metalworking tool sprites (Gemini) |
 | `fit.py` | keys a generated body off its background and crops it to the real silhouette |
+| `vfe_chassis.py` | the chassis and the ingress/egress bays, at VFE's measured proportions |
 | `cut.py` | chroma-keys a generated sheet and cuts it into individual objects |
 
 `gen_bench_objects.py` and `gen_tools.py` need a Gemini API key; the cut object PNGs they

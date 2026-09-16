@@ -16,10 +16,15 @@ STYLE = (
     "Vanilla Furniture Expanded - Factory mod.\n\n"
     "VIEW: TRUE overhead, looking straight down. NOT isometric, NOT angled, NOT perspective.\n\n"
     "HOW IT IS DRAWN - this matters more than the subject:\n"
-    "- FLAT GRAPHIC SHADING. Each face is ONE flat tone, or at most a simple two-step gradient. "
-    "NO airbrushing, NO soft photoreal metal, NO glossy reflections, NO specular highlights.\n"
-    "- THICK TRUE BLACK OUTLINES around the whole silhouette and around every major part, with "
-    "thinner black lines separating panels inside it.\n"
+    "- ONE THICK TRUE BLACK OUTLINE around the OUTER SILHOUETTE of the whole machine, and "
+    "NOWHERE ELSE. Inside that silhouette there are NO black lines at all.\n"
+    "- Parts inside the machine are separated by a THIN DARK GREY line, much lighter than the "
+    "outer outline, or by nothing at all - just a change of tone.\n"
+    "- DEPTH COMES FROM SHADING, NOT FROM LINES. A raised part is a soft gradient from a light "
+    "top to a darker edge; a cylinder is a smooth curved ramp light-to-dark across it; a recess "
+    "is a soft dark gradient. Do NOT draw an outline to make something look raised.\n"
+    "- The shading is SMOOTH and SUBTLE - gentle ramps and soft curved highlights, not hard "
+    "steps, not airbrushed photoreal metal, not glossy reflections or specular hotspots.\n"
     "- BOLD SIMPLE SHAPES. A small number of large rectangles and cylinders. Do NOT cover the "
     "machine in small bolts, tiny screws, fine bevels or busy surface detail.\n"
     "- Where there is detail it is a ROW OF IDENTICAL PLAIN BARS - slats, fins or rollers - "
@@ -42,7 +47,7 @@ STYLE = (
 )
 
 BASE = (
-    "SUBJECT: an automated repair machine, seen from above as a nearly square machine. Its "
+    "SUBJECT: an automated repair machine, seen from above as a long wide machine. Its "
     "shape, which must not change:\n"
     "- A large raised rectangular HOOD filling the middle of the machine, its top face a light "
     "flat plate with a row of plain dark LOUVRE SLOTS cut across it.\n"
@@ -54,20 +59,20 @@ BASE = (
     "- A small plain control block centred on the hood's front edge.\n")
 
 TWEAK = {
- "w1": "",
- "w2": "- The hood's top plate is split into three flat panels by two black seams.\n",
- "w3": "- The tanks are wider and lower, and a straight pipe runs along the back edge between "
+ "s1": "",
+ "s2": "- The hood's top plate is split into three flat panels by two black seams.\n",
+ "s3": "- The tanks are wider and lower, and a straight pipe runs along the back edge between "
        "them.\n",
- "w4": "- The louvre slots run front-to-back instead of side-to-side.\n",
- "w5": "- A flat step runs along the front edge below the work slot, in a lighter tone.\n",
- "w6": "- The hood is narrower, leaving a flat panelled deck visible at each side between the "
+ "s4": "- The louvre slots run front-to-back instead of side-to-side.\n",
+ "s5": "- A flat step runs along the front edge below the work slot, in a lighter tone.\n",
+ "s6": "- The hood is narrower, leaving a flat panelled deck visible at each side between the "
        "hood and the tanks.\n",
 }
 
 def gen(item, retries=4):
     name, extra = item
     payload={"contents":[{"parts":[{"text":STYLE+BASE+extra}]}],
-             "generationConfig":{"imageConfig":{"aspectRatio":"4:3"}}}
+             "generationConfig":{"imageConfig":{"aspectRatio":"21:9"}}}
     rp=f"out/repair_{name}.req.json"; json.dump(payload, open(rp,"w"))
     for _ in range(retries):
         r=subprocess.run(["curl","-sS","-X","POST","-H",f"x-goog-api-key: {KEY}",
