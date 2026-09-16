@@ -140,7 +140,7 @@ namespace MendingMod
             // GenRadial.NumCellsInRadius) - anything above that logs a real vanilla Log.Error
             // every time it's hit. bill.ingredientSearchRadius defaults to 999 ("unlimited" in
             // the bill's own UI), so it has to be clamped before being handed to either
-            // GenClosest.ClosestThingReachable or GenRadial.RadialDistinctThingsAround below.
+            // GenClosest.ClosestThingReachable below, and on to vanilla's ingredient search.
             float searchRadius = Mathf.Min(bill.ingredientSearchRadius, 200f);
 
             IngredientCount targetFilter = bill.recipe.ingredients[0];
@@ -214,23 +214,23 @@ namespace MendingMod
             // Two-pass verification: every material cost is located (read-only) before any of
             // it is added to `chosen`. Nothing is reserved or consumed until JobOnThing returns
             // a fully-populated job, so a failed search here leaves no partial state behind.
-            foreach (ThingDefCountClass cost in MendingUtility.GetDynamicIngredientCosts(mendTarget, MendingUtility.GetSkillLevel(mendTarget, pawn)))
+            List<ThingDefCountClass> costs =
+                MendingUtility.GetDynamicIngredientCosts(mendTarget, MendingUtility.GetSkillLevel(mendTarget, pawn));
+
+            List<ThingCount> materials = new List<ThingCount>();
+            if (!TryFindMaterials(costs, pawn, billGiver, searchRadius, materials))
             {
-                List<ThingCount> found = new List<ThingCount>();
-                if (!TryFindMaterial(cost.thingDef, cost.count, pawn, billGiver, searchRadius, found))
-                {
-                    if (Prefs.DevMode)
-                        DevLog(billGiver, $"found target {mendTarget.LabelShort} but missing material {cost.thingDef.defName} x{cost.count} within radius {searchRadius}");
+                if (Prefs.DevMode)
+                    DevLog(billGiver, $"found target {mendTarget.LabelShort} but could not gather {costs.Count} material(s) within radius {searchRadius}");
 
-                    if (!interactive)
-                        bill.nextTickToSearchForIngredients =
-                            Find.TickManager.TicksGame + ReCheckFailedBillTicksRange.RandomInRange;
+                if (!interactive)
+                    bill.nextTickToSearchForIngredients =
+                        Find.TickManager.TicksGame + ReCheckFailedBillTicksRange.RandomInRange;
 
-                    return false;
-                }
-
-                chosen.AddRange(found);
+                return false;
             }
+
+            chosen.AddRange(materials);
 
             // DescribeCost recomputes the whole cost breakdown and allocates its way through two
             // LINQ projections; without this guard it ran on every job created, with the result
@@ -287,51 +287,32 @@ namespace MendingMod
             return t.def.useHitPoints && t.HitPoints < t.MaxHitPoints;
         }
 
-        // Walks the map's index of this material instead of every cell around the bench.
-        // GenRadial.RadialDistinctThingsAround, which this used, sweeps the whole disc: at the
-        // bill's default "unlimited" radius that is the radius-200 clamp, about 125,000 cells -
-        // per material, per bill, per scan, and the full sweep runs every time whenever the
-        // colony is short of a material, because the search can only fail after visiting all of
-        // them. ThingsOfDef visits the handful of stacks that actually exist.
-        private static bool TryFindMaterial(ThingDef materialDef, int countNeeded, Pawn pawn, Thing billGiver, float searchRadius, List<ThingCount> found)
+        // Vanilla's own ingredient locator rather than a bespoke one. Hauling and storage mods
+        // routinely patch this chain - TryFindBestFixedIngredients delegates to the same
+        // TryFindBestIngredientsHelper and set-selection methods every workbench in the game uses
+        // - so mend bills now inherit whatever those mods do instead of quietly opting out.
+        //
+        // It passes bill == null internally, which makes the selection read
+        // IngredientCount.GetBaseCount() directly, so the dynamically computed amounts are used
+        // as-is rather than re-derived from the recipe, which declares no materials at all.
+        private static bool TryFindMaterials(List<ThingDefCountClass> costs, Pawn pawn, Thing billGiver,
+                                             float searchRadius, List<ThingCount> found)
         {
-            List<Thing> stacks = billGiver.Map.listerThings.ThingsOfDef(materialDef);
-            if (stacks.NullOrEmpty())
-                return false;
+            if (costs.NullOrEmpty())
+                return true;
 
-            float radiusSquared = searchRadius * searchRadius;
-            IntVec3 origin = billGiver.Position;
-
-            // Nearest first, matching what the radial sweep gave for free. The candidate list is
-            // the stacks of one material on the map, so this is a short sort.
-            List<Thing> reachable = new List<Thing>();
-            foreach (Thing candidate in stacks)
+            List<IngredientCount> ingredients = new List<IngredientCount>(costs.Count);
+            foreach (ThingDefCountClass cost in costs)
             {
-                if ((candidate.Position - origin).LengthHorizontalSquared > radiusSquared)
-                    continue;
-
-                if (candidate.IsForbidden(pawn) || !pawn.CanReserve(candidate))
-                    continue;
-
-                reachable.Add(candidate);
+                IngredientCount ingredient = new IngredientCount();
+                ingredient.filter.SetAllow(cost.thingDef, true);
+                ingredient.SetBaseCount(cost.count);
+                ingredients.Add(ingredient);
             }
 
-            reachable.Sort((a, b) =>
-                (a.Position - origin).LengthHorizontalSquared.CompareTo(
-                (b.Position - origin).LengthHorizontalSquared));
-
-            int remaining = countNeeded;
-            foreach (Thing candidate in reachable)
-            {
-                if (remaining <= 0)
-                    break;
-
-                int take = Mathf.Min(remaining, candidate.stackCount);
-                found.Add(new ThingCount(candidate, take));
-                remaining -= take;
-            }
-
-            return remaining <= 0;
+            // The helper clears whatever list it is handed, which is why this gets its own rather
+            // than the one already holding the mend target.
+            return TryFindBestFixedIngredients(ingredients, pawn, billGiver, found, searchRadius);
         }
     }
 }
