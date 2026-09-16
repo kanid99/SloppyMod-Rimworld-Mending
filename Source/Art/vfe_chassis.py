@@ -37,6 +37,14 @@ ROLLER = [(0.000, 0.250, (97, 106, 119)),
           (0.875, 0.938, (65,  68,  73)),
           (0.938, 1.000, (60,  63,  68))]
 ROLLER_PERIOD = 16.0              # at REF
+PROTRUDE   = 5.0                  # how far a bay sticks out past the chassis, at REF
+BAY_DEPTH  = 41.0                 # its whole depth, lip to the inboard end of the bed
+
+# Their machining bay's casings, sampled: a desaturated teal running (35,48,53) to (47,87,100),
+# and it covers 16% of that sprite. It is the body accent VFE use, and having none is most of
+# why ours measured a third as colourful as theirs.
+TEAL_LIT = (60, 104, 118)
+TEAL_DRK = (35, 50, 56)
 
 RAILS = {'orange': ((175, 120, 65), (109, 79, 49)),
          'green':  ((91, 175, 94),  (57, 109, 59)),
@@ -199,6 +207,13 @@ class Chassis:
                     continue
                 self.fill([bx0, a, bx1, b], col)
 
+    def work_slot(self, box, accent=(175, 120, 65)):
+        """A dark recess with a thin accent lip along its lower edge - how their machines show
+        a working face without drawing a light source."""
+        x0, y0, x1, y1 = box
+        self.vgrad([x0, y0, x1, y1], (58, 55, 52), (76, 72, 68), radius=int(self.r(6)))
+        self.fill([x0 + self.r(6), y1 - self.r(9), x1 - self.r(6), y1 - self.r(3)], accent)
+
     def inner_bay(self, box, rad=None):
         """A recessed working bay with a chamfered frame - what the machine sits inside."""
         rad = int(self.r(12)) if rad is None else rad
@@ -217,35 +232,38 @@ class Chassis:
 
         Widths, in REF pixels and therefore in VFE's own proportions:
           seam 3 | cap 12 | rail 7 | bed 78 | rail 7 | cap 12 | seam 3   = 122 of a 128 pitch
-        The bay runs the full half-cell overhang, from the canvas edge to the chassis face.
+
+        DEPTH, measured off their assembler rather than assumed: the chassis edge is at y=66,
+        the port's black lip starts at y=58 and its roller bed runs y=65 to y=99. So the bay is
+        41px deep and only EIGHT of those - a sixteenth of a cell - stick out past the chassis.
+        The rest is cut into it. An earlier version ran the bay across the whole half-cell
+        overhang, which left the bays sitting outside the building instead of in it.
         """
-        # Proportions of one cell, measured: bed .609, rail .055, cap .094, and the rest is the
-        # divider. half is exactly half a cell so neighbouring ports sit flush, the way VFE's do -
-        # their adjacent bays share one 6px divider rather than leaving a gap between them.
         bed, rail_w, cap_w = self.r(78), self.r(7), self.r(12)
         half = self.px / 2.0
         seam_w = half - (bed / 2 + rail_w + cap_w)
         lo, hi = RAILS[rail]
 
         vertical = side in ('top', 'bottom')
-        outer = {'top': self.y0 - self.margin * self.px, 'bottom': self.y1 + self.margin * self.px,
-                 'left': self.x0 - self.margin * self.px, 'right': self.x1 + self.margin * self.px}[side]
         face = {'top': self.y0, 'bottom': self.y1, 'left': self.x0, 'right': self.x1}[side]
-        inward = 1.0 if face > outer else -1.0        # from the canvas edge towards the deck
+        inward = 1.0 if side in ('top', 'left') else -1.0     # from that edge towards the deck
+        outer = face - inward * self.r(PROTRUDE)              # barely past the chassis
+        deep = face + inward * self.r(BAY_DEPTH - PROTRUDE)   # and well into it
 
         def rect(a0, a1, d0, d1):
             """across (a) and depth (d) -> a canvas box, whichever edge this port is on."""
             box = [a0, d0, a1, d1] if vertical else [d0, a0, d1, a1]
             return [min(box[0], box[2]), min(box[1], box[3]), max(box[0], box[2]), max(box[1], box[3])]
 
-        self.fill(rect(along - half, along + half, outer, face), SEAM)
-        self.fill(rect(along - half + seam_w, along + half - seam_w, outer, face), CAP)
-        self.fill(rect(along - bed / 2 - rail_w, along + bed / 2 + rail_w, outer, face), lo)
-        self._bed(along, bed, outer, face, inward, rect)
+        self.fill(rect(along - half, along + half, outer, deep), SEAM)
+        self.fill(rect(along - half + seam_w, along + half - seam_w, outer, deep), CAP)
+        self.fill(rect(along - bed / 2 - rail_w, along + bed / 2 + rail_w, outer, deep), lo)
+        self._bed(along, bed, outer, deep, inward, rect)
 
         # The bay's outer lip is part of the machine's silhouette, so it - and only it - is black.
-        lip = self.r(7)
-        self.fill(rect(along - half, along + half, outer, outer + inward * lip), BLACK)
+        # Long enough to meet the chassis outline either side of the bay, so the silhouette
+        # stays unbroken where a port cuts through it.
+        self.fill(rect(along - half, along + half, outer, outer + inward * self.r(11)), BLACK)
 
         if chevron:
             self._chevron(along, face, inward, vertical, lo, bed)
@@ -276,8 +294,11 @@ class Chassis:
 
     def _chevron(self, along, face, inward, vertical, colour, bed):
         """A flat triangle on the chassis face, no outline - exactly how VFE mark flow."""
-        gap, h, w = self.r(9), self.r(13), bed * 0.34
-        base = face + inward * gap
+        # On the bay itself, at its inboard end. Their machines have bare chassis around a port
+        # to put the chevron on; ours is packed with machinery, so a chevron out on the deck
+        # lands on top of a casing.
+        h, w = self.r(11), bed * 0.30
+        base = face + inward * self.r(BAY_DEPTH - PROTRUDE - 15)
         tip = base + inward * h
         pts = ([(along, tip), (along - w / 2, base), (along + w / 2, base)] if vertical
                else [(tip, along), (base, along - w / 2), (base, along + w / 2)])
