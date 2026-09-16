@@ -242,10 +242,21 @@ namespace MendingMod
             if (wasteDef == null || count <= 0 || parent.Map == null)
                 return false;
 
-            Thing waste = ThingMaker.MakeThing(wasteDef);
-            waste.stackCount = Mathf.Min(count, wasteDef.stackLimit);
+            // Spawn the whole amount, in as many stacks as the def's stack limit needs. Clamping
+            // to one stack silently binned the remainder while the buffer was still debited for
+            // all of it - a long-neglected container lost most of what it had accumulated.
+            IntVec3 cell = GetWasteDropCell();
+            int remaining = count;
 
-            GenPlace.TryPlaceThing(waste, GetWasteDropCell(), parent.Map, ThingPlaceMode.Near);
+            while (remaining > 0)
+            {
+                Thing waste = ThingMaker.MakeThing(wasteDef);
+                waste.stackCount = Mathf.Min(remaining, wasteDef.stackLimit);
+                remaining -= waste.stackCount;
+
+                GenPlace.TryPlaceThing(waste, cell, parent.Map, ThingPlaceMode.Near);
+            }
+
             return true;
         }
 

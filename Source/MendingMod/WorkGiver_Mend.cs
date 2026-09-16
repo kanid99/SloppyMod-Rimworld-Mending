@@ -49,11 +49,29 @@ namespace MendingMod
 
             foreach (Bill bill in billGiver.BillStack)
             {
-                if (bill.recipe.workerClass != typeof(RecipeWorker_Mend))
+                // IsAssignableFrom rather than exact type equality, so another mod can subclass
+                // RecipeWorker_Mend to add its own mend recipe and still be picked up here.
+                if (bill.recipe.workerClass == null
+                    || !typeof(RecipeWorker_Mend).IsAssignableFrom(bill.recipe.workerClass))
                 {
                     if (Prefs.DevMode)
-                        DevLog(thing, $"bill '{bill.Label}' workerClass is {bill.recipe.workerClass} not RecipeWorker_Mend");
+                        DevLog(thing, $"bill '{bill.Label}' workerClass is {bill.recipe.workerClass} not a RecipeWorker_Mend");
 
+                    continue;
+                }
+
+                // Vanilla's WorkGiver_DoBill honours this and we did not. Both mend recipes are
+                // offered on the same benches but belong to different work types, so without it a
+                // colonist allowed only Smithing would pick up apparel bills, and vice versa.
+                if (bill.recipe.requiredGiverWorkType != null && bill.recipe.requiredGiverWorkType != def.workType)
+                    continue;
+
+                // Also vanilla's, and the reason recipe skillRequirements exist. Neither of our
+                // recipes declares any, but a mod patching one in should have it respected.
+                SkillRequirement unmet = bill.recipe.FirstSkillRequirementPawnDoesntSatisfy(pawn);
+                if (unmet != null)
+                {
+                    JobFailReason.Is("UnderRequiredSkill".Translate(unmet.minLevel), bill.Label);
                     continue;
                 }
 

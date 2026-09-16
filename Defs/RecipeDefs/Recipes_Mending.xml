@@ -26,6 +26,10 @@
     <description>Repair a damaged piece of apparel. Material and work-time costs scale dynamically with how much HP is missing.</description>
     <jobString>Mending apparel.</jobString>
     <workSkill>Crafting</workSkill>
+    <!-- Both mend recipes sit on the same benches but belong to different work types. Without
+         this, WorkGiver_Mend offers every bill to both of its work givers, so a colonist allowed
+         only Smithing would take apparel bills, and one allowed only Crafting would take weapons. -->
+    <requiredGiverWorkType>Crafting</requiredGiverWorkType>
     <workerClass>MendingMod.RecipeWorker_Mend</workerClass>
     <workAmount>300</workAmount>
     <effectWorking>Tailor</effectWorking>
@@ -60,6 +64,7 @@
     <description>Repair a damaged weapon. Material and work-time costs scale dynamically with how much HP is missing.</description>
     <jobString>Mending weapon.</jobString>
     <workSkill>Crafting</workSkill>
+    <requiredGiverWorkType>Smithing</requiredGiverWorkType>
     <workerClass>MendingMod.RecipeWorker_Mend</workerClass>
     <workAmount>300</workAmount>
     <effectWorking>Smith</effectWorking>

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using RimWorld;
 using Verse;
 using Verse.AI;
@@ -59,9 +58,5 @@ namespace MendingMod
             MendingUtility.AwardSkillXp(targetItem, actor, BaseXpPerMend);
         }
 
-        private static Thing FindMendTarget(List<Thing> ingredients)
-        {
-            return ingredients.FirstOrDefault(t => t.def.useHitPoints && t.HitPoints < t.MaxHitPoints);
-        }
     }
 }
