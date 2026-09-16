@@ -36,6 +36,27 @@ finds nothing and leaves the building untinted.
 python3 rebuild.py && MENDING_MASK=1 python3 rebuild.py
 ```
 
+## Repair centre body
+
+`gen_repair_center.py` asks Gemini for the machine body only; `compose_repair_center.py` keys out
+its magenta ground, pulls it onto VFE Factory's palette, and composites it on a procedurally drawn
+slab with the ten spot markers at exact cell centres.
+
+The palette step HISTOGRAM-MATCHES luminance to VFE's own measured distribution rather than
+squeezing it into a fixed band. The old squeeze into 36-132 left the sprite with no true black
+outline and no highlights - p1 26, p99 121, against VFE's 0 and 196 - which is what made it read
+as a flat plate beside their machines.
+
+The markers are drawn, not generated, because the C# derives its spot cells from the building's
+rotation; south is the composed slab, north its 180 turn, east its quarter turn, matching what
+the shipped textures already used.
+
+```sh
+python3 gen.py                       # from this directory, needs a Gemini key
+python3 compose.py                   # builds and scores every variant
+python3 compose.py export repair_a   # writes the three rotations
+```
+
 ## Store page art
 
 `make_about_art.py` builds `About/Preview.png` (640x360) and `About/ModIcon.png` (256x256) by
