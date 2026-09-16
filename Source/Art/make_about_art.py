@@ -31,10 +31,12 @@ def shadow(img, blur=7, alpha=130, off=(3, 5)):
     return sh.filter(ImageFilter.GaussianBlur(blur)), pad
 
 
-auto = fit('AutomatedMender_south.png', 296)
-hand = fit('TableMending_Manual_north.png', 244)
-elec = fit('TableMending_Electric_north.png', 244)
-placements = ((auto, (324, 74)), (hand, (30, 188)), (elec, (30, 276)))
+# The repair centre is square now (5x5 drawn at 6x6), not the old 5x3 letterbox, so it is
+# sized off the card's height rather than its width.
+auto = fit('AutomatedMender_south.png', 280)
+hand = fit('TableMending_Manual_north.png', 236)
+elec = fit('TableMending_Electric_north.png', 236)
+placements = ((auto, (340, 40)), (hand, (30, 190)), (elec, (30, 274)))
 
 for img, pos in placements:
     assert pos[0] >= 0 and pos[1] >= 0
