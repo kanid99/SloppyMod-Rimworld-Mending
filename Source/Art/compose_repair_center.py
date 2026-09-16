@@ -112,7 +112,11 @@ def build(body_path, profile):
         d.line([(x, 84), (x, H - 96)], fill=(62, 62, 62, 255), width=5)
     d.rounded_rectangle([30, H - 96, W - 31, H - 30], radius=16, fill=SLAB_STEP)
 
-    body = to_vfe_palette(clean(body_path), profile)
+    # clean() keys on magenta hue and leaves the model's faint halo behind, so its bbox
+    # came out far larger than the machine and the fitter then scaled a small body into a
+    # big empty slab. fit.key() floods in from the frame edge and crops to the real body.
+    import fit as _fit
+    body = to_vfe_palette(_fit.key(body_path), profile)
     # Fill as much of the slab as the port strips allow. The first pass capped height at 74%
     # and let that shrink the width too, which left a dead grey field around a small machine -
     # the opposite of how VFE's sprites read, where machinery runs to the edges.

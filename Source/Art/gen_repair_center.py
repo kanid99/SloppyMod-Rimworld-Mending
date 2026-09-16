@@ -35,14 +35,18 @@ VARIANTS = {
     "- Two straight PIPE RUNS along the front and back edges connecting the two housings.\n"),
 
 "repair_b": (
-    "SUBJECT: an automated repair machine. Its shape:\n"
+    "SUBJECT: an automated repair machine. Its shape is PERFECTLY SYMMETRICAL about a vertical "
+    "centre line - the left half and the right half are mirror images:\n"
     "- One large RAISED HOUSING across the entire back edge, lighter on top, casting a dark band "
     "in front of it.\n"
-    "- In front of that, a long RECESSED CHANNEL with a dark rim and a CYAN floor, running the "
-    "full width like a conveyor trough.\n"
-    "- Three squat cylindrical DRUMS standing on the machine, one at each end and one centre-back, "
-    "each with a bright highlight arc on top.\n"
-    "- Thick DUCTING running from the drums down into the channel.\n"),
+    "- A single CONTROL CONSOLE block sitting on that housing EXACTLY IN THE MIDDLE of the "
+    "machine's width, dead centre, equally far from the left end and the right end. It must NOT "
+    "be offset to the left or to the right.\n"
+    "- In front of the housing, a long RECESSED CHANNEL with a dark rim and a CYAN floor, running "
+    "the full width like a conveyor trough.\n"
+    "- Two squat cylindrical DRUMS standing on the machine, one at the far left end and one at the "
+    "far right end, placed symmetrically, each with a bright highlight arc on top.\n"
+    "- Thick DUCTING running from each drum down into the channel, mirrored left and right.\n"),
 
 "repair_c": (
     "SUBJECT: an automated repair machine. Its shape:\n"
