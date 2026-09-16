@@ -29,7 +29,7 @@ namespace MendingMod
         // RimWorld only config-errors on weapons missing a tech level, so apparel (especially
         // modded) is routinely Undefined; that case falls through to the material check rather
         // than being treated as too advanced, which would quietly block a lot of modded gear.
-        public static TechLevel GetEffectiveTechLevel(Thing item)
+        public static TechLevel GetEffectiveTechLevel(Thing item, List<ThingDefCountClass> costs = null)
         {
             TechLevel tech = item.def.techLevel;
 
@@ -42,7 +42,7 @@ namespace MendingMod
             if (item.Stuff != null && SpacerMaterials.Contains(item.Stuff.defName))
                 return TechLevel.Spacer;
 
-            List<ThingDefCountClass> costs = CostListCalculator.CostListAdjusted(item);
+            costs = costs ?? CostListCalculator.CostListAdjusted(item);
             if (!costs.NullOrEmpty())
             {
                 foreach (ThingDefCountClass cost in costs)
@@ -157,25 +157,29 @@ namespace MendingMod
 
             MendingTechLimitExtension limits = benchDef?.GetModExtension<MendingTechLimitExtension>();
 
+            // Looked up once and handed to both checks below. This runs for every candidate in the
+            // work giver's target search, and both of them used to fetch it independently.
+            List<ThingDefCountClass> costs = CostListCalculator.CostListAdjusted(item);
+
             // Separate from the tech-level cap on purpose: plenty of industrial-tier gear is built
             // around components, and a bench with no power has no way to rebuild one.
-            if (limits != null && !limits.allowComponents && NeedsComponents(item))
+            if (limits != null && !limits.allowComponents && NeedsComponents(item, costs))
                 return false;
 
             TechLevel cap = limits?.maxTechLevel ?? TechLevel.Archotech;
-            TechLevel tech = GetEffectiveTechLevel(item);
+            TechLevel tech = GetEffectiveTechLevel(item, costs);
 
             return tech == TechLevel.Undefined || tech <= cap;
         }
 
         // Reads the stuff-adjusted cost list rather than the raw def, so a component only counts
         // when this particular item actually needed one.
-        public static bool NeedsComponents(Thing item)
+        public static bool NeedsComponents(Thing item, List<ThingDefCountClass> costs = null)
         {
             if (item.Stuff == ThingDefOf.ComponentIndustrial || item.Stuff == ThingDefOf.ComponentSpacer)
                 return true;
 
-            List<ThingDefCountClass> costs = CostListCalculator.CostListAdjusted(item);
+            costs = costs ?? CostListCalculator.CostListAdjusted(item);
             if (costs.NullOrEmpty())
                 return false;
 

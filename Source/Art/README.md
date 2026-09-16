@@ -36,6 +36,17 @@ finds nothing and leaves the building untinted.
 python3 rebuild.py && MENDING_MASK=1 python3 rebuild.py
 ```
 
+## Store page art
+
+`make_about_art.py` builds `About/Preview.png` (640x360) and `About/ModIcon.png` (256x256) by
+compositing the real building sprites, so the store page cannot drift from what is in the game.
+RimWorld looks for both at those exact filenames under `About/` - see `ModMetaData.PreviewImagePath`
+and `ModIconImagePath` - so no `modIconPath` entry is needed. Re-run it after any texture change:
+
+```sh
+python3 Source/Art/make_about_art.py      # from the repo root
+```
+
 ## Scripts
 
 | script | builds |

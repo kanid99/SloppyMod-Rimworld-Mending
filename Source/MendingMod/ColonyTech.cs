@@ -12,7 +12,8 @@ namespace MendingMod
     public static class ColonyTech
     {
         // Share of a tier's projects that must be done before the colony counts as that tier.
-        private const float TierShareNeeded = 0.5f;
+        // Player-tunable; the settings window invalidates the cache when it moves.
+        private static float TierShareNeeded => MendingModMain.Settings.techTierThreshold;
 
         // Ascending, so the last tier that clears the bar wins.
         private static readonly TechLevel[] Tiers =

@@ -204,8 +204,12 @@
       <Steel>250</Steel>
       <ComponentIndustrial>6</ComponentIndustrial>
       <ComponentSpacer>4</ComponentSpacer>
-      <!-- A basic subcore is added at startup by MendingMod.MendingDefPatches rather than named
-           here, so the def is resolved against whatever this install actually has. -->
+      <!-- NOT THE WHOLE COST. MendingMod.MendingDefPatches appends a basic subcore to this list
+           at StaticConstructorOnStartup, so what the game charges is this plus one subcore. It is
+           done in C# rather than named here so the def is resolved against whatever this install
+           actually has, instead of raising a config error where it does not exist. Anything
+           reading this list before that static constructor runs will see the short version. The
+           same file also attaches this building's research prerequisites. -->
     </costList>
     <altitudeLayer>Building</altitudeLayer>
     <passability>PassThroughOnly</passability>

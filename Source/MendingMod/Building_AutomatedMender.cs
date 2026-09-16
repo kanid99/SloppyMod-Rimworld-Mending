@@ -24,6 +24,10 @@ namespace MendingMod
     {
         private const int FixedSkillLevel = 10;
 
+        // TryEject retries on the 30-tick idle scan, so this is roughly two in-game minutes of a
+        // blocked output spot before the machine gives up and puts the item down nearby.
+        private const int BlockedEjectsBeforeScatter = 240;
+
         // Built in a static constructor context so the materials are created after the graphics
         // system is up, which is what [StaticConstructorOnStartup] guarantees.
         private static readonly Material BarFilledMat =
@@ -37,6 +41,7 @@ namespace MendingMod
         private Thing currentItem;
         private int workTicksRemaining;
         private int workTicksTotal;
+        private int blockedEjects;
         private MenderState state = MenderState.Idle;
         private string idleReason;
 
@@ -62,6 +67,7 @@ namespace MendingMod
             Scribe_References.Look(ref currentItem, "currentItem");
             Scribe_Values.Look(ref workTicksRemaining, "workTicksRemaining");
             Scribe_Values.Look(ref workTicksTotal, "workTicksTotal");
+            Scribe_Values.Look(ref blockedEjects, "blockedEjects");
             Scribe_Values.Look(ref state, "state");
         }
 
@@ -168,10 +174,17 @@ namespace MendingMod
         // building carries no cap by default.
         private bool IsMendable(Thing thing)
         {
-            return (thing.def.IsApparel || thing.def.IsWeapon)
-                && thing.def.useHitPoints
-                && thing.HitPoints < thing.MaxHitPoints
+            return IsDamagedGear(thing)
+                && !IsOffLimits(thing)
                 && MendingUtility.CanBenchRepair(def, thing);
+        }
+
+        // Both pawn benches honour forbidding; the machine did not, so it would happily swallow a
+        // stack the player had explicitly set aside. Forbidding is the natural way to say "not
+        // this one", and it should mean the same thing on a spot as it does anywhere else.
+        private bool IsOffLimits(Thing thing)
+        {
+            return thing.IsForbidden(Faction ?? Faction.OfPlayer);
         }
 
         // Same test minus the tech gates, so a rejected item can be named as rejected rather
@@ -191,17 +204,38 @@ namespace MendingMod
                 return;
             }
 
-            Thing damagedItem = ThingsOn(ItemInputCell).FirstOrDefault(IsMendable);
+            // One pass over the item spot, not two. The old pair of FirstOrDefault calls walked
+            // it twice on the idle path - the common case - once to look for work and again to
+            // name what it had turned down.
+            Thing damagedItem = null;
+            Thing rejected = null;
+
+            foreach (Thing thing in ThingsOn(ItemInputCell))
+            {
+                if (!IsDamagedGear(thing))
+                    continue;
+
+                if (IsMendable(thing))
+                {
+                    damagedItem = thing;
+                    break;
+                }
+
+                if (rejected == null)
+                    rejected = thing;
+            }
+
             if (damagedItem == null)
             {
-                Thing rejected = ThingsOn(ItemInputCell).FirstOrDefault(IsDamagedGear);
                 idleReason = rejected != null
                     ? "DynamicMending.MenderCannotRepair".Translate(rejected.LabelShortCap)
                     : "DynamicMending.MenderNoItem".Translate();
                 return;
             }
 
-            List<Thing> available = ThingsOn(ResourceInputCells).Where(t => t != damagedItem).ToList();
+            List<Thing> available = ThingsOn(ResourceInputCells)
+                .Where(t => t != damagedItem && !IsOffLimits(t))
+                .ToList();
             List<ThingDefCountClass> costs = MendingUtility.GetDynamicIngredientCosts(damagedItem, FixedSkillLevel, ignoreResearch: true);
 
             // Pass 1: verify every material is available before touching anything.
@@ -337,6 +371,28 @@ namespace MendingMod
             {
                 currentItem = null;
                 idleReason = null;
+                blockedEjects = 0;
+                state = MenderState.Idle;
+                return;
+            }
+
+            // Waiting on the spot is right for a stockpile being filled or a belt that has not
+            // come round yet. It is wrong if the spot has been made permanently unusable - a wall
+            // built over it, say - because then the item is held forever and the only way to get
+            // it back is to uninstall the machine. After a couple of in-game minutes of refusals,
+            // put it down nearby instead of hoarding it.
+            blockedEjects++;
+            if (blockedEjects >= BlockedEjectsBeforeScatter
+                && innerContainer.Contains(currentItem)
+                && innerContainer.TryDrop(currentItem, Position, Map, ThingPlaceMode.Near, out _))
+            {
+                Messages.Message(
+                    "DynamicMending.MenderOutputUnreachable".Translate(currentItem.LabelShortCap, Label),
+                    new TargetInfo(Position, Map), MessageTypeDefOf.CautionInput, historical: false);
+
+                currentItem = null;
+                idleReason = null;
+                blockedEjects = 0;
                 state = MenderState.Idle;
                 return;
             }

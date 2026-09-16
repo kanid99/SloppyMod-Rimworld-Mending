@@ -36,6 +36,30 @@ namespace MendingMod
 
         public QualityLossMode qualityLossMode = QualityLossMode.Always;
 
+        // Share of a tech tier's research projects the colony must have finished before it counts
+        // as operating at that tier. See ColonyTech.
+        public float techTierThreshold = 0.5f;
+
+        // Field-by-field rather than replacing the settings object, because Mod.GetSettings hands
+        // out a single instance that everything else already holds a reference to.
+        public void ResetToDefaults()
+        {
+            MendingModSettings defaults = new MendingModSettings();
+
+            generateWaste = defaults.generateWaste;
+            degradationMultiplier = defaults.degradationMultiplier;
+            simpleMode = defaults.simpleMode;
+            simpleModeSteelPerRepair = defaults.simpleModeSteelPerRepair;
+            repairWorkMultiplier = defaults.repairWorkMultiplier;
+            enforceTechLimits = defaults.enforceTechLimits;
+            penaliseUnresearched = defaults.penaliseUnresearched;
+            enableTechRequirements = defaults.enableTechRequirements;
+            requireResources = defaults.requireResources;
+            hpLossOnFailure = defaults.hpLossOnFailure;
+            qualityLossMode = defaults.qualityLossMode;
+            techTierThreshold = defaults.techTierThreshold;
+        }
+
         public override void ExposeData()
         {
             base.ExposeData();
@@ -50,6 +74,7 @@ namespace MendingMod
             Scribe_Values.Look(ref requireResources, "requireResources", true);
             Scribe_Values.Look(ref hpLossOnFailure, "hpLossOnFailure", true);
             Scribe_Values.Look(ref qualityLossMode, "qualityLossMode", QualityLossMode.Always);
+            Scribe_Values.Look(ref techTierThreshold, "techTierThreshold", 0.5f);
         }
     }
 
@@ -162,6 +187,19 @@ namespace MendingMod
                     "Penalise repairs beyond your research",
                     ref Settings.penaliseUnresearched,
                     24f);
+
+                listing.Label($"    Counts as a tech tier at: {Settings.techTierThreshold:P0} of its research");
+                float threshold = listing.Slider(Settings.techTierThreshold, 0.05f, 1f);
+                if (!Mathf.Approximately(threshold, Settings.techTierThreshold))
+                {
+                    Settings.techTierThreshold = threshold;
+                    // The colony's tech level is cached; without this the change would not be
+                    // felt until the next hourly recount.
+                    ColonyTech.Invalidate();
+                }
+
+                listing.Label("    Research below your colony's tech level is ignored when judging "
+                            + "whether you know how to build an item.");
             }
 
             listing.Gap();
@@ -170,6 +208,13 @@ namespace MendingMod
             listing.Label($"Degradation multiplier: {Settings.degradationMultiplier:F2}");
             Settings.degradationMultiplier = listing.Slider(Settings.degradationMultiplier, 0.0f, 2.0f);
             listing.Label("Scales failure chance, how much a failure costs, and how fast waste builds up.");
+
+            listing.Gap();
+            if (listing.ButtonText("Reset to defaults"))
+            {
+                Settings.ResetToDefaults();
+                ColonyTech.Invalidate();
+            }
 
             listing.End();
             base.DoSettingsWindowContents(inRect);
