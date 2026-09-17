@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    Coverage is the chance a random hit lands on that part, and the chassis keeps whatever its
+    children do not claim - a BodyPartRecord's own coverage is relative to its parent, and the
+    core part's is always 1. The numbers below leave the chassis about 40% of hits, so most
+    damage is absorbed by the shell rather than going straight into the core.
+
+    Depth Inside means a part cannot be hit until the covering part is destroyed, which is what
+    keeps the logic core behind the chassis. The drive wheels and brush are Outside: they are on
+    the underside of a disc that sits on the floor, and they are meant to be the things that
+    break first.
+  -->
+
+  <BodyDef>
+    <defName>Riimba</defName>
+    <label>riimba chassis</label>
+    <corePart>
+      <def>RiimbaChassis</def>
+      <height>Middle</height>
+      <depth>Outside</depth>
+      <groups>
+        <li>Torso</li>
+      </groups>
+      <parts>
+
+        <li>
+          <def>RiimbaLogicCore</def>
+          <coverage>0.10</coverage>
+          <height>Middle</height>
+          <depth>Inside</depth>
+          <groups>
+            <li>Torso</li>
+          </groups>
+        </li>
+
+        <li>
+          <def>RiimbaWasteBin</def>
+          <coverage>0.14</coverage>
+          <height>Middle</height>
+          <depth>Inside</depth>
+          <groups>
+            <li>Torso</li>
+          </groups>
+        </li>
+
+        <li>
+          <def>RiimbaSensorRing</def>
+          <coverage>0.08</coverage>
+          <height>Top</height>
+          <depth>Outside</depth>
+          <groups>
+            <li>FullHead</li>
+            <li>Eyes</li>
+          </groups>
+        </li>
+
+        <li>
+          <def>RiimbaBrushHead</def>
+          <coverage>0.12</coverage>
+          <height>Bottom</height>
+          <depth>Outside</depth>
+          <groups>
+            <li>RiimbaBrushHead</li>
+          </groups>
+        </li>
+
+        <!-- Two wheels, one record each. The Mirrored tag on the def is what turns these into
+             "left drive wheel" and "right drive wheel" instead of two identical entries. -->
+        <li>
+          <def>RiimbaDriveWheel</def>
+          <coverage>0.08</coverage>
+          <height>Bottom</height>
+          <depth>Outside</depth>
+          <groups>
+            <li>Legs</li>
+          </groups>
+        </li>
+
+        <li>
+          <def>RiimbaDriveWheel</def>
+          <coverage>0.08</coverage>
+          <height>Bottom</height>
+          <depth>Outside</depth>
+          <groups>
+            <li>Legs</li>
+          </groups>
+        </li>
+
+      </parts>
+    </corePart>
+  </BodyDef>
+
+</Defs>

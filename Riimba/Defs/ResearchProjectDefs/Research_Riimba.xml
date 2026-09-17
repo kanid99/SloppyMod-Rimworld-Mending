@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    Vanilla prerequisites are NOT named here, for the same reason as the mending mod:
+    RiimbaMod.RiimbaDefPatches attaches them at startup, resolving each defName against the
+    loaded database and skipping any this install lacks, rather than raising a config error on
+    every load. This project ends up requiring Basic Mechtech and Fabrication.
+  -->
+
+  <ResearchProjectDef>
+    <defName>RiimbaCleaning</defName>
+    <label>riimba drones</label>
+    <description>Build a Riimba control station and gestate the cleaning drones it drives. The station carries the basic subcore that does the thinking; the drones themselves are little more than a brush, a bin and two wheels.</description>
+    <baseCost>2000</baseCost>
+    <techLevel>Spacer</techLevel>
+    <researchViewX>15.00</researchViewX>
+    <researchViewY>4.20</researchViewY>
+  </ResearchProjectDef>
+
+</Defs>

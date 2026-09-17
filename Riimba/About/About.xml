@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>SloppyMods Riimba</name>
+  <author>SloppyMod</author>
+  <packageId>sloppymod.riimba</packageId>
+  <!-- 1.6 only, for the same reason as the mending mod: the assembly is built against 1.6
+       signatures (Thing.Tick and Thing.DrawAt are protected there and were public in 1.4/1.5),
+       so it cannot load on earlier versions. Listing them would give those players a mod that
+       installs and silently does nothing. -->
+  <supportedVersions>
+    <li>1.6</li>
+  </supportedVersions>
+  <description>Riimba is a semi-autonomous cleaning drone. It is not an independent mechanoid: it is a dumb chassis driven by a control station, and it only works inside that station's broadcast radius.
+
+Gestate Riimba units at a mech gestator like any other light mech - they take steel and components, no subcore of their own. The brain lives in the control station instead, which needs a basic subcore to build. One station drives up to three units within ten tiles, charges them at its docking bays, and takes their collected waste.
+
+A working Riimba fills up. Ordinary dirt, ash and sludge pack down into recyclable trash; blood, vomit and other bodily fluids are sealed into wastepacks instead. A unit returns to its station when its bin is full or its charge runs low, and the station puts the waste out on its output spot for a hauler.
+
+Requires Biotech (mech gestator, subcores) and Vanilla Recycling Expanded (trash).</description>
+  <modDependencies>
+    <li>
+      <packageId>Ludeon.RimWorld.Biotech</packageId>
+      <displayName>Biotech</displayName>
+    </li>
+    <li>
+      <packageId>VanillaExpanded.Recycling</packageId>
+      <displayName>Vanilla Recycling Expanded</displayName>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>Ludeon.RimWorld.Biotech</li>
+    <li>VanillaExpanded.Recycling</li>
+  </loadAfter>
+</ModMetaData>

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <ThingDef ParentName="BuildingBase">
+    <defName>RiimbaStation</defName>
+    <label>riimba control station</label>
+    <description>The brain and the garage for a team of Riimba cleaning drones. A basic subcore inside plans the routes; the drones themselves only execute them, and they stop dead outside the station's broadcast radius.
+
+Select it to see that radius and its three docking bays, which sit along the edge it faces. Up to three units sign on to one station. A docked unit charges and hands over whatever it has collected, and the station puts that waste down on the spot behind it - trash from ordinary dirt, wastepacks from anything that came out of a body.
+
+Needs power to command and to charge. Cut the power and every unit signed on to it parks and waits.</description>
+    <thingClass>RiimbaMod.Building_RiimbaStation</thingClass>
+    <!-- Without this the def defaults to TickerType.Never and Tick() never runs, so the station
+         never charges a docked unit, never drains its waste buffer, and never notices that a
+         unit it is holding a slot for has been destroyed. -->
+    <tickerType>Normal</tickerType>
+    <graphicData>
+      <texPath>Things/Building/Riimba/RiimbaStation</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <!-- Authored at the footprint's exact 3:1 aspect, so the art lands inside its own cells
+           with no overhang, same as the mending benches. -->
+      <drawSize>(3,1)</drawSize>
+      <damageData>
+        <cornerTL>Damage/Corner</cornerTL>
+        <cornerTR>Damage/Corner</cornerTR>
+        <cornerBL>Damage/Corner</cornerBL>
+        <cornerBR>Damage/Corner</cornerBR>
+      </damageData>
+    </graphicData>
+    <size>(3,1)</size>
+    <costList>
+      <Steel>120</Steel>
+      <ComponentIndustrial>4</ComponentIndustrial>
+      <!-- NOT THE WHOLE COST. RiimbaMod.RiimbaDefPatches appends a basic subcore to this list at
+           StaticConstructorOnStartup, so what the game charges is this plus one subcore. It is
+           done in C# rather than named here so the def resolves against whatever this install
+           actually has, instead of raising a config error where it does not exist. The same
+           file attaches this building's research prerequisites. -->
+    </costList>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <pathCost>50</pathCost>
+    <fillPercent>0.5</fillPercent>
+    <constructEffect>ConstructMetal</constructEffect>
+    <designationCategory>Production</designationCategory>
+    <rotatable>true</rotatable>
+    <!-- Uninstall and reinstall without losing the team: Building_RiimbaStation.DeSpawn hands
+         its units back rather than stranding them bound to a building in a crate. -->
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <constructionSkillPrerequisite>6</constructionSkillPrerequisite>
+    <!-- Draws the broadcast radius and the docking bays while the building is still on the
+         cursor, so its orientation and reach can be judged before it is committed. -->
+    <placeWorkers>
+      <li>RiimbaMod.PlaceWorker_RiimbaStation</li>
+    </placeWorkers>
+    <statBases>
+      <MaxHitPoints>200</MaxHitPoints>
+      <WorkToBuild>4000</WorkToBuild>
+      <Mass>40</Mass>
+      <Flammability>0.4</Flammability>
+      <Beauty>-4</Beauty>
+    </statBases>
+    <researchPrerequisites>
+      <li>RiimbaCleaning</li>
+    </researchPrerequisites>
+    <!-- Reach and team size are a mod extension rather than a comp: they are constants read off
+         the def, with no per-building state to save, and a comp whose only job is to carry
+         three numbers is a comp that has to be looked up on every call for nothing. -->
+    <modExtensions>
+      <li Class="RiimbaMod.RiimbaStationExtension">
+        <radius>10</radius>
+        <maxUnits>3</maxUnits>
+        <!-- Watts added per unit actually charging on a bay. -->
+        <powerPerChargingUnit>150</powerPerChargingUnit>
+      </li>
+    </modExtensions>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <!-- Idle command draw. Charging a docked unit adds to this - see Building_RiimbaStation,
+             which raises PowerOutput while any bay is occupied. -->
+        <basePowerConsumption>100</basePowerConsumption>
+      </li>
+      <li Class="CompProperties_Flickable" />
+      <li Class="RiimbaMod.CompProperties_RiimbaWasteBuffer">
+        <!-- One whole waste item per unit of buffered filth. -->
+        <wasteBufferThreshold>1</wasteBufferThreshold>
+        <!-- Bodily fluids. Biotech's wastepack is the only sealed bio-waste item that is
+             guaranteed present (Biotech is a hard dependency), and Vanilla Recycling Expanded
+             already knows how to process one into a reclaimed biopack, so the pipeline the
+             player has is the pipeline this feeds. Override here to point it at any other
+             mod's biowaste item. -->
+        <bioWasteDefNames>
+          <li>Wastepack</li>
+        </bioWasteDefNames>
+        <bioWasteLabel>wastepack</bioWasteLabel>
+        <!-- VRecyclingE_Trash is Vanilla Recycling Expanded's "trash"; the rest are fallbacks
+             for other recycling mods. -->
+        <trashWasteDefNames>
+          <li>VRecyclingE_Trash</li>
+          <li>VRE_Trash</li>
+          <li>VRE_TrashBag</li>
+          <li>Trash</li>
+        </trashWasteDefNames>
+        <trashWasteLabel>trash</trashWasteLabel>
+      </li>
+    </comps>
+  </ThingDef>
+
+</Defs>

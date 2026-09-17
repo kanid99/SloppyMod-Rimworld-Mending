@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    A Riimba is a real mechanoid pawn, not a moving Thing. That buys the whole pawn stack for
+    free - pathfinding, doors, reservations so three units never fight over the same puddle,
+    damage and repair, and the cleaning job itself - none of which a custom Thing gets without
+    reimplementing it badly.
+
+    What it deliberately does NOT get is a mechanitor. Vanilla mech control hangs entirely off
+    CompOverseerSubject: MechanitorUtility.EverControllable is literally "mech.OverseerSubject
+    != null". BaseMechanoidWalker carries that comp, so RiimbaDefPatches strips it at startup -
+    see the comment there. Without it this unit is never assigned to a control group, never
+    costs bandwidth, and never goes feral for want of an overseer. Its orders come from the
+    control station instead, which is the whole point of the design.
+
+    The same removal is why the charge lives in CompRiimbaUnit rather than vanilla's
+    Need_MechEnergy: that need is gated on playerMechsOnly AND OverseerSubject != null
+    (Pawn_NeedsTracker.ShouldHaveNeed), so a unit with no overseer subject would never be given
+    one and would run forever.
+  -->
+
+  <ThingDef ParentName="BaseMechanoidWalker">
+    <defName>Riimba</defName>
+    <label>riimba</label>
+    <description>A knee-high cleaning drone: a sealed disc on two drive wheels with a brush head underneath and a sensor ring on top. It has no judgement of its own worth speaking of - the thinking is done by a control station, and a Riimba outside its station's broadcast radius is an expensive doorstop.
+
+Inside that radius it works steadily and without complaint, scrubbing a room down to bare floor and packing what it lifts into its bin. Dirt, ash and machine sludge compress into recyclable trash. Blood and other bodily fluids are sealed off separately, because nobody wants that going through a trash press.
+
+When the bin fills or the charge runs low it drives itself back to a docking bay, hands over what it collected, and tops up.</description>
+    <statBases>
+      <!-- Slower than a colonist. It is a floor-scrubber, not a courier, and a drone that
+           outruns the people it works around reads wrong. -->
+      <MoveSpeed>2.6</MoveSpeed>
+      <!-- The reason to build these at all: it cleans about twice as fast as an unskilled
+           colonist and never gets bored, tired or hungry. -->
+      <CleaningSpeed>2.0</CleaningSpeed>
+      <ArmorRating_Blunt>0.10</ArmorRating_Blunt>
+      <ArmorRating_Sharp>0.20</ArmorRating_Sharp>
+      <ArmorRating_Heat>0.20</ArmorRating_Heat>
+      <!-- Zero, and deliberately so. A Riimba is driven by its station, so charging a
+           mechanitor bandwidth for one would be taxing them for something they do not control.
+           The gestation bill still runs through a mechanitor (see Recipes_Riimba.xml) and
+           Bill_ProductionMech sums BandwidthCost over overseen pawns, so this has to be 0
+           rather than absent. -->
+      <BandwidthCost>0</BandwidthCost>
+      <MarketValue>500</MarketValue>
+      <Mass>18</Mass>
+    </statBases>
+    <tools>
+      <li>
+        <label>brush head</label>
+        <capacities>
+          <li>Blunt</li>
+        </capacities>
+        <!-- Barely a weapon. It exists because melee code needs the pawn to have some tool to
+             reach for, not because anyone should send a vacuum into a fight. -->
+        <power>4.0</power>
+        <cooldownTime>2.2</cooldownTime>
+        <linkedBodyPartsGroup>RiimbaBrushHead</linkedBodyPartsGroup>
+        <ensureLinkedBodyPartsGroupAlwaysUsable>true</ensureLinkedBodyPartsGroupAlwaysUsable>
+      </li>
+    </tools>
+    <race>
+      <body>Riimba</body>
+      <baseBodySize>0.45</baseBodySize>
+      <baseHealthScale>0.45</baseHealthScale>
+      <mechWeightClass>Light</mechWeightClass>
+      <!-- The custom tree is what makes this a station drone instead of a mechanitor's mech.
+           It is small and owns every node, so it never depends on a vanilla subtree name. -->
+      <thinkTreeMain>Riimba_Main</thinkTreeMain>
+      <!-- Declared in full rather than inherited so the count here and the count of
+           PawnKindDef.lifeStages below cannot drift: Pawn_AgeTracker.CurKindLifeStage indexes
+           kindDef.lifeStages by a life stage index bounded by THIS list, and the mech gestator
+           dereferences CurKindLifeStage.bodyGraphicData while drawing the forming mech, so a
+           short list there is a null reference in the middle of gestation. -->
+      <lifeStageAges Inherit="False">
+        <li>
+          <def>MechanoidFullyFormed</def>
+          <minAge>0</minAge>
+          <soundWounded>Pawn_Mech_Legionary_Wounded</soundWounded>
+          <soundDeath>Pawn_Mech_Legionary_Death</soundDeath>
+          <soundCall>Pawn_Mech_Legionary_Call</soundCall>
+        </li>
+        <li>
+          <def>MechanoidFullyFormed</def>
+          <minAge>100</minAge>
+          <soundWounded>Pawn_Mech_Legionary_Wounded</soundWounded>
+          <soundDeath>Pawn_Mech_Legionary_Death</soundDeath>
+          <soundCall>Pawn_Mech_Legionary_Call</soundCall>
+        </li>
+      </lifeStageAges>
+    </race>
+    <comps>
+      <li Class="RiimbaMod.CompProperties_RiimbaUnit">
+        <!-- A full charge is 2.5 in-game days of continuous cleaning, or 10 days idling.
+             Returning at 25% leaves far more than enough to cross a ten tile radius. -->
+        <chargeFallPerDayWorking>0.40</chargeFallPerDayWorking>
+        <chargeFallPerDayIdle>0.10</chargeFallPerDayIdle>
+        <chargeGainPerDayDocked>6.0</chargeGainPerDayDocked>
+        <returnChargeFraction>0.25</returnChargeFraction>
+        <!-- Enough filth for roughly six items of waste before a trip back. -->
+        <binCapacity>6.0</binCapacity>
+      </li>
+    </comps>
+  </ThingDef>
+
+  <PawnKindDef ParentName="BaseMechanoidKind">
+    <defName>Riimba</defName>
+    <label>riimba</label>
+    <race>Riimba</race>
+    <combatPower>15</combatPower>
+    <!-- Never a raid mech and never a fighter: this thing has a brush and no gun. -->
+    <allowInMechClusters>false</allowInMechClusters>
+    <isFighter>false</isFighter>
+    <lifeStages>
+      <li>
+        <bodyGraphicData>
+          <texPath>Things/Pawn/Riimba/Riimba</texPath>
+          <graphicClass>Graphic_Multi</graphicClass>
+          <shaderType>Cutout</shaderType>
+          <drawSize>1.1</drawSize>
+          <shadowData>
+            <volume>(0.32, 0.20, 0.32)</volume>
+          </shadowData>
+        </bodyGraphicData>
+      </li>
+      <li>
+        <bodyGraphicData>
+          <texPath>Things/Pawn/Riimba/Riimba</texPath>
+          <graphicClass>Graphic_Multi</graphicClass>
+          <shaderType>Cutout</shaderType>
+          <drawSize>1.1</drawSize>
+          <shadowData>
+            <volume>(0.32, 0.20, 0.32)</volume>
+          </shadowData>
+        </bodyGraphicData>
+      </li>
+    </lifeStages>
+  </PawnKindDef>
+
+</Defs>

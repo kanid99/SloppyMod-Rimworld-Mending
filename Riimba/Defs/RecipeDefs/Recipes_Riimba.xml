@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    Written out in full rather than inheriting a vanilla abstract recipe. The mech gestation
+    bases do exist (Vanilla Factions Expanded uses MediumMechanoidRecipe and
+    HeavyMechanoidRecipe), but inheriting one would silently pull in that tier's ingredients,
+    research and gestator - and this recipe is deliberately unlike any of them: no subcore.
+
+    Three fields carry the whole gestator contract, and all three are load-bearing:
+
+      gestationCycles > 0   is what makes BillUtility.MakeNewBill hand back a Bill_ProductionMech
+                            instead of a plain Bill_Production. Building_MechGestator.Tick casts
+                            its active bill to Bill_Mech unconditionally, so a bill of any other
+                            class on that table is a null reference on the next tick.
+
+      products              must name a PAWN ThingDef. Bill_ProductionMech.CreateProducts looks
+                            up the PawnKindDef whose race is this def and generates it, and
+                            Notify_FormingCompleted casts the result to Pawn and reads its
+                            kindDef. An item product would be a null reference there.
+
+      mechanitorOnlyRecipe  keeps non-mechanitors out. Bill_Mech.PawnAllowedToStartAnew calls
+                            p.mechanitor.HasBandwidthForBill, and p.mechanitor is null for
+                            anyone without a mechlink; the base class's mechanitorOnlyRecipe
+                            check runs first and returns false, which is what stops that being
+                            a null reference. Vanilla's own mech recipes all set it.
+
+    So gestating a Riimba needs a mechanitor, same as any mech. It costs that mechanitor no
+    bandwidth once built, because the unit's BandwidthCost stat is 0 and its orders come from a
+    control station instead - see Riimba.xml.
+  -->
+
+  <RecipeDef>
+    <defName>Riimba_Gestate</defName>
+    <label>gestate riimba</label>
+    <description>Gestate a Riimba cleaning drone. Unlike a combat mech it carries no subcore of its own - the thinking is done by the control station that drives it, so a drone gestated with no station built is an expensive paperweight until one is.</description>
+    <jobString>Gestating a riimba.</jobString>
+    <workAmount>800</workAmount>
+    <!-- One cycle at half a day. A Riimba is the cheapest thing the gestator can make. -->
+    <gestationCycles>1</gestationCycles>
+    <formingTicks>30000</formingTicks>
+    <mechanitorOnlyRecipe>true</mechanitorOnlyRecipe>
+    <researchPrerequisite>RiimbaCleaning</researchPrerequisite>
+    <recipeUsers>
+      <li>MechGestator</li>
+    </recipeUsers>
+    <ingredients>
+      <li>
+        <filter>
+          <thingDefs>
+            <li>Steel</li>
+          </thingDefs>
+        </filter>
+        <count>60</count>
+      </li>
+      <li>
+        <filter>
+          <thingDefs>
+            <li>ComponentIndustrial</li>
+          </thingDefs>
+        </filter>
+        <count>3</count>
+      </li>
+    </ingredients>
+    <fixedIngredientFilter>
+      <thingDefs>
+        <li>Steel</li>
+        <li>ComponentIndustrial</li>
+      </thingDefs>
+    </fixedIngredientFilter>
+    <products>
+      <Riimba>1</Riimba>
+    </products>
+    <descriptionHyperlinks>
+      <ThingDef>Riimba</ThingDef>
+    </descriptionHyperlinks>
+  </RecipeDef>
+
+</Defs>

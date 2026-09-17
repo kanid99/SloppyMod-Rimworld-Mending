@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <JobDef>
+    <defName>Riimba_Clean</defName>
+    <driverClass>RiimbaMod.JobDriver_RiimbaClean</driverClass>
+    <reportString>cleaning TargetA.</reportString>
+  </JobDef>
+
+  <JobDef>
+    <defName>Riimba_Dock</defName>
+    <driverClass>RiimbaMod.JobDriver_RiimbaDock</driverClass>
+    <reportString>docking at TargetA.</reportString>
+    <!-- The unit is parked on a bay with its lid open. Nothing should shove it off. -->
+    <playerInterruptible>false</playerInterruptible>
+  </JobDef>
+
+  <JobDef>
+    <defName>Riimba_SignOn</defName>
+    <driverClass>RiimbaMod.JobDriver_RiimbaSignOn</driverClass>
+    <reportString>reporting to TargetA.</reportString>
+  </JobDef>
+
+</Defs>

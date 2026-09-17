@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- Unit inspect pane and commands -->
+  <Riimba.UnitCharge>Charge: {0}</Riimba.UnitCharge>
+  <Riimba.UnitBin>Bin: {0}</Riimba.UnitBin>
+  <Riimba.UnitStation>Signed on to {0}.</Riimba.UnitStation>
+  <Riimba.UnitNoStation>No control station - looking for one to sign on to.</Riimba.UnitNoStation>
+  <Riimba.UnitStationUnpowered>Its control station has no power. Parked until it does.</Riimba.UnitStationUnpowered>
+  <Riimba.UnitFlat>Flat. Charging slowly off its station's field.</Riimba.UnitFlat>
+
+  <Riimba.AssignStationLabel>Assign station</Riimba.AssignStationLabel>
+  <Riimba.AssignStationDesc>Pick which control station commands this unit. It will drive there and sign on, taking one of that station's slots.</Riimba.AssignStationDesc>
+  <Riimba.SignOffLabel>Sign off</Riimba.SignOffLabel>
+  <Riimba.SignOffDesc>Release this unit from its station, freeing the slot. It will stop cleaning and look for another station to sign on to.</Riimba.SignOffDesc>
+  <Riimba.StationFull>{0} already has all {1} of its slots filled. Sign a unit off it first.</Riimba.StationFull>
+
+  <!-- Station inspect pane -->
+  <Riimba.StationNoPower>Unpowered - every unit signed on to it is parked.</Riimba.StationNoPower>
+  <Riimba.StationUnits>Units signed on: {0}/{1}</Riimba.StationUnits>
+  <Riimba.StationDocked>Docked and charging: {0}</Riimba.StationDocked>
+  <Riimba.StationLegend>Cyan spots: docking bays. Orange spot: waste out.</Riimba.StationLegend>
+
+  <!-- Waste -->
+  <Riimba.WasteBuffered>Waste held: {0}</Riimba.WasteBuffered>
+  <Riimba.WasteBacklog>Waste backed up - clear the output spot. Units cannot unload until it drains.</Riimba.WasteBacklog>
+  <Riimba.DumpWasteLabel>Dump waste</Riimba.DumpWasteLabel>
+  <Riimba.DumpWasteDesc>Put the part-filled waste out now instead of waiting for it to reach a whole item. Rounds up and deducts the full amount, so dumping early is borrowed against later cleaning rather than free.</Riimba.DumpWasteDesc>
+
+</LanguageData>

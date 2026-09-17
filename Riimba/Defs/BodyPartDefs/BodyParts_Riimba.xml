@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    A body of our own rather than a borrowed mech body.
+
+    The obvious shortcut is to point race.body at a vanilla mech body (Vanilla Factions Expanded
+    does exactly that - its Knight reuses Lancer), but every one of those is a bipedal humanoid
+    frame. A Riimba is a disc on wheels, and borrowing Lancer would give it a head, two arms and
+    two legs in the health tab, with wounds reported on limbs it does not have.
+
+    The tags are what actually matter mechanically: PawnCapacityWorkers read them to compute
+    Consciousness, Moving, Manipulation and Sight, so a part carrying no tag is only flavour and
+    hit points. Every tag used here is one vanilla declares in BodyPartTagDefOf.
+  -->
+
+  <BodyPartDef>
+    <defName>RiimbaChassis</defName>
+    <label>chassis</label>
+    <hitPoints>30</hitPoints>
+    <solid>true</solid>
+    <alive>false</alive>
+    <bleedRate>0</bleedRate>
+    <!-- Nothing on this pawn can be frostbitten; leaving the vanilla default of 0 says so. -->
+  </BodyPartDef>
+
+  <BodyPartDef>
+    <defName>RiimbaLogicCore</defName>
+    <label>logic core</label>
+    <labelShort>core</labelShort>
+    <hitPoints>12</hitPoints>
+    <solid>true</solid>
+    <alive>false</alive>
+    <bleedRate>0</bleedRate>
+    <!-- The one part that stops the unit dead. Destroying it should end the drone, which is what
+         ConsciousnessSource does: with no source left, the Consciousness capacity reads zero. -->
+    <tags>
+      <li>ConsciousnessSource</li>
+    </tags>
+  </BodyPartDef>
+
+  <BodyPartDef>
+    <defName>RiimbaSensorRing</defName>
+    <label>sensor ring</label>
+    <labelShort>sensor</labelShort>
+    <hitPoints>8</hitPoints>
+    <solid>true</solid>
+    <alive>false</alive>
+    <bleedRate>0</bleedRate>
+    <tags>
+      <li>SightSource</li>
+    </tags>
+  </BodyPartDef>
+
+  <BodyPartDef>
+    <defName>RiimbaDriveWheel</defName>
+    <label>drive wheel</label>
+    <labelShort>wheel</labelShort>
+    <hitPoints>10</hitPoints>
+    <solid>true</solid>
+    <alive>false</alive>
+    <bleedRate>0</bleedRate>
+    <!-- Two of these, so losing one halves movement rather than stopping the unit. Mirrored is
+         what makes the game label them "left drive wheel" and "right drive wheel" rather than
+         printing the same name twice. -->
+    <tags>
+      <li>MovingLimbCore</li>
+      <li>Mirrored</li>
+    </tags>
+  </BodyPartDef>
+
+  <BodyPartDef>
+    <defName>RiimbaBrushHead</defName>
+    <label>brush head</label>
+    <labelShort>brush</labelShort>
+    <hitPoints>10</hitPoints>
+    <solid>true</solid>
+    <alive>false</alive>
+    <bleedRate>0</bleedRate>
+    <!-- Manipulation is what CleaningSpeed scales off, so a damaged brush head slows cleaning
+         instead of being cosmetic damage. -->
+    <tags>
+      <li>ManipulationLimbCore</li>
+    </tags>
+  </BodyPartDef>
+
+  <BodyPartDef>
+    <defName>RiimbaWasteBin</defName>
+    <label>waste bin</label>
+    <labelShort>bin</labelShort>
+    <hitPoints>10</hitPoints>
+    <solid>true</solid>
+    <alive>false</alive>
+    <bleedRate>0</bleedRate>
+  </BodyPartDef>
+
+  <!-- The brush is the unit's only "weapon", so it needs a group for the tool to link to.
+       Without one, Tool.linkedBodyPartsGroup has nothing to name and the tool is dropped. -->
+  <BodyPartGroupDef>
+    <defName>RiimbaBrushHead</defName>
+    <label>brush head</label>
+    <labelShort>brush</labelShort>
+  </BodyPartGroupDef>
+
+</Defs>

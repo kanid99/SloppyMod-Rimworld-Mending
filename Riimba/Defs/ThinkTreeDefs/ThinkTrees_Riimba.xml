@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    Every node in this tree is one of ours. That is deliberate: a tree that references vanilla
+    subtrees by name (Downed, BurningResponse, MentalState and so on) breaks the moment one of
+    those names changes or another mod reorders them, and none of them apply to a drone that
+    cannot panic, cannot burn out of a mental state and has no needs to satisfy.
+
+    ThinkNode_Priority takes the first subnode that returns a job, so the order below IS the
+    unit's priority list. The idle node at the bottom never returns null, which matters: a pawn
+    whose think tree produces no job at all logs an error every time it is asked.
+  -->
+
+  <ThinkTreeDef>
+    <defName>Riimba_Main</defName>
+    <thinkRoot Class="ThinkNode_Priority">
+      <subNodes>
+
+        <!-- Docking outranks working when it is urgent. A unit that keeps cleaning until the
+             charge is gone strands itself, and one that keeps cleaning with a full bin has
+             nowhere to put what it lifts. -->
+        <li Class="RiimbaMod.JobGiver_RiimbaDock">
+          <idleReturn>false</idleReturn>
+        </li>
+
+        <!-- A unit with no station walks to one and signs on. This is how a freshly gestated
+             Riimba gets from the gestator to where it is meant to work, without the player
+             having to escort it. -->
+        <li Class="RiimbaMod.JobGiver_RiimbaSeekStation" />
+
+        <li Class="RiimbaMod.JobGiver_RiimbaClean" />
+
+        <!-- The same node again, below the work. With nothing left to clean a unit goes home and
+             tops up rather than standing in the middle of the room it just finished. -->
+        <li Class="RiimbaMod.JobGiver_RiimbaDock">
+          <idleReturn>true</idleReturn>
+        </li>
+
+        <li Class="RiimbaMod.JobGiver_RiimbaIdle" />
+
+      </subNodes>
+    </thinkRoot>
+  </ThinkTreeDef>
+
+</Defs>
