@@ -7,11 +7,38 @@
     <AssemblyName>RiimbaMod</AssemblyName>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>..\..\Assemblies\</OutputPath>
+    <!-- RimWorld loads the assembly itself; a generated entry point or deps file is noise. -->
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <DebugType>portable</DebugType>
+
     <!-- Point this at your local RimWorld install (folder containing RimWorldWin64_Data). -->
     <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\RimWorld\RimWorldWin64_Data\Managed</RimWorldManagedDir>
+
+    <!--
+      Two ways to get RimWorld's types, chosen automatically.
+
+      If the Managed folder above actually exists, the build references the DLLs in it - the
+      real assemblies from the install being modded, which is what you want on a machine that
+      has the game, and what this project did originally.
+
+      If it does not, the build falls back to Krafs.Rimworld.Ref: reference assemblies for
+      RimWorld published on NuGet. They carry the public API surface with method bodies
+      stripped, so they are enough to compile against and are redistributable in a way the
+      game's own DLLs are not. That is what makes this project build on a machine with no
+      RimWorld installed, in CI, or in a container - which is the only way anyone but the
+      author can verify a change compiles before shipping it.
+
+      Override the choice with -p:UseLocalRimWorldRefs=true|false.
+    -->
+    <UseLocalRimWorldRefs Condition="'$(UseLocalRimWorldRefs)' == '' And Exists('$(RimWorldManagedDir)\Assembly-CSharp.dll')">true</UseLocalRimWorldRefs>
+    <UseLocalRimWorldRefs Condition="'$(UseLocalRimWorldRefs)' == ''">false</UseLocalRimWorldRefs>
+
+    <!-- Keep this in step with the RimWorld version in About.xml. -->
+    <RimWorldRefVersion>1.6.4871</RimWorldRefVersion>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(UseLocalRimWorldRefs)' == 'true'">
     <Reference Include="Assembly-CSharp">
       <HintPath>$(RimWorldManagedDir)\Assembly-CSharp.dll</HintPath>
       <Private>false</Private>
@@ -24,6 +51,19 @@
       <HintPath>$(RimWorldManagedDir)\UnityEngine.IMGUIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalRimWorldRefs)' != 'true'">
+    <!-- ExcludeAssets="runtime" so none of these are copied next to the built mod: RimWorld
+         supplies the real assemblies at run time, and shipping reference assemblies into
+         Assemblies/ would have the game try to load API-only stubs. -->
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="$(RimWorldRefVersion)" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lets net472 be targeted on a machine with no .NET Framework targeting pack, which is
+         every Linux and macOS one. Harmless on Windows, where the real pack wins. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

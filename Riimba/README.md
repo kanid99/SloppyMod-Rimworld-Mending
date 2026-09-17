@@ -35,10 +35,25 @@ RimWorld/Mods/Riimba/
 ## Building the assembly
 
 ```sh
-dotnet build Riimba/Source/RiimbaMod/RiimbaMod.csproj -p:RimWorldManagedDir="<path to>/RimWorldWin64_Data/Managed"
+dotnet build Riimba/Source/RiimbaMod/RiimbaMod.csproj
 ```
 
 Output goes to `Riimba/Assemblies/`, which is gitignored.
+
+The project finds RimWorld's types one of two ways, and picks on its own:
+
+* **On a machine with the game installed**, it references the DLLs in RimWorld's `Managed`
+  folder - the real assemblies from the install being modded. Point it at a non-default
+  install with `-p:RimWorldManagedDir="<path to>/RimWorldWin64_Data/Managed"`.
+* **Otherwise** it falls back to [`Krafs.Rimworld.Ref`](https://www.nuget.org/packages/Krafs.Rimworld.Ref),
+  reference assemblies for RimWorld published on NuGet. They carry the public API with method
+  bodies stripped, which is enough to compile against and is redistributable in a way the
+  game's own DLLs are not.
+
+That second path is the point: it means this builds in CI, in a container, or on any machine
+without RimWorld, so a change can be verified to compile by someone other than the author.
+Force either with `-p:UseLocalRimWorldRefs=true` or `=false`. Keep `RimWorldRefVersion` in the
+csproj in step with the game version in `About.xml`.
 
 ## How it fits together
 

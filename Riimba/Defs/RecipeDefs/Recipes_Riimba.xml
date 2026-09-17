@@ -2,12 +2,19 @@
 <Defs>
 
   <!--
-    Written out in full rather than inheriting a vanilla abstract recipe. The mech gestation
-    bases do exist (Vanilla Factions Expanded uses MediumMechanoidRecipe and
-    HeavyMechanoidRecipe), but inheriting one would silently pull in that tier's ingredients,
-    research and gestator - and this recipe is deliberately unlike any of them: no subcore.
+    Inherits vanilla's LightMechanoidRecipe, the same base Vanilla Expanded's own 1.6 light
+    mech recipes use, and overrides the three things that are actually ours: what it costs,
+    where it is built and what research unlocks it.
 
-    Three fields carry the whole gestator contract, and all three are load-bearing:
+    Writing it standalone was tempting - it is the only mech recipe here and inheritance can
+    drag in a tier's ingredients by accident - but Inherit="False" on the ingredient list
+    settles that, and the base carries several things worth having that are easy to get wrong
+    by hand: formingTicks at vanilla's light-mech pace, the work amount, the working effecter
+    and sound so the gestator actually looks and sounds busy, and workSpeedStat, without which
+    Bill_Mech.WorkSpeedMultiplier returns a flat 1 and gestation ignores the mechanitor's
+    stats - unlike every other mech in the game.
+
+    Three fields carry the gestator contract, and all three are load-bearing:
 
       gestationCycles > 0   is what makes BillUtility.MakeNewBill hand back a Bill_ProductionMech
                             instead of a plain Bill_Production. Building_MechGestator.Tick casts
@@ -23,28 +30,29 @@
                             p.mechanitor.HasBandwidthForBill, and p.mechanitor is null for
                             anyone without a mechlink; the base class's mechanitorOnlyRecipe
                             check runs first and returns false, which is what stops that being
-                            a null reference. Vanilla's own mech recipes all set it.
+                            a null reference. It is restated below even though the parent sets
+                            it: it is redundant if inherited and it prevents a crash if it ever
+                            is not, which is a trade worth one line.
 
     So gestating a Riimba needs a mechanitor, same as any mech. It costs that mechanitor no
     bandwidth once built, because the unit's BandwidthCost stat is 0 and its orders come from a
     control station instead - see Riimba.xml.
   -->
 
-  <RecipeDef>
+  <RecipeDef ParentName="LightMechanoidRecipe">
     <defName>Riimba_Gestate</defName>
     <label>gestate riimba</label>
     <description>Gestate a Riimba cleaning drone. Unlike a combat mech it carries no subcore of its own - the thinking is done by the control station that drives it, so a drone gestated with no station built is an expensive paperweight until one is.</description>
-    <jobString>Gestating a riimba.</jobString>
-    <workAmount>800</workAmount>
-    <!-- One cycle at half a day. A Riimba is the cheapest thing the gestator can make. -->
+    <!-- One cycle. A Riimba is the cheapest thing the gestator can make. -->
     <gestationCycles>1</gestationCycles>
-    <formingTicks>30000</formingTicks>
     <mechanitorOnlyRecipe>true</mechanitorOnlyRecipe>
     <researchPrerequisite>RiimbaCleaning</researchPrerequisite>
     <recipeUsers>
       <li>MechGestator</li>
     </recipeUsers>
-    <ingredients>
+    <!-- Inherit="False" so the light-mech tier's own ingredients, subcore included, are
+         replaced rather than added to. A Riimba has no subcore: the station holds it. -->
+    <ingredients Inherit="False">
       <li>
         <filter>
           <thingDefs>
@@ -62,7 +70,7 @@
         <count>3</count>
       </li>
     </ingredients>
-    <fixedIngredientFilter>
+    <fixedIngredientFilter Inherit="False">
       <thingDefs>
         <li>Steel</li>
         <li>ComponentIndustrial</li>
