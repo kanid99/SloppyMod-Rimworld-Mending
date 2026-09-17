@@ -104,6 +104,15 @@ mklink /D "C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\SloppyFoo
 
 ## Status
 
-**Not yet compiled or run in game.** Written against 1.6 API signatures taken from the Sloppy
-mending mod's sources; no RimWorld assemblies were available in the environment it was written in,
-so the C# has not been through a compiler and none of the balance numbers have been playtested.
+**Compiles clean** - zero errors, zero warnings - against RimWorld 1.6 reference assemblies
+(`Krafs.Rimworld.Ref`), which also confirms every API signature and every type the XML names,
+including `GasType.RotStink` and the `CompProperties_Rottable` fields.
+
+**Not yet run in game.** Reference assemblies carry signatures and no IL, so two things remain
+unverified by anything but play:
+
+- The balance numbers. None of them have been played.
+- That `CompRottable` disposes of rotted food with `DestroyMode.Vanish`. Every other guard in
+  `CompSpoilageResidue` is checkable and checks out, but this one cannot be read out of a
+  reference assembly. If it is wrong the mod goes quiet rather than breaking, so the check logs
+  a dev-mode warning naming itself as the cause instead of failing silently.
