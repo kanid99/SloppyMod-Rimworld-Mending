@@ -20,12 +20,15 @@ MARGIN = 0.5
 def build():
     """The whole sprite, drawn.
 
-    No image generator is involved any more. Its machines came back RENDERED - photoreal metal,
-    fine bevels, a heavy black outline of their own - and VFE's are ABSTRACT: a handful of plain
-    rounded blocks, flat tonal ramps, and detail only as a row of identical slats. Drawing the
-    interior gets that directly, and it disposes of two defects the generated body kept dragging
-    in: a violet fringe from resampling its magenta ground, and its own black silhouette ring
-    sitting inside ours as an interior outline.
+    No image generator is involved. Its machines came back RENDERED - photoreal metal, fine
+    bevels, a heavy black outline of their own - and VFE's are ABSTRACT: plain blocks, flat
+    tonal ramps, and detail only as small repeated marks. Drawing the interior gets that
+    directly, and it disposes of two defects the generated body kept dragging in: a violet
+    fringe from resampling its magenta ground, and its own black silhouette ring sitting
+    inside ours as an interior outline.
+
+    The layout is a ring of chamfered casings around a central machine, with a roller run in
+    from the item bay and another out to the output bay.
     """
     c = Chassis(CW, CH, px=PX, margin=MARGIN)
     c.base()
@@ -34,36 +37,56 @@ def build():
         """A box given in cells from the chassis's top-left corner."""
         return [c.x0 + cx * PX, c.y0 + cy * PX, c.x0 + (cx + w) * PX, c.y0 + (cy + h) * PX]
 
-    c.corner_blocks(size_cells=0.62, inset_cells=0.08)
+    def P(cx, cy):
+        return (c.x0 + cx * PX, c.y0 + cy * PX)
 
-    # Three matched hoppers down each flank, one inboard of each flank bay. Teal, because that
-    # is the casing colour their machines carry and ours had no body accent at all.
-    for j in (1, 2, 3):
-        for cx in (0.38, 5 - 0.38 - 0.94):
-            box = cell(cx, j + 0.09, 0.94, 0.82)
-            c.block(box, lit=TEAL_LIT, dark=TEAL_DRK)
-            c.vgrad([box[0] + int(PX * 0.15), box[1] + int(PX * 0.15),
-                     box[2] - int(PX * 0.15), box[3] - int(PX * 0.15)],
-                    (48, 68, 76), (64, 92, 104), radius=int(c.r(8)))
+    c.corner_blocks(size_cells=0.58, inset_cells=0.08)
+    for sx in (0.14, 5 - 0.14 - 0.46):                 # a greeble on each corner housing
+        for sy in (0.16, 5 - 0.16 - 0.10):
+            c.slashes(*P(sx, sy), n=3, colour=(136, 130, 123))
 
-    # The two material bays on the intake edge drop into a block each.
-    for cx in (1.06, 5 - 1.06 - 0.88):
-        c.block(cell(cx, 0.34, 0.88, 0.64), lit=(140, 134, 127), dark=(74, 70, 66))
+    # A ring of chamfered teal casings: one inboard of each flank bay, and one either side of
+    # the conveyor top and bottom. Every one is mirrored across the centre line.
+    def pentagon(cx, cy, w, h, point):
+        """A casing with its corner cut away towards `point` - the ring's inward-facing face."""
+        x0, y0, x1, y1 = cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2
+        k = min(w, h) * 0.42
+        cuts = {'tl': [(x0 + k, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0 + k)],
+                'tr': [(x0, y0), (x1 - k, y0), (x1, y0 + k), (x1, y1), (x0, y1)],
+                'bl': [(x0, y0), (x1, y0), (x1, y1), (x0 + k, y1), (x0, y1 - k)],
+                'br': [(x0, y0), (x1, y0), (x1, y1 - k), (x1 - k, y1), (x0, y1)]}[point]
+        return [P(0, 0)[0] + 0, 0] and cuts
 
-    # The item bay feeds a roller run down the centre line into the machine.
-    c.spine(cell(2.5 - 0.31, 0.26, 0.62, 1.10))
+    W_, H_ = 0.92 * PX, 0.80 * PX
+    for side, sx, corner_in in ((-1, 0.84, 'r'), (1, 5 - 0.84, 'l')):
+        for cy, vert in ((1.5, 't'), (2.5, None), (3.5, 'b')):
+            x, y = c.x0 + sx * PX, c.y0 + cy * PX
+            if vert is None:                            # the middle one is a plain casing
+                c.poly_block([(x - W_ / 2, y - H_ / 2), (x + W_ / 2, y - H_ / 2),
+                              (x + W_ / 2, y + H_ / 2), (x - W_ / 2, y + H_ / 2)])
+            else:
+                c.poly_block(pentagon(x, y, W_, H_, vert + corner_in))
+            c.slashes(x - W_ * 0.26, y - H_ * 0.20, n=4, colour=(118, 142, 148))
+            c.slashes(x - W_ * 0.26, y + H_ * 0.10, n=2, colour=(168, 122, 74))
 
-    # The machine itself: one plain block, a slat panel, and a dark working face.
-    body = cell(1.46, 1.28, 2.08, 2.44)
+    for cx, corner in ((1.42, 'r'), (5 - 1.42, 'l')):   # flanking the conveyor, top and bottom
+        for cy, vert in ((0.72, 'b'), (5 - 0.72, 't')):
+            x, y = c.x0 + cx * PX, c.y0 + cy * PX
+            c.poly_block(pentagon(x, y, 0.86 * PX, 0.68 * PX, vert + corner))
+            c.slashes(x - PX * 0.20, y - PX * 0.10, n=3, colour=(118, 142, 148))
+
+    # The machine: one plain block, a slat panel, a dark working face, and a little hardware.
+    body = cell(1.58, 1.34, 1.84, 2.28)
     c.block(body, lit=(168, 162, 154), dark=(88, 83, 78))
-    c.slats([body[0] + int(PX * 0.26), body[1] + int(PX * 0.22),
-             body[2] - int(PX * 0.26), body[1] + int(PX * 1.08)], n=6, horizontal=False)
-    c.work_slot([body[0] + int(PX * 0.16), body[1] + int(PX * 1.36),
-                 body[2] - int(PX * 0.16), body[3] - int(PX * 0.18)])
+    c.slats([body[0] + int(PX * 0.20), body[1] + int(PX * 0.18),
+             body[2] - int(PX * 0.20), body[1] + int(PX * 0.96)], n=6, horizontal=False)
+    c.studs(body[0] + int(PX * 0.24), body[2] - int(PX * 0.24), body[1] + int(PX * 1.12), n=5)
+    c.work_slot([body[0] + int(PX * 0.14), body[1] + int(PX * 1.32),
+                 body[2] - int(PX * 0.14), body[3] - int(PX * 0.12)])
 
-    # And out again, straight down the centre line to the output bay. The flanks are already
-    # full of hoppers, so there is nothing to put beside it and nothing that needs to be there.
-    c.spine(cell(2.5 - 0.31, 3.62, 0.62, 1.38))
+    # In from the item bay, out to the output bay.
+    c.spine(cell(2.5 - 0.31, 0.26, 0.62, 1.14))
+    c.spine(cell(2.5 - 0.31, 3.58, 0.62, 1.42))
 
     # Three bays on the intake edge - the item port at centre with a material port either side -
     # three more down each flank, and the single output bay opposite. Mirror-symmetric about the

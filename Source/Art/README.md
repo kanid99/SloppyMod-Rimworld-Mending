@@ -125,9 +125,19 @@ python3 Source/Art/verify_spots.py flipped
 Three bays on the intake edge - the item port at centre with a material port either side -
 three more down each flank, and the single output bay opposite. Mirror-symmetric about the
 vertical centre line, which is what every one of their machines is. Inside: a housing at each
-corner, a teal hopper inboard of each flank bay, a roller run from the item bay down into the
-machine, and another out of it to the output bay. The teal is theirs - sampled off the
-machining bay's casings at `(35,50,56)` to `(60,104,118)`, which cover 16% of that sprite.
+corner and a ring of chamfered teal casings around a central machine - one inboard of each
+flank bay, one either side of the conveyor at top and bottom - with a roller run in from the
+item bay and another out to the output bay.
+
+The teal is subdued deliberately. Measured: VFE's machining bay casings average 0.448
+saturation over 17% of their sprite; ours average **0.269** over 27%. Per pixel it is the least
+saturated of the three candidates that were on the table, which is what keeps a ring of ten
+casings from reading as a colour accent.
+
+Greebles are small repeated marks - racks of short parallel slashes, rows of square pads, faint
+tracks down the working face - kept a couple of tone steps off whatever they sit on and never
+black. They read as surface detail at full zoom and sink into the block at play zoom, instead
+of turning into noise the way an outlined detail would.
 
 The spot geometry follows the footprint, so the C# and the art cannot drift: see
 `MenderSpots.ResourceInputCells`.
@@ -136,11 +146,11 @@ The spot geometry follows the footprint, so the C# and the art cannot drift: see
 
 | | ours | VFE mean | VFE range |
 | --- | --- | --- | --- |
-| contrast (std) | 0.141 | 0.151 | 0.11-0.23 |
-| p99 highlight | 176 | 167 | 133-255 |
+| contrast (std) | 0.128 | 0.151 | 0.11-0.23 |
+| p99 highlight | 171 | 167 | 133-255 |
 | near-black | 5.9% | 6.5% | 0-19.8% |
-| saturated pixels | 22.9% | 13.2% | 1.4-33.9% |
-| hard-edge density | 24.5 | 18.7 | 9.0-34.6 |
+| saturated pixels | 29.9% | 13.2% | 1.4-33.9% |
+| hard-edge density | 26.2 | 18.7 | 9.0-34.6 |
 
 Note the sprite carries TEN bays where a VFE machine carries three or four; bays are
 high-contrast by construction, so that is where most of our edge density goes.

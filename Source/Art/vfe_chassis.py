@@ -43,8 +43,10 @@ BAY_DEPTH  = 41.0                 # its whole depth, lip to the inboard end of t
 # Their machining bay's casings, sampled: a desaturated teal running (35,48,53) to (47,87,100),
 # and it covers 16% of that sprite. It is the body accent VFE use, and having none is most of
 # why ours measured a third as colourful as theirs.
-TEAL_LIT = (60, 104, 118)
-TEAL_DRK = (35, 50, 56)
+# Subdued from the first pass: same hue, roughly a third less saturation, so the casings
+# read as painted steel rather than as a colour accent.
+TEAL_LIT = (72, 97, 104)
+TEAL_DRK = (41, 54, 58)
 
 RAILS = {'orange': ((175, 120, 65), (109, 79, 49)),
          'green':  ((91, 175, 94),  (57, 109, 59)),
@@ -212,6 +214,10 @@ class Chassis:
         a working face without drawing a light source."""
         x0, y0, x1, y1 = box
         self.vgrad([x0, y0, x1, y1], (58, 55, 52), (76, 72, 68), radius=int(self.r(6)))
+        # Two faint tracks down the face, so it is not a flat black hole at full zoom.
+        for f in (0.30, 0.70):
+            x = x0 + (x1 - x0) * f
+            self.fill([x - self.r(2), y0 + self.r(10), x + self.r(2), y1 - self.r(12)], (70, 67, 63))
         self.fill([x0 + self.r(6), y1 - self.r(9), x1 - self.r(6), y1 - self.r(3)], accent)
 
     def inner_bay(self, box, rad=None):
@@ -225,6 +231,70 @@ class Chassis:
         self.fill([x0 - self.r(3), y0 - self.r(3), x1 + self.r(3), y1 + self.r(3)],
                   (82, 78, 74), radius=rad)
         self.vgrad([x0, y0, x1, y1], (70, 66, 62), (88, 83, 78), radius=rad)
+
+    # -- polygon forms and greebles -----------------------------------------
+
+    def _poly_mask(self, pts):
+        m = Image.new('L', (self.W, self.H), 0)
+        ImageDraw.Draw(m).polygon([(float(x), float(y)) for x, y in pts], fill=255)
+        return np.asarray(m).astype(np.float32) / 255.0
+
+    def _paint(self, m, colour):
+        self.rgb = self.rgb * (1 - m[..., None]) + np.array(colour, np.float32) * m[..., None]
+        self.a = np.maximum(self.a, m)
+
+    def _paint_grad(self, m, box, top, bottom):
+        ys = np.arange(self.H, dtype=np.float32)
+        t = np.clip((ys - box[1]) / max(1.0, box[3] - box[1]), 0, 1)[:, None]
+        g = np.array(top, np.float32) * (1 - t[..., None]) + np.array(bottom, np.float32) * t[..., None]
+        self.rgb = self.rgb * (1 - m[..., None]) + g * m[..., None]
+        self.a = np.maximum(self.a, m)
+
+    def poly_block(self, pts, lit=TEAL_LIT, dark=TEAL_DRK, inset=None):
+        """A chamfered casing: a polygon with a soft top-to-bottom ramp and a lighter inner
+        face, no outline. Shrinking the polygon towards its own centroid gives the inner face,
+        which keeps the chamfer instead of rounding it off."""
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        box = (min(xs), min(ys), max(xs), max(ys))
+        self._paint_grad(self._poly_mask(pts), box, lit, dark)
+        k = self.r(9) if inset is None else inset
+        cx, cy = sum(xs) / len(xs), sum(ys) / len(ys)
+        inner = []
+        for x, y in pts:
+            d = max(((x - cx) ** 2 + (y - cy) ** 2) ** 0.5, 1e-6)
+            inner.append((x - (x - cx) / d * k, y - (y - cy) / d * k))
+        ib = (min(p[0] for p in inner), min(p[1] for p in inner),
+              max(p[0] for p in inner), max(p[1] for p in inner))
+        self._paint_grad(self._poly_mask(inner), ib,
+                         tuple(min(255, c + 14) for c in lit), tuple(c + 8 for c in dark))
+
+    def slashes(self, x, y, n=4, length=None, colour=None, step=None, horizontal=True):
+        """A little rack of short parallel lines - RimWorld's greeble of choice. Kept a couple
+        of tone steps off its casing, never black, so it reads as surface detail at full zoom
+        and disappears into the block at play zoom instead of turning into noise."""
+        length = self.r(13) if length is None else length
+        step = self.r(6) if step is None else step
+        colour = (140, 150, 152) if colour is None else colour
+        w = self.r(2.5)
+        for i in range(n):
+            o = i * step
+            box = ([x, y + o, x + length, y + o + w] if horizontal
+                   else [x + o, y, x + o + w, y + length])
+            self.fill(box, colour)
+
+    def studs(self, x0, x1, y, n=4, colour=(150, 144, 136)):
+        """A row of small square pads."""
+        s = self.r(3.5)
+        span = (x1 - x0) * 0.62
+        a = (x0 + x1) / 2 - span / 2
+        for i in range(n):
+            cx = a + span * (i + 0.5) / n
+            self.fill([cx - s, y - s, cx + s, y + s], colour, radius=int(self.r(2)))
+
+    def panel(self, box, colour=(96, 91, 86)):
+        """A shallow inset panel: one flat tone a step below its surroundings."""
+        self.fill(box, colour, radius=int(self.r(5)))
 
     # -- one ingress/egress port --------------------------------------------
     def port(self, along, side, rail, chevron=True, outward=False):
