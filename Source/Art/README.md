@@ -107,6 +107,11 @@ that is `rotate(-90)`. This sign is not cosmetic: the shipped east texture had i
 and drew the item port on the cell the C# reads as the OUTPUT, so an east or west facing
 machine wanted gear on its output spot. Nobody caught it by looking.
 
+The chevrons follow the MATERIAL, not the edge they sit on. Keying them off the edge alone
+made every arrow point inwards, the output's included, so the machine read as taking things in
+on all four sides and never putting anything out. VFE's all point the same way - in at the top,
+through, out at the bottom - so the output bay's arrow points away from the machine.
+
 `verify_spots.py` reimplements `MenderSpots` from the C# and samples the real texture at every
 spot's position on the chassis edge, for all four rotations, checking the rail colour there is
 the one that spot expects. Run it after any change to either side:

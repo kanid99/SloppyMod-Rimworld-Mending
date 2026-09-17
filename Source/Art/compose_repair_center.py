@@ -74,7 +74,7 @@ def build():
     for side in ('left', 'right'):
         for j in (1, 2, 3):
             c.port(c.y0 + int((j + 0.5) * PX), side, 'green')
-    c.port(c.x0 + int((mid + 0.5) * PX), 'bottom', 'orange')
+    c.port(c.x0 + int((mid + 0.5) * PX), 'bottom', 'orange', outward=True)
     return c.image()
 
 

@@ -227,7 +227,7 @@ class Chassis:
         self.vgrad([x0, y0, x1, y1], (70, 66, 62), (88, 83, 78), radius=rad)
 
     # -- one ingress/egress port --------------------------------------------
-    def port(self, along, side, rail, chevron=True):
+    def port(self, along, side, rail, chevron=True, outward=False):
         """`along` is the port's centre on the edge's own axis, in canvas pixels.
 
         Widths, in REF pixels and therefore in VFE's own proportions:
@@ -266,7 +266,11 @@ class Chassis:
         self.fill(rect(along - half, along + half, outer, outer + inward * self.r(11)), BLACK)
 
         if chevron:
-            self._chevron(along, face, inward, vertical, lo, bed)
+            # The arrow follows the MATERIAL, not the edge. Keying it off the edge alone made
+            # every arrow on the sprite point inwards, including the output's - so the machine
+            # read as taking things in on all four sides and never putting anything out. VFE's
+            # point with the flow: in at the top, out at the bottom, same direction throughout.
+            self._chevron(along, face, inward, vertical, lo, bed, outward=outward)
 
     def _bed(self, along, bed, outer, face, inward, rect):
         """Rollers: a six-step ramp per roller, no separator between them, darkening towards
@@ -292,13 +296,15 @@ class Chassis:
                     continue
                 self.fill(box, col)
 
-    def _chevron(self, along, face, inward, vertical, colour, bed):
+    def _chevron(self, along, face, inward, vertical, colour, bed, outward=False):
         """A flat triangle on the chassis face, no outline - exactly how VFE mark flow."""
         # On the bay itself, at its inboard end. Their machines have bare chassis around a port
         # to put the chevron on; ours is packed with machinery, so a chevron out on the deck
         # lands on top of a casing.
         h, w = self.r(11), bed * 0.30
         base = face + inward * self.r(BAY_DEPTH - PROTRUDE - 15)
+        if outward:                      # an egress arrow starts inboard and points out
+            base, h = base + inward * h, -h
         tip = base + inward * h
         pts = ([(along, tip), (along - w / 2, base), (along + w / 2, base)] if vertical
                else [(tip, along), (base, along - w / 2), (base, along + w / 2)])
