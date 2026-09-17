@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    Its own category rather than VRecyclingE_SpecializedPacks. Spoiled food is not a heat-sealed
+    pack and should not turn up in a storage filter that a player set to "recycling packs", but it
+    does need a category of its own or it cannot be filtered at all.
+  -->
+  <ThingCategoryDef>
+    <defName>SloppyFW_FoodWaste</defName>
+    <label>food waste</label>
+    <parent>ItemsMisc</parent>
+  </ThingCategoryDef>
+
+</Defs>

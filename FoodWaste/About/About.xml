@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>SloppyMods Food Waste</name>
+  <author>SloppyMod</author>
+  <packageId>sloppymod.foodwaste</packageId>
+  <!-- 1.6 only, to match the rest of the Sloppy line. Nothing here is version-fragile on its
+       own, but the assembly is built against 1.6 and there is no value in shipping a listing
+       that installs on 1.5 and then throws on load. -->
+  <supportedVersions>
+    <li>1.6</li>
+  </supportedVersions>
+  <description>Food that rots away no longer vanishes without trace. It leaves spoiled food - a stinking, fast-decaying pile scaled to the nutrition you actually lost, not to how many items happened to be in the stack.
+
+Spoiled food has three exits. Refine it into chemfuel at a biofuel refinery, compost it into Vanilla Recycling Expanded's reclaimed biopacks to improve your soil, or seal it into a wastepack for disposal or for the rest of the recycling chain.
+
+Every route is steeply lossy. Letting food rot is still a mistake - this only means the mistake leaves something to clean up instead of nothing at all. Ignore the piles and they rot away by themselves in a few days.
+
+Requires Biotech and Vanilla Recycling Expanded.</description>
+  <modDependencies>
+    <li>
+      <packageId>Ludeon.RimWorld.Biotech</packageId>
+      <displayName>Biotech</displayName>
+    </li>
+    <li>
+      <packageId>VanillaExpanded.Recycling</packageId>
+      <displayName>Vanilla Recycling Expanded</displayName>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>Ludeon.RimWorld.Biotech</li>
+    <li>VanillaExpanded.Recycling</li>
+  </loadAfter>
+</ModMetaData>
