@@ -130,9 +130,21 @@ flank bay, one either side of the conveyor at top and bottom - with a roller run
 item bay and another out to the output bay.
 
 The teal is subdued deliberately. Measured: VFE's machining bay casings average 0.448
-saturation over 17% of their sprite; ours average **0.269** over 27%. Per pixel it is the least
+saturation over 17% of their sprite; ours average **0.274** over 27%. Per pixel it is the least
 saturated of the three candidates that were on the table, which is what keeps a ring of ten
 casings from reading as a colour accent.
+
+Each casing is a raised structure, built the way theirs are: a top face that ramps only
+gently, a thin dark seam where that face meets its side wall, a LIGHT grey wall below it, and a
+soft shadow cast down and right onto the deck. The lift comes from the wall and the shadow, not
+from shading the face steeply - a steeply shaded face just looks like a painted patch. A first
+attempt read the dark band in the colour slice as the wall and painted the whole wall dark,
+which made the casings look burnt; at 1:1 against their sprite the dark band is a seam and the
+wall is `(93,93,93)`.
+
+Grey pipework links the ring, laid down before the casings so it passes under them and shows
+only in the gaps. Straight runs only - routing it round corners left little hooks that read as
+debris at play zoom.
 
 Greebles are small repeated marks - racks of short parallel slashes, rows of square pads, faint
 tracks down the working face - kept a couple of tone steps off whatever they sit on and never
@@ -146,11 +158,15 @@ The spot geometry follows the footprint, so the C# and the art cannot drift: see
 
 | | ours | VFE mean | VFE range |
 | --- | --- | --- | --- |
-| contrast (std) | 0.128 | 0.151 | 0.11-0.23 |
-| p99 highlight | 171 | 167 | 133-255 |
+| contrast (std) | 0.131 | 0.151 | 0.11-0.23 |
+| p99 highlight | 173 | 167 | 133-255 |
 | near-black | 5.9% | 6.5% | 0-19.8% |
-| saturated pixels | 29.9% | 13.2% | 1.4-33.9% |
-| hard-edge density | 26.2 | 18.7 | 9.0-34.6 |
+| saturated pixels | 31.3% | 13.2% | 1.4-33.9% |
+| hard-edge density | 27.6 | 18.7 | 9.0-34.6 |
+
+Saturated pixels sit near the top of their range, and that is AREA rather than intensity: ten
+casings is simply more coloured surface than their machines carry. Per pixel the teal is the
+least saturated of the three candidates, at 0.274 against their 0.448.
 
 Note the sprite carries TEN bays where a VFE machine carries three or four; bays are
 high-contrast by construction, so that is where most of our edge density goes.

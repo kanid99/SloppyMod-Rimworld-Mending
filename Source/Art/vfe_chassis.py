@@ -17,6 +17,7 @@ What the measurement actually showed, and what the old renderer got wrong:
 """
 import numpy as np
 from PIL import Image, ImageDraw
+from scipy import ndimage
 
 REF = 128.0                       # VFE's pixels per map cell
 
@@ -45,8 +46,15 @@ BAY_DEPTH  = 41.0                 # its whole depth, lip to the inboard end of t
 # why ours measured a third as colourful as theirs.
 # Subdued from the first pass: same hue, roughly a third less saturation, so the casings
 # read as painted steel rather than as a colour accent.
-TEAL_LIT = (72, 97, 104)
-TEAL_DRK = (41, 54, 58)
+TEAL_LIT = (80, 103, 110)
+TEAL_DRK = (56, 72, 78)          # the top face ramps gently; the lift is the side face
+# Sliced down one of their teal casings, top to deck: a 9-12px NEUTRAL GREY collar, then a 4-7px
+# dark near-neutral rim, then a top face that ramps only ~12% across its whole height. The lift
+# is carried by the collar and the rim, not by shading the face steeply.
+PLINTH = (97, 94, 91)
+WALL = (93, 93, 93)              # a casing's side wall, lit
+WALL_SEAM = (35, 48, 53)         # the thin dark line where its top face meets that wall
+CASING_RIM = (35, 48, 53)
 
 RAILS = {'orange': ((175, 120, 65), (109, 79, 49)),
          'green':  ((91, 175, 94),  (57, 109, 59)),
@@ -250,24 +258,46 @@ class Chassis:
         self.rgb = self.rgb * (1 - m[..., None]) + g * m[..., None]
         self.a = np.maximum(self.a, m)
 
-    def poly_block(self, pts, lit=TEAL_LIT, dark=TEAL_DRK, inset=None):
-        """A chamfered casing: a polygon with a soft top-to-bottom ramp and a lighter inner
-        face, no outline. Shrinking the polygon towards its own centroid gives the inner face,
-        which keeps the chamfer instead of rounding it off."""
+    def raised_casing(self, pts, lit=TEAL_LIT, dark=TEAL_DRK, lift=None):
+        """A structure standing proud of the deck.
+
+        Read off their machining bay at 1:1 rather than from a colour slice: the lift comes
+        from a DARKER SIDE FACE along the lower edge plus a soft SHADOW cast down and right
+        onto whatever is underneath. The first attempt put a grey collar round a dark rim -
+        that was a neighbouring structure in the slice, not part of the casing, and it read as
+        an inset panel rather than a raised one.
+        """
+        lift = self.r(13) if lift is None else lift
+        off = self.r(7)
+
+        top = self._poly_mask(pts)
+
+        # The deck shadow the whole structure casts, down and to the right.
+        shadow = self._poly_mask([(x + off, y + off * 1.15) for x, y in pts])
+        shadow = ndimage.gaussian_filter(shadow, self.r(5))
+        self.rgb *= (1 - np.clip(shadow - top, 0, 1)[..., None] * 0.36)
+
+        # The wall itself is a LIGHT grey catching the same overhead light as the top face, with
+        # a thin dark line where the face meets it. Their slice reads face, then (35,48,53) for
+        # 4-7px, then (93,93,93) for 9-12px - so the dark is a seam, not the wall. Painting the
+        # whole wall dark made the casings look burnt rather than raised.
+        self._paint(self._poly_mask([(x, y + lift) for x, y in pts]), WALL)
+        self._paint(self._poly_mask([(x, y + self.r(5)) for x, y in pts]), WALL_SEAM)
+
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
-        box = (min(xs), min(ys), max(xs), max(ys))
-        self._paint_grad(self._poly_mask(pts), box, lit, dark)
-        k = self.r(9) if inset is None else inset
-        cx, cy = sum(xs) / len(xs), sum(ys) / len(ys)
-        inner = []
-        for x, y in pts:
-            d = max(((x - cx) ** 2 + (y - cy) ** 2) ** 0.5, 1e-6)
-            inner.append((x - (x - cx) / d * k, y - (y - cy) / d * k))
-        ib = (min(p[0] for p in inner), min(p[1] for p in inner),
-              max(p[0] for p in inner), max(p[1] for p in inner))
-        self._paint_grad(self._poly_mask(inner), ib,
-                         tuple(min(255, c + 14) for c in lit), tuple(c + 8 for c in dark))
+        self._paint_grad(top, (min(xs), min(ys), max(xs), max(ys)), lit, dark)
+
+    def pipe(self, route, width=None, colour=PLINTH):
+        """Grey pipework, as axis-aligned runs with square elbows. Drawn BEFORE the structures
+        it links, so it passes under them and only shows in the gaps between."""
+        w = (self.r(8) if width is None else width) / 2.0
+        edge = tuple(int(v * 0.78) for v in colour)
+        for (x0, y0), (x1, y1) in zip(route, route[1:]):
+            a = [min(x0, x1) - w, min(y0, y1) - w, max(x0, x1) + w, max(y0, y1) + w]
+            self.fill(a, edge, radius=int(w))
+            self.fill([a[0] + self.r(2), a[1] + self.r(2), a[2] - self.r(2), a[3] - self.r(2)],
+                      colour, radius=int(w))
 
     def slashes(self, x, y, n=4, length=None, colour=None, step=None, horizontal=True):
         """A little rack of short parallel lines - RimWorld's greeble of choice. Kept a couple

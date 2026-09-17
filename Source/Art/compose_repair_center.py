@@ -57,22 +57,32 @@ def build():
                 'br': [(x0, y0), (x1, y0), (x1, y1 - k), (x1 - k, y1), (x0, y1)]}[point]
         return [P(0, 0)[0] + 0, 0] and cuts
 
+    # Grey pipework linking the ring, laid down first so the casings sit on top of it and it
+    # only shows in the gaps between them - which is what keeps it subtle. Straight runs only;
+    # routing it round corners produced little hooks that read as debris at play zoom.
+    for sx, tx, inner in ((0.84, 1.42, 1.62), (5 - 0.84, 5 - 1.42, 5 - 1.62)):
+        c.pipe([P(sx, 0.72), P(sx, 4.28)])                 # the spine down the flank
+        for row in (1.5, 2.5, 3.5):                        # stubs into the machine
+            c.pipe([P(sx, row), P(inner, row)])
+        for row in (0.72, 4.28):                           # and out to the corner casings
+            c.pipe([P(sx, row), P(tx, row)])
+
     W_, H_ = 0.92 * PX, 0.80 * PX
     for side, sx, corner_in in ((-1, 0.84, 'r'), (1, 5 - 0.84, 'l')):
         for cy, vert in ((1.5, 't'), (2.5, None), (3.5, 'b')):
             x, y = c.x0 + sx * PX, c.y0 + cy * PX
             if vert is None:                            # the middle one is a plain casing
-                c.poly_block([(x - W_ / 2, y - H_ / 2), (x + W_ / 2, y - H_ / 2),
-                              (x + W_ / 2, y + H_ / 2), (x - W_ / 2, y + H_ / 2)])
+                c.raised_casing([(x - W_ / 2, y - H_ / 2), (x + W_ / 2, y - H_ / 2),
+                                 (x + W_ / 2, y + H_ / 2), (x - W_ / 2, y + H_ / 2)])
             else:
-                c.poly_block(pentagon(x, y, W_, H_, vert + corner_in))
+                c.raised_casing(pentagon(x, y, W_, H_, vert + corner_in))
             c.slashes(x - W_ * 0.26, y - H_ * 0.20, n=4, colour=(118, 142, 148))
             c.slashes(x - W_ * 0.26, y + H_ * 0.10, n=2, colour=(168, 122, 74))
 
     for cx, corner in ((1.42, 'r'), (5 - 1.42, 'l')):   # flanking the conveyor, top and bottom
         for cy, vert in ((0.72, 'b'), (5 - 0.72, 't')):
             x, y = c.x0 + cx * PX, c.y0 + cy * PX
-            c.poly_block(pentagon(x, y, 0.86 * PX, 0.68 * PX, vert + corner))
+            c.raised_casing(pentagon(x, y, 0.86 * PX, 0.68 * PX, vert + corner))
             c.slashes(x - PX * 0.20, y - PX * 0.10, n=3, colour=(118, 142, 148))
 
     # The machine: one plain block, a slat panel, a dark working face, and a little hardware.
