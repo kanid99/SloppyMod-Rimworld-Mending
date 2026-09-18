@@ -163,14 +163,20 @@ def build():
     # deck, ending in a dark mouth cut into the casing's edge under a lit lip. Their conveyor
     # oven does the same thing - a run should disappear into the machine, not stop on bare deck.
     BAY_END = 36 * (PX / 128.0)                 # where a port bay's roller bed ends, in px
+    # A material channel is the bay AND the run past it, and the rail grades once across the
+    # whole of it - so both halves are told where the channel starts and ends rather than each
+    # grading over its own length and putting a crease at the seam. It starts where the bay's
+    # black lip ends, which is the first rail pixel anyone sees.
+    RAIL_0 = (11 - 5) * (PX / 128.0)
+    FLANK, INTAKE = (RAIL_0, 0.58 * PX), (RAIL_0, 0.55 * PX)
     for side in ('left', 'right'):
         for j in (1, 2, 3):
             along = c.y0 + int((j + 0.5) * PX)
-            c.belt_run(along, side, BAY_END, 0.58 * PX, rail='green')
+            c.belt_run(along, side, BAY_END, 0.58 * PX, rail='green', rail_span=FLANK)
             c.mouth(along, side, 0.58 * PX)
     for i in (CW // 2 - 1, CW // 2 + 1):        # the two material bays on the intake edge
         along = c.x0 + int((i + 0.5) * PX)
-        c.belt_run(along, 'top', BAY_END, 0.55 * PX, rail='green')
+        c.belt_run(along, 'top', BAY_END, 0.55 * PX, rail='green', rail_span=INTAKE)
         c.mouth(along, 'top', 0.55 * PX)
 
     # Three bays on the intake edge - the item port at centre with a material port either side -
@@ -178,10 +184,11 @@ def build():
     # vertical centre line, the way every one of their machines is.
     mid = CW // 2
     for i in (mid - 1, mid, mid + 1):
-        c.port(c.x0 + int((i + 0.5) * PX), 'top', 'cyan' if i == mid else 'green')
+        c.port(c.x0 + int((i + 0.5) * PX), 'top', 'cyan' if i == mid else 'green',
+               rail_span=None if i == mid else INTAKE)
     for side in ('left', 'right'):
         for j in (1, 2, 3):
-            c.port(c.y0 + int((j + 0.5) * PX), side, 'green')
+            c.port(c.y0 + int((j + 0.5) * PX), side, 'green', rail_span=FLANK)
     c.port(c.x0 + int((mid + 0.5) * PX), 'bottom', 'orange', outward=True)
     return c.image()
 

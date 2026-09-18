@@ -59,7 +59,12 @@ WALL = (93, 93, 93)              # a casing's side wall, lit
 WALL_SEAM = (35, 48, 53)         # the thin dark line where its top face meets that wall
 CASING_RIM = (35, 48, 53)
 
-RUN_RAIL = 0.80                   # how much of a port rail's tone it keeps once it is inside
+# A RAIL IS A RAMP, not a step. Sampled down their assembler's left rail, outer end inward:
+# (91,175,94) held flat for the outer 40% of the channel, then a straight linear fall to
+# (54,86,55) - 0.49 of full - by the time it meets the machine. That fall IS the entry slope:
+# a channel whose floor climbs into the body, drawn from above as tone rather than as an edge.
+RAIL_FLAT  = 0.41                 # of the channel nearest the lip, held at full tone
+RAIL_SHADE = 0.49                 # what the tone has fallen to where it meets the machine
 RAILS = {'orange': ((175, 120, 65), (109, 79, 49)),
          'green':  ((91, 175, 94),  (57, 109, 59)),
          'cyan':   ((72, 168, 178), (45, 105, 111))}
@@ -100,6 +105,38 @@ class Chassis:
         g = np.array(top, np.float32) * (1 - t[..., None]) + np.array(bottom, np.float32) * t[..., None]
         self.rgb = self.rgb * (1 - m[..., None]) + g * m[..., None]
         self.a = np.maximum(self.a, m)
+
+    def rail_tone(self, t):
+        """The rail's brightness at fraction `t` along the channel, lip (0) to machine (1)."""
+        if t <= RAIL_FLAT:
+            return 1.0
+        return 1.0 + (RAIL_SHADE - 1.0) * (t - RAIL_FLAT) / (1.0 - RAIL_FLAT)
+
+    def rail_band(self, rect, along, half, face, inward, q0, q1, colour, span):
+        """The rail strips either side of a bed, graded along the channel.
+
+        Painted in 1px slices rather than as one flat fill: the profile has a knee in it, and a
+        piece of channel may straddle that knee, so a single two-colour ramp would put a crease
+        where the slope starts. `span` is (start, end) in depth from the chassis face, covering
+        the WHOLE visible channel - lip to chute - so a bay and the run past it grade as one
+        continuous slope however they are split up between calls. None means no slope: the item
+        port and the output feed the spine, which runs its rails at full tone end to end because
+        it is meant to read as one belt, and a ramp into it would just put a step at that join.
+        """
+        if span is None:
+            self.fill(rect(along - half, along + half,
+                           face + inward * q0, face + inward * q1), colour)
+            return
+        s0, s1 = span
+        length = max(abs(s1 - s0), 1.0)
+        n = max(1, int(abs(q1 - q0)))
+        for i in range(n):
+            e0 = q0 + (q1 - q0) * i / n
+            e1 = q0 + (q1 - q0) * (i + 1) / n
+            k = self.rail_tone(min(1.0, max(0.0, (0.5 * (e0 + e1) - s0) / length)))
+            self.fill(rect(along - half, along + half,
+                           face + inward * e0, face + inward * e1),
+                      tuple(v * k for v in colour))
 
     def seam(self, p0, p1):
         d = ImageDraw.Draw(Image.new('L', (1, 1)))          # placeholder, keeps linters quiet
@@ -383,7 +420,8 @@ class Chassis:
         """A shallow inset panel: one flat tone a step below its surroundings."""
         self.fill(box, colour, radius=int(self.r(5)))
 
-    def belt_run(self, along, side, d0, d1, width=None, shade0=0.62, shade1=0.62, rail=None):
+    def belt_run(self, along, side, d0, d1, width=None, shade0=0.62, shade1=0.62,
+                 rail=None, rail_span=None):
         """A stretch of roller bed carrying on from a port bay.
 
         It defaults to the BAY'S OWN BED WIDTH and holds the brightness the bay ends at, flat,
@@ -392,12 +430,12 @@ class Chassis:
         belt's width along its length. Letting the run keep darkening past the bay was no better:
         it arrived at the chute as dark as the chute and the two merged.
 
-        `rail` carries the port's own accent line on inward alongside the run, at RUN_RAIL of
-        its tone. Without it the rail stopped at the bay's inner end, which left the accent as a
-        stub on the outside of the building; carried through, the two lines converge on the
-        chute and the bay reads as the mouth of an angled channel rather than a painted mark.
-        Dimming is what sells it - a rail at full tone the whole way just looks like a long
-        stripe, and the step from lit to dim is where the lip appears to turn.
+        `rail` carries the port's own accent line on inward alongside the run, graded by
+        rail_tone() over `rail_span`. Without it the rail stopped at the bay's inner end, which
+        left the accent as a stub on the outside of the building. Carrying it through at a flat
+        dimmer tone was no better: a step from one tone to another reads as a wall, and what the
+        channel actually does is climb, so the tone has to fall the way VFE's does - held for
+        the outer stretch, then straight down to about half by the time it meets the machine.
         """
         w = (self.r(BED_W) if width is None else width) / 2.0
         face = {'top': self.y0, 'bottom': self.y1, 'left': self.x0, 'right': self.x1}[side]
@@ -413,8 +451,8 @@ class Chassis:
         if rail is not None:
             # laid down first and at the port's own half-width, so the rollers cover the middle
             # and leave exactly the rail_w strip either side that a bay leaves.
-            dim = tuple(v * RUN_RAIL for v in RAILS[rail][0])
-            self.fill(rect(along - w - self.r(RAIL_W), along + w + self.r(RAIL_W), a, b), dim)
+            self.rail_band(rect, along, w + self.r(RAIL_W), face, inward, d0, d1,
+                           RAILS[rail][0], rail_span)
 
         period = self.r(ROLLER_PERIOD)
         n = int(span / period) + 1
@@ -465,7 +503,7 @@ class Chassis:
                            e + inward * self.r(3)), (72, 74, 77))
 
     # -- one ingress/egress port --------------------------------------------
-    def port(self, along, side, rail, chevron=True, outward=False):
+    def port(self, along, side, rail, chevron=True, outward=False, rail_span=None):
         """`along` is the port's centre on the edge's own axis, in canvas pixels.
 
         Widths, in REF pixels and therefore in VFE's own proportions:
@@ -495,7 +533,12 @@ class Chassis:
 
         self.fill(rect(along - half, along + half, outer, deep), SEAM)
         self.fill(rect(along - half + seam_w, along + half - seam_w, outer, deep), CAP)
-        self.fill(rect(along - bed / 2 - rail_w, along + bed / 2 + rail_w, outer, deep), lo)
+        # The bay owns the lit end of the channel, but not all of it - the knee in the profile
+        # falls just inside the bay's inner end, so the bay grades too and the run picks the
+        # slope up exactly where the bay left it.
+        q0, q1 = -self.r(PROTRUDE), self.r(BAY_DEPTH - PROTRUDE)
+        self.rail_band(rect, along, bed / 2 + rail_w, face, inward, q0, q1, lo,
+                       rail_span)
         self._bed(along, bed, outer, deep, inward, rect)
 
         # The bay's outer lip is part of the machine's silhouette, so it - and only it - is black.

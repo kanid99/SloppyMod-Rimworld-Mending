@@ -171,12 +171,30 @@ said none of them:
 * **it stands on the deck.** Housings, gantry and head all get the same side wall and cast
   shadow the casings get, so the middle reads as three stacked levels rather than one plate.
 
-A port's accent rail does not stop at the bay. It carries on inward alongside the run, at
-0.80 of its tone (`RUN_RAIL`), and ends where the run ends at the chute. Stopping it at the
-bay's inner end left the accent as a stub sitting outside the building; carried through, the
-two lines converge on the chute and the bay reads as the mouth of an angled channel rather
-than a painted mark. The dimming is what sells it - at full tone the whole way it is just a
-long stripe, and the step from lit to dim is where the lip appears to turn.
+A port's accent rail does not stop at the bay. It carries on inward alongside the run and
+ends where the run ends at the chute, and it GRADES over that whole length rather than
+stepping. Sampled down the left rail of their assembler, outer end inward: `(91,175,94)` held
+flat for the outer 40% of the channel, then a straight linear fall to `(54,86,55)` - 0.49 of
+full - by the time it meets the machine. `rail_tone()` is that profile; `RAIL_FLAT` and
+`RAIL_SHADE` are those two numbers.
+
+That fall is the entry slope. In section the channel is not a floor meeting a wall, it is a
+floor that climbs into the body - flat, then a ramp, then the machine's own level - and from
+directly above the only thing that can carry a slope is tone. So a step from one tone to
+another is wrong twice over: it reads as a wall, and it puts a hard edge where the sprite
+should have none. Two earlier tries got this wrong - the rail stopping dead at the bay's inner
+end, which left the accent as a stub outside the building, and then carrying on at a flat
+dimmer tone, which just moved the wall inward.
+
+The bay and the run past it are ONE channel for this purpose. Both are handed the same
+`rail_span` - where the channel starts and ends, measured from the chassis face - rather than
+each grading over its own length, because the knee in the profile falls just inside the bay's
+inner end and grading twice would crease the slope at the seam. `rail_band()` paints it in 1px
+slices for the same reason: one two-colour ramp cannot bend.
+
+The item port and the output get no ramp. They feed the spine, which runs its rails at full
+tone end to end because it has to read as one belt through the machine, and a ramp into it
+would put back exactly the step this removes.
 
 Every bay that feeds a casing runs INTO it, as one continuous channel. A stretch of roller
 bed carries on from the bay's inner end and ends at a chute cut into the casing: a lit lip
