@@ -31,7 +31,7 @@ def build():
     from the item bay and another out to the output bay.
     """
     c = Chassis(CW, CH, px=PX, margin=MARGIN)
-    c.base()
+    c.base(chamfer=0.30)
 
     def cell(cx, cy, w, h):
         """A box given in cells from the chassis's top-left corner."""
@@ -40,9 +40,10 @@ def build():
     def P(cx, cy):
         return (c.x0 + cx * PX, c.y0 + cy * PX)
 
-    c.corner_blocks(size_cells=0.58, inset_cells=0.08)
-    for sx in (0.14, 5 - 0.14 - 0.46):                 # a greeble on each corner housing
-        for sy in (0.16, 5 - 0.16 - 0.10):
+    # Tucked in behind the chamfer, which now takes the outer corner.
+    c.corner_blocks(size_cells=0.52, inset_cells=0.26)
+    for sx in (0.32, 5 - 0.32 - 0.42):                 # a greeble on each corner housing
+        for sy in (0.34, 5 - 0.34 - 0.10):
             c.slashes(*P(sx, sy), n=3, colour=(136, 130, 123))
 
     # A ring of chamfered teal casings: one inboard of each flank bay, and one either side of
@@ -70,25 +71,41 @@ def build():
     # The casings sit a third of a cell further in than they did, so the belt from each bay
     # has somewhere to travel before it reaches the hatch. Butted up against the bay there
     # was no run to see and the whole connection read as one dark notch.
+    # Colour now sits on a few elements rather than all ten. Measured, the ring of ten teal
+    # casings put cool hue over 21.7% of the sprite against their 0-17% range; the two drums
+    # and the two intake-edge casings come to about a third of that, and a drum is also the
+    # only round form on the sprite in a style that leans on them.
+    # Colour now sits on a few elements rather than all ten. Measured, a ring of ten teal
+    # casings put cool hue over 21.7% of the sprite against their 0-17% range. The six casings
+    # a belt actually feeds go grey; the teal is kept for the two intake-edge hoppers and two
+    # cylindrical tanks, which is also the only round form on a sprite that otherwise measures
+    # at the floor of their diagonal-edge energy.
+    # A step below the machine's own housings, so the hierarchy still reads: machine first,
+    # hoppers second, deck last.
+    GREY_CASE_LIT, GREY_CASE_DRK = (136, 131, 124), (96, 92, 87)
     W_, H_ = 0.84 * PX, 0.88 * PX
     for side, sx, corner_in in ((-1, 1.00, 'r'), (1, 5 - 1.00, 'l')):
         for cy, vert in ((1.5, 't'), (2.5, None), (3.5, 'b')):
             x, y = c.x0 + sx * PX, c.y0 + cy * PX
-            if vert is None:                            # the middle one is a plain casing
+            if vert is None:
                 c.raised_casing([(x - W_ / 2, y - H_ / 2), (x + W_ / 2, y - H_ / 2),
-                                 (x + W_ / 2, y + H_ / 2), (x - W_ / 2, y + H_ / 2)])
+                                 (x + W_ / 2, y + H_ / 2), (x - W_ / 2, y + H_ / 2)],
+                                lit=GREY_CASE_LIT, dark=GREY_CASE_DRK)
             else:
-                c.raised_casing(pentagon(x, y, W_, H_, vert + corner_in))
-            # On the inboard half, clear of the hatch in the outer edge.
-            c.slashes(x + W_ * 0.06, y - H_ * 0.22, n=4, colour=(118, 142, 148))
-            c.slashes(x + W_ * 0.06, y + H_ * 0.08, n=2, colour=(168, 122, 74))
+                c.raised_casing(pentagon(x, y, W_, H_, vert + corner_in),
+                                lit=GREY_CASE_LIT, dark=GREY_CASE_DRK)
+            c.slashes(x + W_ * 0.06, y - H_ * 0.22, n=4, colour=(126, 121, 115))
+            c.slashes(x + W_ * 0.06, y + H_ * 0.08, n=2, colour=(112, 108, 102))
 
-    # Lined up on the two material bays, so a run can drop straight into each one.
+    # The intake-edge pair is lined up on the two material bays so a run drops straight in, and
+    # keeps the teal. The bottom pair is fed by nothing, so it reads better as a pair of tanks -
+    # and a tank is round, which is what the sprite was missing.
     for cx, corner in ((1.5, 'r'), (5 - 1.5, 'l')):
-        for cy, vert in ((0.92, 'b'), (5 - 0.92, 't')):
-            x, y = c.x0 + cx * PX, c.y0 + cy * PX
-            c.raised_casing(pentagon(x, y, 0.96 * PX, 0.70 * PX, vert + corner))
-            c.slashes(x - PX * 0.20, y - PX * 0.10, n=3, colour=(118, 142, 148))
+        x, y = c.x0 + cx * PX, c.y0 + 0.92 * PX
+        c.raised_casing(pentagon(x, y, 0.96 * PX, 0.70 * PX, 'b' + corner))
+        c.slashes(x - PX * 0.20, y - PX * 0.10, n=3, colour=(118, 142, 148))
+    for cx in (1.46, 5 - 1.46):
+        c.drum(c.x0 + cx * PX, c.y0 + 4.16 * PX, 0.40 * PX)
 
     # The machine. Three things it has to say, which the old flat slab said none of:
     #   * work passes THROUGH it - the belt runs unbroken from the item bay to the output bay

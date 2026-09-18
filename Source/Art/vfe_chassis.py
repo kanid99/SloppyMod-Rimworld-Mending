@@ -122,31 +122,33 @@ class Chassis:
         self.a[y:y + h, x:x + w] = np.maximum(self.a[y:y + h, x:x + w], im[..., 3] / 255.0)
 
     # -- the chassis ---------------------------------------------------------
-    def base(self):
-        o = int(self.r(7))                       # outer black, measured 6-7px at REF
-        rad = int(self.r(14))
-        self.fill([self.x0 - o, self.y0 - o, self.x1 + o, self.y1 + o], BLACK, radius=rad + o)
-        # The face: one smooth ramp across the whole deck, no bands, no outlines.
-        self.vgrad([self.x0, self.y0, self.x1, self.y1], FACE_HI, FACE_LO, radius=rad)
+    def base(self, chamfer=0.30):
+        """The chassis: a square with its corners cut.
+
+        Measured across their sprites, a body fills 93% of its own bounding box on average and
+        its corners are 71% opaque; a plain rounded square comes out at 99% and 96%, which is
+        the very top of their range. Cutting the corners breaks the outline the way theirs do.
+        """
+        o = int(self.r(7))
+        k = chamfer * self.px
+
+        def octagon(inset):
+            x0, y0 = self.x0 + inset, self.y0 + inset
+            x1, y1 = self.x1 - inset, self.y1 - inset
+            c = max(k - inset, 0)
+            return [(x0 + c, y0), (x1 - c, y0), (x1, y0 + c), (x1, y1 - c),
+                    (x1 - c, y1), (x0 + c, y1), (x0, y1 - c), (x0, y0 + c)]
+
+        self._paint(self._poly_mask(octagon(-o)), BLACK)
+        box = (self.x0, self.y0, self.x1, self.y1)
+        self._paint_grad(self._poly_mask(octagon(0)), box, FACE_HI, FACE_LO)
         inset = int(self.r(16))
-        self.vgrad([self.x0 + inset, self.y0 + inset, self.x1 - inset, self.y1 - inset],
-                   tuple(min(255, c + 8) for c in DECK), DECK, radius=int(self.r(9)))
-        for i in range(1, self.cw):              # deck seams on the cell lines
+        self._paint_grad(self._poly_mask(octagon(inset)),
+                         (self.x0 + inset, self.y0 + inset, self.x1 - inset, self.y1 - inset),
+                         tuple(min(255, c + 8) for c in DECK), DECK)
+        for i in range(1, self.cw):                              # deck seams on the cell lines
             x = self.x0 + i * self.px
             self.seam((x, self.y0 + inset + int(self.r(6))), (x, self.y1 - inset - int(self.r(6))))
-
-    def deck_plates(self, d0, d1, n=5):
-        """A row of shallow raised plates across the front of the deck, modelled by tone alone -
-        a soft light-to-dark ramp per plate and a thin grey line between them, no outlines."""
-        inset = int(self.r(16))
-        x0, x1 = self.x0 + inset + int(self.r(10)), self.x1 - inset - int(self.r(10))
-        gap = self.r(6)
-        w = ((x1 - x0) - gap * (n - 1)) / n
-        for i in range(n):
-            a = x0 + i * (w + gap)
-            self.vgrad([a, d0, a + w, d1], (112, 106, 99), (78, 73, 68), radius=int(self.r(6)))
-            self.vgrad([a + self.r(5), d0 + self.r(4), a + w - self.r(5), d0 + (d1 - d0) * 0.34],
-                       (126, 120, 112), (110, 104, 97), radius=int(self.r(5)))
 
     # -- structural modules -------------------------------------------------
     # The factory machines do not read as "a machine sitting on a plate". They are built from
@@ -312,6 +314,35 @@ class Chassis:
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
         self._paint_grad(top, (min(xs), min(ys), max(xs), max(ys)), lit, dark)
+
+    def drum(self, cx, cy, r, lit=TEAL_LIT, dark=TEAL_DRK, bands=2):
+        """A cylindrical tank seen from above.
+
+        Their sprites lean on round forms - the distillery's vessel, the cannery's drum, the
+        machining bay's rounded caps - and a sprite built only from rectangles measures near
+        the floor of their diagonal-edge energy. A drum is the cheapest way to put curvature
+        back in: side wall, cast shadow and banded top, the same construction as a casing.
+        """
+        def circle(ccx, ccy, rr):
+            m = Image.new('L', (self.W, self.H), 0)
+            ImageDraw.Draw(m).ellipse([ccx - rr, ccy - rr, ccx + rr, ccy + rr], fill=255)
+            return np.asarray(m).astype(np.float32) / 255.0
+
+        lift, off = self.r(13), self.r(7)
+        top = circle(cx, cy, r)
+        shadow = ndimage.gaussian_filter(circle(cx + off, cy + off * 1.15, r), self.r(5))
+        self.rgb *= (1 - np.clip(shadow - top, 0, 1)[..., None] * 0.36)
+        self._paint(circle(cx, cy + lift, r), WALL)
+        self._paint(circle(cx, cy + self.r(5), r), WALL_SEAM)
+        self._paint_grad(top, (cx - r, cy - r, cx + r, cy + r), lit, dark)
+        for i in range(1, bands + 1):                      # concentric bands, faintly darker
+            rr = r * (1 - i / (bands + 1.0))
+            ring = circle(cx, cy, rr + self.r(1.5)) - circle(cx, cy, rr - self.r(1.5))
+            self._paint_grad(np.clip(ring, 0, 1), (cx - r, cy - r, cx + r, cy + r),
+                             tuple(int(v * 0.88) for v in lit), tuple(int(v * 0.91) for v in dark))
+        cap = circle(cx, cy - r * 0.16, r * 0.30)          # a small lit cap on top
+        self._paint_grad(cap, (cx - r, cy - r, cx + r, cy + r),
+                         tuple(min(255, int(v * 1.18)) for v in lit), lit)
 
     def pipe(self, route, width=None, colour=PLINTH):
         """Grey pipework, as axis-aligned runs with square elbows. Drawn BEFORE the structures

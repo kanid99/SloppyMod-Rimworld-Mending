@@ -125,14 +125,30 @@ python3 Source/Art/verify_spots.py flipped
 Three bays on the intake edge - the item port at centre with a material port either side -
 three more down each flank, and the single output bay opposite. Mirror-symmetric about the
 vertical centre line, which is what every one of their machines is. Inside: a housing at each
-corner and a ring of chamfered teal casings around a central machine - one inboard of each
-flank bay, one either side of the conveyor at top and bottom - with a roller run in from the
-item bay and another out to the output bay.
+corner and a ring of chamfered casings around a central machine - one inboard of each flank
+bay, one either side of the conveyor at the intake edge, two tanks along the bottom - with a
+roller run in from the item bay and another out to the output bay.
 
-The teal is subdued deliberately. Measured: VFE's machining bay casings average 0.448
-saturation over 17% of their sprite; ours average **0.274** over 27%. Per pixel it is the least
-saturated of the three candidates that were on the table, which is what keeps a ring of ten
-casings from reading as a colour accent.
+The chassis is an octagon, not a rounded square: 0.30 of a cell is cut off each corner
+(`base(chamfer=...)`). Almost nothing in the Factory set is a plain square - their silhouettes
+are cut, notched or stepped - and a 5x5 square read as the flattest shape in the pack.
+
+The casings are NOT all the same colour, and that is the hierarchy. Teal is reserved for the
+two hoppers on the intake edge and the two tanks at the bottom: four accents, not ten. The six
+belt-fed flank casings are grey, a step darker than the machine's own housings, so the sprite
+reads machine -> hoppers -> deck rather than one flat ring of colour. When all ten were teal,
+cool-hued pixels covered 21% of the sprite against their 2.9% mean - their machines carry a
+colour accent, they are not painted in one.
+
+The two bottom casings are cylindrical tanks rather than boxes, built from the same parts as a
+casing (side wall, cast shadow, banded top, lit cap). Every VFE machine has at least one round
+form somewhere; a sprite of nothing but rectangles is the tell. They sit at the two positions
+no bay feeds, so nothing had to be re-routed for them, and low enough that the gantry does not
+cover them - the first attempt put them on the flank row where the gantry hid them completely.
+
+The teal that is left is subdued deliberately. Measured: VFE's machining bay casings average
+0.448 saturation; ours average **0.274**, the least saturated of the three candidates that were
+on the table.
 
 Each casing is a raised structure, built the way theirs are: a top face that ramps only
 gently, a thin dark seam where that face meets its side wall, a LIGHT grey wall below it, and a
@@ -203,23 +219,36 @@ The spot geometry follows the footprint, so the C# and the art cannot drift: see
 
 ### Measured against their 19 sprites
 
+`measure.py` scores a sprite on nine metrics and prints them against the same nine measured
+over every machine sprite in `Textures/Things/Building/Factories/`. Every one of ours now falls
+inside their observed range:
+
 | | ours | VFE mean | VFE range |
 | --- | --- | --- | --- |
-| contrast (std) | 0.131 | 0.151 | 0.11-0.23 |
-| p99 highlight | 165 | 167 | 133-255 |
-| near-black | 5.9% | 6.5% | 0-19.8% |
-| saturated pixels | 32.1% | 13.2% | 1.4-33.9% |
-| hard-edge density | 27.6 | 18.7 | 9.0-34.6 |
+| contrast (std) | 0.141 | 0.151 | 0.11-0.23 |
+| p99 highlight | 166 | 166 | 133-255 |
+| median luminance | 86 | 93 | 48-116 |
+| near-black | 5.8% | 6.6% | 0-19.7% |
+| saturated pixels | 12.3% | 12.5% | 1.0-33.3% |
+| warm-hued | 1.1% | 8.8% | 0-33.3% |
+| cool-hued | 10.2% | 2.9% | 0-24.3% |
+| hard-edge density | 5.5 | 6.7 | 3.3-9.7 |
+| diagonal silhouette | 0.141 | 0.054 | 0-0.22 |
 
-Saturated pixels sit near the top of their range, and that is AREA rather than intensity: ten
-casings is simply more coloured surface than their machines carry. Per pixel the teal is the
-least saturated of the three candidates, at 0.274 against their 0.448.
+The grey/tank/chamfer pass is what brought the last two outliers in. Before it, saturated
+pixels were 23.3% and cool-hued 21.1% - a ring of ten teal casings - and the silhouette scored
+0.041 against their 0.054, because a square has no diagonals in it at all. After: 12.3%, 10.2%
+and 0.141.
+
+Cool still sits above their mean, and that is the mod's own accent rather than drift - the
+gear-in belt is cyan by design, and 10% is comfortably inside what their own sprites do.
 
 Note the sprite carries TEN bays where a VFE machine carries three or four; bays are
 high-contrast by construction, so that is where most of our edge density goes.
 
 ```sh
 python3 Source/Art/compose_repair_center.py    # writes the three rotations and scores them
+python3 Source/Art/measure.py Textures/Things/Building/Production/AutomatedMender_north.png
 ```
 
 ## Store page art
@@ -244,6 +273,7 @@ python3 Source/Art/make_about_art.py      # from the repo root
 | `gen_bench_objects.py` | generates the object sprites (Gemini) |
 | `compose_repair_center.py` | the repair centre, all three rotations |
 | `vfe_chassis.py` | the drawing primitives, at VFE's measured proportions |
+| `measure.py` | scores a sprite on nine style metrics against VFE's machine sprites |
 | `gen_tools.py` | generates the metalworking tool sprites (Gemini) |
 | `cut.py` | chroma-keys a generated sheet and cuts it into individual objects |
 
