@@ -60,15 +60,18 @@ def build():
     # Grey pipework linking the ring, laid down first so the casings sit on top of it and it
     # only shows in the gaps between them - which is what keeps it subtle. Straight runs only;
     # routing it round corners produced little hooks that read as debris at play zoom.
-    for sx, tx, inner in ((0.84, 1.42, 1.44), (5 - 0.84, 5 - 1.42, 5 - 1.44)):
-        c.pipe([P(sx, 0.72), P(sx, 4.28)])                 # the spine down the flank
+    for sx, tx, inner in ((0.98, 1.5, 1.44), (5 - 0.98, 5 - 1.5, 5 - 1.44)):
+        c.pipe([P(sx, 0.88), P(sx, 4.12)])                 # the spine down the flank
         for row in (1.5, 2.5, 3.5):                        # stubs into the machine
             c.pipe([P(sx, row), P(inner, row)])
-        for row in (0.72, 4.28):                           # and out to the corner casings
+        for row in (0.88, 4.12):                           # and out to the corner casings
             c.pipe([P(sx, row), P(tx, row)])
 
-    W_, H_ = 0.92 * PX, 0.80 * PX
-    for side, sx, corner_in in ((-1, 0.84, 'r'), (1, 5 - 0.84, 'l')):
+    # The casings sit a third of a cell further in than they did, so the belt from each bay
+    # has somewhere to travel before it reaches the hatch. Butted up against the bay there
+    # was no run to see and the whole connection read as one dark notch.
+    W_, H_ = 0.76 * PX, 0.80 * PX
+    for side, sx, corner_in in ((-1, 0.98, 'r'), (1, 5 - 0.98, 'l')):
         for cy, vert in ((1.5, 't'), (2.5, None), (3.5, 'b')):
             x, y = c.x0 + sx * PX, c.y0 + cy * PX
             if vert is None:                            # the middle one is a plain casing
@@ -76,13 +79,15 @@ def build():
                                  (x + W_ / 2, y + H_ / 2), (x - W_ / 2, y + H_ / 2)])
             else:
                 c.raised_casing(pentagon(x, y, W_, H_, vert + corner_in))
-            c.slashes(x - W_ * 0.26, y - H_ * 0.20, n=4, colour=(118, 142, 148))
-            c.slashes(x - W_ * 0.26, y + H_ * 0.10, n=2, colour=(168, 122, 74))
+            # On the inboard half, clear of the hatch in the outer edge.
+            c.slashes(x + W_ * 0.06, y - H_ * 0.22, n=4, colour=(118, 142, 148))
+            c.slashes(x + W_ * 0.06, y + H_ * 0.08, n=2, colour=(168, 122, 74))
 
-    for cx, corner in ((1.42, 'r'), (5 - 1.42, 'l')):   # flanking the conveyor, top and bottom
-        for cy, vert in ((0.72, 'b'), (5 - 0.72, 't')):
+    # Lined up on the two material bays, so a run can drop straight into each one.
+    for cx, corner in ((1.5, 'r'), (5 - 1.5, 'l')):
+        for cy, vert in ((0.88, 'b'), (5 - 0.88, 't')):
             x, y = c.x0 + cx * PX, c.y0 + cy * PX
-            c.raised_casing(pentagon(x, y, 0.86 * PX, 0.68 * PX, vert + corner))
+            c.raised_casing(pentagon(x, y, 0.88 * PX, 0.62 * PX, vert + corner))
             c.slashes(x - PX * 0.20, y - PX * 0.10, n=3, colour=(118, 142, 148))
 
     # The machine. Three things it has to say, which the old flat slab said none of:
@@ -126,6 +131,20 @@ def build():
                     lit=(148, 143, 136), dark=(92, 88, 83))
     c.work_slot([head[0] + int(PX * 0.07), head[1] + int(PX * 0.09),
                  head[2] - int(PX * 0.07), head[3] - int(PX * 0.06)])
+
+    # Every bay that feeds a casing runs into a hatch in it: a stretch of roller bed across the
+    # deck, ending in a dark mouth cut into the casing's edge under a lit lip. Their conveyor
+    # oven does the same thing - a run should disappear into the machine, not stop on bare deck.
+    BAY_END = 36 * (PX / 128.0)                 # where a port bay's roller bed ends, in px
+    for side in ('left', 'right'):
+        for j in (1, 2, 3):
+            along = c.y0 + int((j + 0.5) * PX)
+            c.belt_run(along, side, BAY_END, 0.60 * PX)
+            c.mouth(along, side, 0.60 * PX)
+    for i in (CW // 2 - 1, CW // 2 + 1):        # the two material bays on the intake edge
+        along = c.x0 + int((i + 0.5) * PX)
+        c.belt_run(along, 'top', BAY_END, 0.57 * PX)
+        c.mouth(along, 'top', 0.57 * PX)
 
     # Three bays on the intake edge - the item port at centre with a material port either side -
     # three more down each flank, and the single output bay opposite. Mirror-symmetric about the

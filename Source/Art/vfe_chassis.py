@@ -327,6 +327,70 @@ class Chassis:
         """A shallow inset panel: one flat tone a step below its surroundings."""
         self.fill(box, colour, radius=int(self.r(5)))
 
+    def belt_run(self, along, side, d0, d1, width=None):
+        """A stretch of roller bed on its own - no caps, no rails - carrying the eye from a
+        port bay across the deck to whatever it feeds."""
+        w = (self.r(46) if width is None else width) / 2.0
+        face = {'top': self.y0, 'bottom': self.y1, 'left': self.x0, 'right': self.x1}[side]
+        inward = 1.0 if side in ('top', 'left') else -1.0
+        vertical = side in ('top', 'bottom')
+        a, b = face + inward * d0, face + inward * d1
+
+        def rect(a0, a1, e0, e1):
+            box = [a0, e0, a1, e1] if vertical else [e0, a0, e1, a1]
+            return [min(box[0], box[2]), min(box[1], box[3]), max(box[0], box[2]), max(box[1], box[3])]
+
+        self.fill(rect(along - w - self.r(3), along + w + self.r(3), a, b), SEAM)
+        period = self.r(ROLLER_PERIOD)
+        n = int(abs(b - a) / period) + 1
+        # Close to the brightness the port bay ends at, so the two read as one belt, but not
+        # all the way down to it: matched exactly, the run went as dark as the hatch it feeds
+        # and the pair merged into a single black notch.
+        shade = 0.78
+        for i in range(n):
+            for f0, f1, col in ROLLER:
+                col = tuple(v * shade for v in col)
+                e0 = a + inward * (i + f0) * period
+                e1 = a + inward * (i + f1) * period
+                if abs(e0 - a) > abs(b - a):
+                    continue
+                if abs(e1 - a) > abs(b - a):
+                    e1 = b
+                box = rect(along - w, along + w, e0, e1)
+                if box[2] - box[0] >= 1 and box[3] - box[1] >= 1:
+                    self.fill(box, col)
+
+    def mouth(self, along, side, depth_at, width=None, deep=None):
+        """The dark opening a belt runs into.
+
+        Their conveyor oven does exactly this: a run ends under a raised lip and disappears
+        into a dark grid-lined recess. Ours is the same idea - a lit lip across the far end, a
+        dark throat, and a shadow where the belt goes under."""
+        w = (self.r(44) if width is None else width) / 2.0
+        deep = self.r(26) if deep is None else deep
+        face = {'top': self.y0, 'bottom': self.y1, 'left': self.x0, 'right': self.x1}[side]
+        inward = 1.0 if side in ('top', 'left') else -1.0
+        vertical = side in ('top', 'bottom')
+        a = face + inward * depth_at
+        b = a + inward * deep
+
+        def rect(a0, a1, e0, e1):
+            box = [a0, e0, a1, e1] if vertical else [e0, a0, e1, a1]
+            return [min(box[0], box[2]), min(box[1], box[3]), max(box[0], box[2]), max(box[1], box[3])]
+
+        # A throat, not a black hole: their oven's is dark but broken up by grid lines, and it
+        # sits UNDER a lit lip that overhangs it from the outside.
+        # Square, not rounded: a rounded throat sits ON the casing like a box, a square one
+        # reads as an opening cut INTO its edge.
+        self.fill(rect(along - w, along + w, a, b), (46, 48, 50))
+        for f in (0.36, 0.70):
+            e = a + inward * deep * f
+            self.fill(rect(along - w + self.r(3), along + w - self.r(3), e, e + inward * self.r(3)),
+                      (72, 74, 77))
+        self.fill(rect(along - w, along + w, a, a + inward * self.r(5)), (28, 29, 31))
+        lip = self.r(7)
+        self.fill(rect(along - w - self.r(4), along + w + self.r(4), a - inward * lip, a), (140, 134, 127))
+
     # -- one ingress/egress port --------------------------------------------
     def port(self, along, side, rail, chevron=True, outward=False):
         """`along` is the port's centre on the edge's own axis, in canvas pixels.
