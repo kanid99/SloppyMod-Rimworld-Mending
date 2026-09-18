@@ -105,13 +105,18 @@ def build():
     #
     # It was three separate segments before, one of them unaccented, which read as three
     # belts rather than one. The gantry is drawn after this, so it passes over the belt.
+    # Width comes from the chassis, not from a guess: spine_width() is whatever makes the
+    # spine's roller bed exactly a port bay's bed width. It used to be a hand-picked 0.62
+    # cell, which gave a 74px bed against the ports' 117 - the belt visibly narrowed as
+    # soon as it left the port.
+    SPINE_W = c.spine_width() / PX
     GANTRY_MID = c.y0 + 2.27 * PX
-    c.spine(cell(2.5 - 0.31, 0.26, 0.62, 4.74), accent=RAILS['cyan'][0],
+    c.spine(cell(2.5 - SPINE_W / 2, 0.26, SPINE_W, 4.74), accent=RAILS['cyan'][0],
             accent_after=RAILS['orange'][0], split=GANTRY_MID, ramp=0.19)
 
     GREY_LIT, GREY_DRK = (158, 152, 145), (108, 103, 98)
-    for hx in (1.40, 5 - 1.40 - 0.76):                  # a housing either side of the belt
-        box = cell(hx, 1.22, 0.76, 2.44)
+    for hx in (1.34, 5 - 1.34 - 0.72):                  # a housing either side of the belt
+        box = cell(hx, 1.22, 0.72, 2.44)
         c.raised_casing([(box[0], box[1]), (box[2], box[1]), (box[2], box[3]), (box[0], box[3])],
                         lit=GREY_LIT, dark=GREY_DRK)
         # Stop the slats above the gantry: running them under it clipped the last one.

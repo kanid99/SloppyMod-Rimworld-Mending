@@ -166,6 +166,13 @@ narrower run: the step down at the seam was jarring, and VFE never change a belt
 along its length. Letting the run keep darkening past the bay was no better - it arrived at
 the chute as dark as the chute and the two merged into one black notch.
 
+One number governs every belt on the sprite: `BED_W`, the roller bed's width at VFE's
+authoring scale. The port bays, the feed runs, the chutes and the spine all derive from it, and
+`Chassis.spine_width()` returns the box width a spine needs for its bed to come out at exactly
+that. The spine used to take a hand-picked 0.62 cell, which gave it a 74px bed against the
+ports' 117 - the belt narrowed to two thirds the moment it left the port. `spine()` now asserts
+its box matches `spine_width()`, so that cannot drift back in unnoticed.
+
 ONE belt runs the whole way through, intake port to output port, passing under the arm that
 does the work. Its rails change colour where it goes under: cyan on the way in, which is the
 gear-in port's own rail colour, orange on the way out, which is the output port's. That single

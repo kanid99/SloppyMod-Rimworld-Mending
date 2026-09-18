@@ -38,6 +38,9 @@ ROLLER = [(0.000, 0.250, (97, 106, 119)),
           (0.875, 0.938, (65,  68,  73)),
           (0.938, 1.000, (60,  63,  68))]
 ROLLER_PERIOD = 16.0              # at REF
+BED_W      = 78.0                 # a belt's roller bed, at REF - ports, runs and the
+RAIL_W     = 7.0                  # spine all use these, so no join changes width
+BED_MARGIN = 6.0                  # bed to the inside of the spine's frame
 PROTRUDE   = 5.0                  # how far a bay sticks out past the chassis, at REF
 BAY_DEPTH  = 41.0                 # its whole depth, lip to the inboard end of the bed
 
@@ -193,6 +196,10 @@ class Chassis:
             sub = [x0, a, x1, b] if horizontal else [a, y0, b, y1]
             self.vgrad(sub, (118, 112, 105), (80, 76, 71), radius=int(self.r(5)))
 
+    def spine_width(self):
+        """How wide a spine's box must be for its roller bed to match a port bay's."""
+        return self.r(BED_W) + 2 * (self.r(BED_MARGIN) + self.r(RAIL_W))
+
     def spine(self, box, accent=(175, 120, 65), accent_after=None, split=None, ramp=None):
         """The belt that carries an item through the machine.
 
@@ -204,18 +211,21 @@ class Chassis:
         machine, so without that the belt has a visible step in it where it leaves the bay.
         """
         x0, y0, x1, y1 = box
+        assert abs((x1 - x0) - self.spine_width()) < 1.5, (
+            "the spine's box must be spine_width() wide, or its bed comes out a different "
+            "width from the port bays' and the belt visibly steps in where they meet")
         f = self.r(10)
         self.fill([x0 - f, y0 - f, x1 + f, y1 + f], SEAM, radius=int(self.r(10)))
         self.vgrad([x0, y0, x1, y1], (58, 55, 52), (78, 74, 70), radius=int(self.r(8)))
 
-        rail = self.r(9) if accent else 0.0
+        rail = self.r(RAIL_W) if accent else 0.0
         if accent:
             lo, hi = y0 + self.r(6), y1 - self.r(6)
             cut = hi if (split is None or accent_after is None) else max(lo, min(hi, split))
             self.fill([x0 + self.r(6), lo, x1 - self.r(6), cut], accent)
             if accent_after is not None:
                 self.fill([x0 + self.r(6), cut, x1 - self.r(6), hi], accent_after)
-        bx0, bx1 = x0 + self.r(6) + rail, x1 - self.r(6) - rail
+        bx0, bx1 = x0 + self.r(BED_MARGIN) + rail, x1 - self.r(BED_MARGIN) - rail
 
         period = self.r(ROLLER_PERIOD)
         d0, d1 = y0 + self.r(6), y1 - self.r(6)
@@ -350,7 +360,7 @@ class Chassis:
         belt's width along its length. Letting the run keep darkening past the bay was no better:
         it arrived at the chute as dark as the chute and the two merged.
         """
-        w = (self.r(78) if width is None else width) / 2.0
+        w = (self.r(BED_W) if width is None else width) / 2.0
         face = {'top': self.y0, 'bottom': self.y1, 'left': self.x0, 'right': self.x1}[side]
         inward = 1.0 if side in ('top', 'left') else -1.0
         vertical = side in ('top', 'bottom')
@@ -383,7 +393,7 @@ class Chassis:
         Their conveyor oven does exactly this: a run ends under a raised lip and disappears
         into a dark grid-lined recess. Ours is the same idea - a lit lip across the far end, a
         dark throat, and a shadow where the belt goes under."""
-        w = (self.r(78) if width is None else width) / 2.0
+        w = (self.r(BED_W) if width is None else width) / 2.0
         deep = self.r(30) if deep is None else deep
         face = {'top': self.y0, 'bottom': self.y1, 'left': self.x0, 'right': self.x1}[side]
         inward = 1.0 if side in ('top', 'left') else -1.0
@@ -422,7 +432,7 @@ class Chassis:
         The rest is cut into it. An earlier version ran the bay across the whole half-cell
         overhang, which left the bays sitting outside the building instead of in it.
         """
-        bed, rail_w, cap_w = self.r(78), self.r(7), self.r(12)
+        bed, rail_w, cap_w = self.r(BED_W), self.r(RAIL_W), self.r(12)
         half = self.px / 2.0
         seam_w = half - (bed / 2 + rail_w + cap_w)
         lo, hi = RAILS[rail]
