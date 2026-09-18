@@ -166,13 +166,17 @@ narrower run: the step down at the seam was jarring, and VFE never change a belt
 along its length. Letting the run keep darkening past the bay was no better - it arrived at
 the chute as dark as the chute and the two merged into one black notch.
 
-Each belt wears the colour of the port it serves - cyan going in, orange coming out, green on
-the flanks - so the sprite says which way work travels. Both central belts ran orange before,
-which read as two outputs.
+ONE belt runs the whole way through, intake port to output port, passing under the arm that
+does the work. Its rails change colour where it goes under: cyan on the way in, which is the
+gear-in port's own rail colour, orange on the way out, which is the output port's. That single
+line states the machine's job in one read - a damaged item goes in at the top, something acts
+on it in the middle, a repaired one comes out at the bottom. It was three separate segments
+before, one of them unaccented, which read as three belts rather than one.
 
-A belt also picks up the tone of the bay it leaves. A port bay's bed darkens 38% towards the
-machine, so a spine meeting one at full brightness left a tonal seam at the join; the central
-belts now start at the bay's tone and come back up as they run out from under the chassis lip.
+The bed also picks up the tone of the bay it leaves. A port bay's bed darkens 38% towards the
+machine, so a belt meeting one at full brightness has a visible step in it at the join; the
+run comes up from the bay's tone over the first fifth of its length and back down into the
+output bay over the last.
 
 The flank casings sit a third of a cell further in than the first layout put them, purely so
 the run has somewhere to travel; butted against the bay there was nothing to see. The two

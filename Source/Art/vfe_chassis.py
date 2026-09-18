@@ -193,34 +193,43 @@ class Chassis:
             sub = [x0, a, x1, b] if horizontal else [a, y0, b, y1]
             self.vgrad(sub, (118, 112, 105), (80, 76, 71), radius=int(self.r(5)))
 
-    def spine(self, box, accent=(175, 120, 65), shade0=1.0, shade1=1.0):
-        """A recessed channel carrying finished work from the machine to the output port, with
-        a matched block either side. The repeated mirrored pair is what reads as a production
-        line rather than an object parked on a plate."""
+    def spine(self, box, accent=(175, 120, 65), accent_after=None, split=None, ramp=None):
+        """The belt that carries an item through the machine.
+
+        One run from the intake port to the output port, so it reads as a single belt rather
+        than three pieces of one. `split` is a canvas y at which the rail colour changes -
+        cyan above, orange below, with the arm that does the work sitting over that line - and
+        `ramp` is how far, as a fraction of the run, the bed takes to come up from the tone a
+        port bay leaves it at to full brightness. A port bay's bed darkens 38% towards the
+        machine, so without that the belt has a visible step in it where it leaves the bay.
+        """
         x0, y0, x1, y1 = box
         f = self.r(10)
         self.fill([x0 - f, y0 - f, x1 + f, y1 + f], SEAM, radius=int(self.r(10)))
         self.vgrad([x0, y0, x1, y1], (58, 55, 52), (78, 74, 70), radius=int(self.r(8)))
-        # A roller run, drawn exactly as the port beds are, with a thin accent rail either
-        # side - so the channel reads as the same conveyor the ports are, carrying work out.
+
         rail = self.r(9) if accent else 0.0
         if accent:
-            self.fill([x0 + self.r(6), y0 + self.r(6), x1 - self.r(6), y1 - self.r(6)], accent)
+            lo, hi = y0 + self.r(6), y1 - self.r(6)
+            cut = hi if (split is None or accent_after is None) else max(lo, min(hi, split))
+            self.fill([x0 + self.r(6), lo, x1 - self.r(6), cut], accent)
+            if accent_after is not None:
+                self.fill([x0 + self.r(6), cut, x1 - self.r(6), hi], accent_after)
         bx0, bx1 = x0 + self.r(6) + rail, x1 - self.r(6) - rail
+
         period = self.r(ROLLER_PERIOD)
         d0, d1 = y0 + self.r(6), y1 - self.r(6)
         n = int((d1 - d0) / period) + 1
-        # A port bay's bed darkens 38% towards the machine, so a spine meeting one at full
-        # brightness leaves a tonal seam at the join. shade0/shade1 let a segment start at the
-        # bay's tone and come back up as it runs out from under the chassis lip.
         for i in range(n):
             for f0, f1, col in ROLLER:
                 a = d0 + (i + f0) * period
                 b = min(d0 + (i + f1) * period, d1)
                 if b <= a:
                     continue
-                t = min(1.0, (a - d0) / max(d1 - d0, 1.0))
-                sh = shade0 + (shade1 - shade0) * t
+                sh = 1.0
+                if ramp:
+                    t = (a - d0) / max(d1 - d0, 1.0)
+                    sh = 0.62 + 0.38 * min(t / ramp, (1.0 - t) / ramp, 1.0)
                 self.fill([bx0, a, bx1, b], tuple(v * sh for v in col))
 
     def work_slot(self, box, accent=(175, 120, 65)):

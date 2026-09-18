@@ -97,17 +97,17 @@ def build():
     #     it, which is the clearest "this is a machine that does something to an item" there is
     #     in a top-down view,
     #   * it stands on the deck - side walls and a cast shadow, the same lift the casings get.
-    # Three segments, not one long run: the accent rails mark the belt where it meets a
-    # port, and the stretch inside the machine is plain rollers. One continuous accented
-    # run put a stripe of orange down the whole sprite, which is not how they use it.
-    # Each belt wears the colour of the port it serves: cyan going in, because that is the
-    # gear-in port's rail colour, and orange coming out. Both ran orange before, which read as
-    # two output belts and said nothing about which way work travels.
-    c.spine(cell(2.5 - 0.31, 0.26, 0.62, 1.06), accent=RAILS['cyan'][0],
-            shade0=0.62, shade1=1.0)
-    c.spine(cell(2.5 - 0.31, 1.26, 0.62, 2.28), accent=None)
-    c.spine(cell(2.5 - 0.31, 3.50, 0.62, 1.50), accent=RAILS['orange'][0],
-            shade0=1.0, shade1=0.62)
+    # ONE belt, intake port to output port, passing under the arm that does the work. The rails
+    # change colour where it goes under: cyan on the way in, which is the gear-in port's own
+    # rail colour, orange on the way out, which is the output port's. That single line is the
+    # whole machine's job stated in one read - a damaged item goes in at the top, something
+    # acts on it in the middle, a repaired one leaves at the bottom.
+    #
+    # It was three separate segments before, one of them unaccented, which read as three
+    # belts rather than one. The gantry is drawn after this, so it passes over the belt.
+    GANTRY_MID = c.y0 + 2.27 * PX
+    c.spine(cell(2.5 - 0.31, 0.26, 0.62, 4.74), accent=RAILS['cyan'][0],
+            accent_after=RAILS['orange'][0], split=GANTRY_MID, ramp=0.19)
 
     GREY_LIT, GREY_DRK = (158, 152, 145), (108, 103, 98)
     for hx in (1.40, 5 - 1.40 - 0.76):                  # a housing either side of the belt
