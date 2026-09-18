@@ -60,7 +60,7 @@ def build():
     # Grey pipework linking the ring, laid down first so the casings sit on top of it and it
     # only shows in the gaps between them - which is what keeps it subtle. Straight runs only;
     # routing it round corners produced little hooks that read as debris at play zoom.
-    for sx, tx, inner in ((0.84, 1.42, 1.62), (5 - 0.84, 5 - 1.42, 5 - 1.62)):
+    for sx, tx, inner in ((0.84, 1.42, 1.44), (5 - 0.84, 5 - 1.42, 5 - 1.44)):
         c.pipe([P(sx, 0.72), P(sx, 4.28)])                 # the spine down the flank
         for row in (1.5, 2.5, 3.5):                        # stubs into the machine
             c.pipe([P(sx, row), P(inner, row)])
@@ -85,18 +85,47 @@ def build():
             c.raised_casing(pentagon(x, y, 0.86 * PX, 0.68 * PX, vert + corner))
             c.slashes(x - PX * 0.20, y - PX * 0.10, n=3, colour=(118, 142, 148))
 
-    # The machine: one plain block, a slat panel, a dark working face, and a little hardware.
-    body = cell(1.58, 1.34, 1.84, 2.28)
-    c.block(body, lit=(168, 162, 154), dark=(88, 83, 78))
-    c.slats([body[0] + int(PX * 0.20), body[1] + int(PX * 0.18),
-             body[2] - int(PX * 0.20), body[1] + int(PX * 0.96)], n=6, horizontal=False)
-    c.studs(body[0] + int(PX * 0.24), body[2] - int(PX * 0.24), body[1] + int(PX * 1.12), n=5)
-    c.work_slot([body[0] + int(PX * 0.14), body[1] + int(PX * 1.32),
-                 body[2] - int(PX * 0.14), body[3] - int(PX * 0.12)])
+    # The machine. Three things it has to say, which the old flat slab said none of:
+    #   * work passes THROUGH it - the belt runs unbroken from the item bay to the output bay
+    #     rather than stopping at a solid block,
+    #   * something acts on the work - a gantry straddles the belt with a tool head centred on
+    #     it, which is the clearest "this is a machine that does something to an item" there is
+    #     in a top-down view,
+    #   * it stands on the deck - side walls and a cast shadow, the same lift the casings get.
+    # Three segments, not one long run: the accent rails mark the belt where it meets a
+    # port, and the stretch inside the machine is plain rollers. One continuous accented
+    # run put a stripe of orange down the whole sprite, which is not how they use it.
+    c.spine(cell(2.5 - 0.31, 0.26, 0.62, 1.06))
+    c.spine(cell(2.5 - 0.31, 1.26, 0.62, 2.28), accent=None)
+    c.spine(cell(2.5 - 0.31, 3.50, 0.62, 1.50))
 
-    # In from the item bay, out to the output bay.
-    c.spine(cell(2.5 - 0.31, 0.26, 0.62, 1.14))
-    c.spine(cell(2.5 - 0.31, 3.58, 0.62, 1.42))
+    GREY_LIT, GREY_DRK = (158, 152, 145), (108, 103, 98)
+    for hx in (1.40, 5 - 1.40 - 0.76):                  # a housing either side of the belt
+        box = cell(hx, 1.22, 0.76, 2.44)
+        c.raised_casing([(box[0], box[1]), (box[2], box[1]), (box[2], box[3]), (box[0], box[3])],
+                        lit=GREY_LIT, dark=GREY_DRK)
+        # Stop the slats above the gantry: running them under it clipped the last one.
+        c.slats([box[0] + int(PX * 0.12), box[1] + int(PX * 0.16),
+                 box[2] - int(PX * 0.12), box[1] + int(PX * 0.66)], n=4)
+        c.studs(box[0] + int(PX * 0.14), box[2] - int(PX * 0.14), box[1] + int(PX * 1.20), n=3)
+        c.panel([box[0] + int(PX * 0.13), box[1] + int(PX * 1.38),
+                 box[2] - int(PX * 0.13), box[3] - int(PX * 0.24)], colour=(124, 119, 113))
+        c.slashes(box[0] + int(PX * 0.22), box[1] + int(PX * 1.52), n=4,
+                  colour=(150, 144, 137))
+
+    # The gantry bridges both housings across the belt; the head sits on its centre line.
+    gantry = cell(1.24, 1.96, 2.52, 0.62)
+    c.raised_casing([(gantry[0], gantry[1]), (gantry[2], gantry[1]),
+                     (gantry[2], gantry[3]), (gantry[0], gantry[3])],
+                    lit=(176, 170, 162), dark=(116, 111, 105))
+    c.slats([gantry[0] + int(PX * 0.16), gantry[1] + int(PX * 0.14),
+             gantry[2] - int(PX * 0.16), gantry[3] - int(PX * 0.16)], n=9, horizontal=False)
+
+    head = cell(2.5 - 0.30, 2.02, 0.60, 0.50)
+    c.raised_casing([(head[0], head[1]), (head[2], head[1]), (head[2], head[3]), (head[0], head[3])],
+                    lit=(148, 143, 136), dark=(92, 88, 83))
+    c.work_slot([head[0] + int(PX * 0.07), head[1] + int(PX * 0.09),
+                 head[2] - int(PX * 0.07), head[3] - int(PX * 0.06)])
 
     # Three bays on the intake edge - the item port at centre with a material port either side -
     # three more down each flank, and the single output bay opposite. Mirror-symmetric about the

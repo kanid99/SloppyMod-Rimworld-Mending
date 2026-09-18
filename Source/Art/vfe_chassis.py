@@ -203,8 +203,9 @@ class Chassis:
         self.vgrad([x0, y0, x1, y1], (58, 55, 52), (78, 74, 70), radius=int(self.r(8)))
         # A roller run, drawn exactly as the port beds are, with a thin accent rail either
         # side - so the channel reads as the same conveyor the ports are, carrying work out.
-        rail = self.r(9)
-        self.fill([x0 + self.r(6), y0 + self.r(6), x1 - self.r(6), y1 - self.r(6)], accent)
+        rail = self.r(9) if accent else 0.0
+        if accent:
+            self.fill([x0 + self.r(6), y0 + self.r(6), x1 - self.r(6), y1 - self.r(6)], accent)
         bx0, bx1 = x0 + self.r(6) + rail, x1 - self.r(6) - rail
         period = self.r(ROLLER_PERIOD)
         d0, d1 = y0 + self.r(6), y1 - self.r(6)

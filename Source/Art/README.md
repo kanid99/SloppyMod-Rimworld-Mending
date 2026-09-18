@@ -142,6 +142,19 @@ attempt read the dark band in the colour slice as the wall and painted the whole
 which made the casings look burnt; at 1:1 against their sprite the dark band is a seam and the
 wall is `(93,93,93)`.
 
+The machine in the middle has three things to say, and as a flat slab with a slat panel it
+said none of them:
+
+* **work passes through it.** The belt runs unbroken from the item bay to the output bay
+  instead of stopping at a solid block. It is drawn in three segments - the accent rails mark
+  it where it meets a port, and the stretch inside the machine is plain rollers. One continuous
+  accented run put a stripe of orange down the whole sprite, which is not how they use it.
+* **something acts on the work.** A gantry bridges the two housings across the belt with a tool
+  head on its centre line, over a dark working face. A bridge over a belt is the clearest way a
+  top-down sprite can say "this machine does something to an item".
+* **it stands on the deck.** Housings, gantry and head all get the same side wall and cast
+  shadow the casings get, so the middle reads as three stacked levels rather than one plate.
+
 Grey pipework links the ring, laid down before the casings so it passes under them and shows
 only in the gaps. Straight runs only - routing it round corners left little hooks that read as
 debris at play zoom.
@@ -159,9 +172,9 @@ The spot geometry follows the footprint, so the C# and the art cannot drift: see
 | | ours | VFE mean | VFE range |
 | --- | --- | --- | --- |
 | contrast (std) | 0.131 | 0.151 | 0.11-0.23 |
-| p99 highlight | 173 | 167 | 133-255 |
+| p99 highlight | 165 | 167 | 133-255 |
 | near-black | 5.9% | 6.5% | 0-19.8% |
-| saturated pixels | 31.3% | 13.2% | 1.4-33.9% |
+| saturated pixels | 32.1% | 13.2% | 1.4-33.9% |
 | hard-edge density | 27.6 | 18.7 | 9.0-34.6 |
 
 Saturated pixels sit near the top of their range, and that is AREA rather than intensity: ten
