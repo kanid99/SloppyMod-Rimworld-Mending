@@ -166,6 +166,14 @@ narrower run: the step down at the seam was jarring, and VFE never change a belt
 along its length. Letting the run keep darkening past the bay was no better - it arrived at
 the chute as dark as the chute and the two merged into one black notch.
 
+Each belt wears the colour of the port it serves - cyan going in, orange coming out, green on
+the flanks - so the sprite says which way work travels. Both central belts ran orange before,
+which read as two outputs.
+
+A belt also picks up the tone of the bay it leaves. A port bay's bed darkens 38% towards the
+machine, so a spine meeting one at full brightness left a tonal seam at the join; the central
+belts now start at the bay's tone and come back up as they run out from under the chassis lip.
+
 The flank casings sit a third of a cell further in than the first layout put them, purely so
 the run has somewhere to travel; butted against the bay there was nothing to see. The two
 intake-edge casings sit on their bays' centre lines for the same reason.

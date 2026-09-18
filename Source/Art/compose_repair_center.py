@@ -7,7 +7,7 @@ why. Nothing in this file is generated.
 import numpy as np
 import os
 from PIL import Image
-from vfe_chassis import Chassis, TEAL_LIT, TEAL_DRK
+from vfe_chassis import Chassis, RAILS, TEAL_LIT, TEAL_DRK
 
 PX = 192                      # pixels per map cell
 CW, CH = 5, 5                 # the repair centre's FOOTPRINT, in cells
@@ -70,7 +70,7 @@ def build():
     # The casings sit a third of a cell further in than they did, so the belt from each bay
     # has somewhere to travel before it reaches the hatch. Butted up against the bay there
     # was no run to see and the whole connection read as one dark notch.
-    W_, H_ = 0.84 * PX, 0.80 * PX
+    W_, H_ = 0.84 * PX, 0.88 * PX
     for side, sx, corner_in in ((-1, 1.00, 'r'), (1, 5 - 1.00, 'l')):
         for cy, vert in ((1.5, 't'), (2.5, None), (3.5, 'b')):
             x, y = c.x0 + sx * PX, c.y0 + cy * PX
@@ -87,7 +87,7 @@ def build():
     for cx, corner in ((1.5, 'r'), (5 - 1.5, 'l')):
         for cy, vert in ((0.92, 'b'), (5 - 0.92, 't')):
             x, y = c.x0 + cx * PX, c.y0 + cy * PX
-            c.raised_casing(pentagon(x, y, 0.88 * PX, 0.62 * PX, vert + corner))
+            c.raised_casing(pentagon(x, y, 0.96 * PX, 0.70 * PX, vert + corner))
             c.slashes(x - PX * 0.20, y - PX * 0.10, n=3, colour=(118, 142, 148))
 
     # The machine. Three things it has to say, which the old flat slab said none of:
@@ -100,9 +100,14 @@ def build():
     # Three segments, not one long run: the accent rails mark the belt where it meets a
     # port, and the stretch inside the machine is plain rollers. One continuous accented
     # run put a stripe of orange down the whole sprite, which is not how they use it.
-    c.spine(cell(2.5 - 0.31, 0.26, 0.62, 1.06))
+    # Each belt wears the colour of the port it serves: cyan going in, because that is the
+    # gear-in port's rail colour, and orange coming out. Both ran orange before, which read as
+    # two output belts and said nothing about which way work travels.
+    c.spine(cell(2.5 - 0.31, 0.26, 0.62, 1.06), accent=RAILS['cyan'][0],
+            shade0=0.62, shade1=1.0)
     c.spine(cell(2.5 - 0.31, 1.26, 0.62, 2.28), accent=None)
-    c.spine(cell(2.5 - 0.31, 3.50, 0.62, 1.50))
+    c.spine(cell(2.5 - 0.31, 3.50, 0.62, 1.50), accent=RAILS['orange'][0],
+            shade0=1.0, shade1=0.62)
 
     GREY_LIT, GREY_DRK = (158, 152, 145), (108, 103, 98)
     for hx in (1.40, 5 - 1.40 - 0.76):                  # a housing either side of the belt

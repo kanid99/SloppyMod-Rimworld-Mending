@@ -193,7 +193,7 @@ class Chassis:
             sub = [x0, a, x1, b] if horizontal else [a, y0, b, y1]
             self.vgrad(sub, (118, 112, 105), (80, 76, 71), radius=int(self.r(5)))
 
-    def spine(self, box, accent=(175, 120, 65)):
+    def spine(self, box, accent=(175, 120, 65), shade0=1.0, shade1=1.0):
         """A recessed channel carrying finished work from the machine to the output port, with
         a matched block either side. The repeated mirrored pair is what reads as a production
         line rather than an object parked on a plate."""
@@ -210,13 +210,18 @@ class Chassis:
         period = self.r(ROLLER_PERIOD)
         d0, d1 = y0 + self.r(6), y1 - self.r(6)
         n = int((d1 - d0) / period) + 1
+        # A port bay's bed darkens 38% towards the machine, so a spine meeting one at full
+        # brightness leaves a tonal seam at the join. shade0/shade1 let a segment start at the
+        # bay's tone and come back up as it runs out from under the chassis lip.
         for i in range(n):
             for f0, f1, col in ROLLER:
                 a = d0 + (i + f0) * period
                 b = min(d0 + (i + f1) * period, d1)
                 if b <= a:
                     continue
-                self.fill([bx0, a, bx1, b], col)
+                t = min(1.0, (a - d0) / max(d1 - d0, 1.0))
+                sh = shade0 + (shade1 - shade0) * t
+                self.fill([bx0, a, bx1, b], tuple(v * sh for v in col))
 
     def work_slot(self, box, accent=(175, 120, 65)):
         """A dark recess with a thin accent lip along its lower edge - how their machines show
