@@ -166,11 +166,11 @@ def build():
     for side in ('left', 'right'):
         for j in (1, 2, 3):
             along = c.y0 + int((j + 0.5) * PX)
-            c.belt_run(along, side, BAY_END, 0.58 * PX)
+            c.belt_run(along, side, BAY_END, 0.58 * PX, rail='green')
             c.mouth(along, side, 0.58 * PX)
     for i in (CW // 2 - 1, CW // 2 + 1):        # the two material bays on the intake edge
         along = c.x0 + int((i + 0.5) * PX)
-        c.belt_run(along, 'top', BAY_END, 0.55 * PX)
+        c.belt_run(along, 'top', BAY_END, 0.55 * PX, rail='green')
         c.mouth(along, 'top', 0.55 * PX)
 
     # Three bays on the intake edge - the item port at centre with a material port either side -

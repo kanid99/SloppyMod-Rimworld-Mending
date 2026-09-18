@@ -59,6 +59,7 @@ WALL = (93, 93, 93)              # a casing's side wall, lit
 WALL_SEAM = (35, 48, 53)         # the thin dark line where its top face meets that wall
 CASING_RIM = (35, 48, 53)
 
+RUN_RAIL = 0.80                   # how much of a port rail's tone it keeps once it is inside
 RAILS = {'orange': ((175, 120, 65), (109, 79, 49)),
          'green':  ((91, 175, 94),  (57, 109, 59)),
          'cyan':   ((72, 168, 178), (45, 105, 111))}
@@ -382,7 +383,7 @@ class Chassis:
         """A shallow inset panel: one flat tone a step below its surroundings."""
         self.fill(box, colour, radius=int(self.r(5)))
 
-    def belt_run(self, along, side, d0, d1, width=None, shade0=0.62, shade1=0.62):
+    def belt_run(self, along, side, d0, d1, width=None, shade0=0.62, shade1=0.62, rail=None):
         """A stretch of roller bed carrying on from a port bay.
 
         It defaults to the BAY'S OWN BED WIDTH and holds the brightness the bay ends at, flat,
@@ -390,6 +391,13 @@ class Chassis:
         change of width at the seam was the thing that read as jarring - VFE never change a
         belt's width along its length. Letting the run keep darkening past the bay was no better:
         it arrived at the chute as dark as the chute and the two merged.
+
+        `rail` carries the port's own accent line on inward alongside the run, at RUN_RAIL of
+        its tone. Without it the rail stopped at the bay's inner end, which left the accent as a
+        stub on the outside of the building; carried through, the two lines converge on the
+        chute and the bay reads as the mouth of an angled channel rather than a painted mark.
+        Dimming is what sells it - a rail at full tone the whole way just looks like a long
+        stripe, and the step from lit to dim is where the lip appears to turn.
         """
         w = (self.r(BED_W) if width is None else width) / 2.0
         face = {'top': self.y0, 'bottom': self.y1, 'left': self.x0, 'right': self.x1}[side]
@@ -401,6 +409,12 @@ class Chassis:
         def rect(a0, a1, e0, e1):
             box = [a0, e0, a1, e1] if vertical else [e0, a0, e1, a1]
             return [min(box[0], box[2]), min(box[1], box[3]), max(box[0], box[2]), max(box[1], box[3])]
+
+        if rail is not None:
+            # laid down first and at the port's own half-width, so the rollers cover the middle
+            # and leave exactly the rail_w strip either side that a bay leaves.
+            dim = tuple(v * RUN_RAIL for v in RAILS[rail][0])
+            self.fill(rect(along - w - self.r(RAIL_W), along + w + self.r(RAIL_W), a, b), dim)
 
         period = self.r(ROLLER_PERIOD)
         n = int(span / period) + 1

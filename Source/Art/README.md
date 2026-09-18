@@ -171,6 +171,13 @@ said none of them:
 * **it stands on the deck.** Housings, gantry and head all get the same side wall and cast
   shadow the casings get, so the middle reads as three stacked levels rather than one plate.
 
+A port's accent rail does not stop at the bay. It carries on inward alongside the run, at
+0.80 of its tone (`RUN_RAIL`), and ends where the run ends at the chute. Stopping it at the
+bay's inner end left the accent as a stub sitting outside the building; carried through, the
+two lines converge on the chute and the bay reads as the mouth of an angled channel rather
+than a painted mark. The dimming is what sells it - at full tone the whole way it is just a
+long stripe, and the step from lit to dim is where the lip appears to turn.
+
 Every bay that feeds a casing runs INTO it, as one continuous channel. A stretch of roller
 bed carries on from the bay's inner end and ends at a chute cut into the casing: a lit lip
 across its mouth, then a dark throat broken up by grid lines. Their conveyor oven's chute is
@@ -229,7 +236,7 @@ inside their observed range:
 | p99 highlight | 166 | 166 | 133-255 |
 | median luminance | 86 | 93 | 48-116 |
 | near-black | 5.8% | 6.6% | 0-19.7% |
-| saturated pixels | 12.3% | 12.5% | 1.0-33.3% |
+| saturated pixels | 13.3% | 12.5% | 1.0-33.3% |
 | warm-hued | 1.1% | 8.8% | 0-33.3% |
 | cool-hued | 10.2% | 2.9% | 0-24.3% |
 | hard-edge density | 5.5 | 6.7 | 3.3-9.7 |
@@ -238,7 +245,7 @@ inside their observed range:
 The grey/tank/chamfer pass is what brought the last two outliers in. Before it, saturated
 pixels were 23.3% and cool-hued 21.1% - a ring of ten teal casings - and the silhouette scored
 0.041 against their 0.054, because a square has no diagonals in it at all. After: 12.3%, 10.2%
-and 0.141.
+and 0.141. Carrying the rails inward afterwards put saturated pixels at 13.3%.
 
 Cool still sits above their mean, and that is the mod's own accent rather than drift - the
 gear-in belt is cyan by design, and 10% is comfortably inside what their own sprites do.
