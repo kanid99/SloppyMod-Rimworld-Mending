@@ -155,16 +155,20 @@ said none of them:
 * **it stands on the deck.** Housings, gantry and head all get the same side wall and cast
   shadow the casings get, so the middle reads as three stacked levels rather than one plate.
 
-Every bay that feeds a casing runs INTO it. A stretch of roller bed carries across the deck
-from the bay's inner end and ends in a dark throat cut into the casing's edge, under a lit lip
-that overhangs it - which is what their conveyor oven does where a belt meets the machine. Two
-details matter: the throat is square, because a rounded one sits ON the casing like a box
-rather than reading as an opening cut INTO it, and the run is drawn at 0.78 brightness. The
-port bay's own bed darkens 38% towards the machine; matched to it exactly the run went as dark
-as the hatch and the pair merged into one black notch.
+Every bay that feeds a casing runs INTO it, as one continuous channel. A stretch of roller
+bed carries on from the bay's inner end and ends at a chute cut into the casing: a lit lip
+across its mouth, then a dark throat broken up by grid lines. Their conveyor oven's chute is
+exactly that - a wide dark recess under a raised lip.
 
-The casings sit a third of a cell further in than the first layout put them, purely so the run
-has somewhere to travel. Butted against the bay there was nothing to see.
+Nothing changes width along the way, and that is the whole point. The run is drawn at the
+bay's own bed width and holds the brightness the bay ends at, flat. A first attempt used a
+narrower run: the step down at the seam was jarring, and VFE never change a belt's width
+along its length. Letting the run keep darkening past the bay was no better - it arrived at
+the chute as dark as the chute and the two merged into one black notch.
+
+The flank casings sit a third of a cell further in than the first layout put them, purely so
+the run has somewhere to travel; butted against the bay there was nothing to see. The two
+intake-edge casings sit on their bays' centre lines for the same reason.
 
 Grey pipework links the ring, laid down before the casings so it passes under them and shows
 only in the gaps. Straight runs only - routing it round corners left little hooks that read as

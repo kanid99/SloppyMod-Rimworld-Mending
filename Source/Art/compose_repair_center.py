@@ -60,7 +60,7 @@ def build():
     # Grey pipework linking the ring, laid down first so the casings sit on top of it and it
     # only shows in the gaps between them - which is what keeps it subtle. Straight runs only;
     # routing it round corners produced little hooks that read as debris at play zoom.
-    for sx, tx, inner in ((0.98, 1.5, 1.44), (5 - 0.98, 5 - 1.5, 5 - 1.44)):
+    for sx, tx, inner in ((1.00, 1.5, 1.44), (5 - 1.00, 5 - 1.5, 5 - 1.44)):
         c.pipe([P(sx, 0.88), P(sx, 4.12)])                 # the spine down the flank
         for row in (1.5, 2.5, 3.5):                        # stubs into the machine
             c.pipe([P(sx, row), P(inner, row)])
@@ -70,8 +70,8 @@ def build():
     # The casings sit a third of a cell further in than they did, so the belt from each bay
     # has somewhere to travel before it reaches the hatch. Butted up against the bay there
     # was no run to see and the whole connection read as one dark notch.
-    W_, H_ = 0.76 * PX, 0.80 * PX
-    for side, sx, corner_in in ((-1, 0.98, 'r'), (1, 5 - 0.98, 'l')):
+    W_, H_ = 0.84 * PX, 0.80 * PX
+    for side, sx, corner_in in ((-1, 1.00, 'r'), (1, 5 - 1.00, 'l')):
         for cy, vert in ((1.5, 't'), (2.5, None), (3.5, 'b')):
             x, y = c.x0 + sx * PX, c.y0 + cy * PX
             if vert is None:                            # the middle one is a plain casing
@@ -85,7 +85,7 @@ def build():
 
     # Lined up on the two material bays, so a run can drop straight into each one.
     for cx, corner in ((1.5, 'r'), (5 - 1.5, 'l')):
-        for cy, vert in ((0.88, 'b'), (5 - 0.88, 't')):
+        for cy, vert in ((0.92, 'b'), (5 - 0.92, 't')):
             x, y = c.x0 + cx * PX, c.y0 + cy * PX
             c.raised_casing(pentagon(x, y, 0.88 * PX, 0.62 * PX, vert + corner))
             c.slashes(x - PX * 0.20, y - PX * 0.10, n=3, colour=(118, 142, 148))
@@ -139,12 +139,12 @@ def build():
     for side in ('left', 'right'):
         for j in (1, 2, 3):
             along = c.y0 + int((j + 0.5) * PX)
-            c.belt_run(along, side, BAY_END, 0.60 * PX)
-            c.mouth(along, side, 0.60 * PX)
+            c.belt_run(along, side, BAY_END, 0.58 * PX)
+            c.mouth(along, side, 0.58 * PX)
     for i in (CW // 2 - 1, CW // 2 + 1):        # the two material bays on the intake edge
         along = c.x0 + int((i + 0.5) * PX)
-        c.belt_run(along, 'top', BAY_END, 0.57 * PX)
-        c.mouth(along, 'top', 0.57 * PX)
+        c.belt_run(along, 'top', BAY_END, 0.55 * PX)
+        c.mouth(along, 'top', 0.55 * PX)
 
     # Three bays on the intake edge - the item port at centre with a material port either side -
     # three more down each flank, and the single output bay opposite. Mirror-symmetric about the
