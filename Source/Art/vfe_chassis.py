@@ -59,12 +59,18 @@ WALL = (93, 93, 93)              # a casing's side wall, lit
 WALL_SEAM = (35, 48, 53)         # the thin dark line where its top face meets that wall
 CASING_RIM = (35, 48, 53)
 
-# A RAIL IS A RAMP, not a step. Sampled down their assembler's left rail, outer end inward:
-# (91,175,94) held flat for the outer 40% of the channel, then a straight linear fall to
-# (54,86,55) - 0.49 of full - by the time it meets the machine. That fall IS the entry slope:
-# a channel whose floor climbs into the body, drawn from above as tone rather than as an edge.
-RAIL_FLAT  = 0.41                 # of the channel nearest the lip, held at full tone
-RAIL_SHADE = 0.49                 # what the tone has fallen to where it meets the machine
+# THE WHOLE CHANNEL IS A RAMP, not just its rail. Sampled down their assembler's port at 2px,
+# outer lip (y700) to inner end (y606) - 94px, 0.73 of a cell:
+#   rail  (91,175,94) flat to y670, then dead straight down to 0.18 of full by y606
+#   bed   full crown to y670, then down to (31,31,31), 0.32 of the crown
+#   and the roller crown/trough contrast collapses to nothing on the way - by y630 the bed is
+#   one flat tone. The detail does not fade out, it goes UNDER something.
+# Both the rail and the bed hold for the outer 30% and then fall linearly: one slope, shared,
+# which is what makes the channel read as a floor diving under the body rather than a painted
+# strip. An earlier pass had the rail alone falling, and only to 0.49 - a wash, not a dive.
+CHAN_FLAT  = 0.30                 # of the channel nearest the lip, held at full tone
+RAIL_SHADE = 0.18                 # what the rail has fallen to where it meets the machine
+BED_SHADE  = 0.32                 # and the bed, whose roller detail has gone flat by then
 RAILS = {'orange': ((175, 120, 65), (109, 79, 49)),
          'green':  ((91, 175, 94),  (57, 109, 59)),
          'cyan':   ((72, 168, 178), (45, 105, 111))}
@@ -106,11 +112,62 @@ class Chassis:
         self.rgb = self.rgb * (1 - m[..., None]) + g * m[..., None]
         self.a = np.maximum(self.a, m)
 
-    def rail_tone(self, t):
-        """The rail's brightness at fraction `t` along the channel, lip (0) to machine (1)."""
-        if t <= RAIL_FLAT:
+    @staticmethod
+    def chan_tone(t, end):
+        """Brightness at fraction `t` along a channel, lip (0) to machine (1): flat, then a
+        straight fall to `end`. Their profile is linear to the pixel over that fall."""
+        if t <= CHAN_FLAT:
             return 1.0
-        return 1.0 + (RAIL_SHADE - 1.0) * (t - RAIL_FLAT) / (1.0 - RAIL_FLAT)
+        return 1.0 + (end - 1.0) * (t - CHAN_FLAT) / (1.0 - CHAN_FLAT)
+
+    @staticmethod
+    def chan_flat(t):
+        """How far the roller detail has gone flat at `t` - 0 at the lip, 1 at the machine."""
+        if t <= CHAN_FLAT:
+            return 0.0
+        return (t - CHAN_FLAT) / (1.0 - CHAN_FLAT)
+
+    @staticmethod
+    def chan_at(q, span):
+        s0, s1 = span
+        return min(1.0, max(0.0, (q - s0) / max(abs(s1 - s0), 1.0)))
+
+    def rollers(self, rect, along, half, face, inward, q0, q1, span=None):
+        """A stretch of roller bed: a six-step ramp per roller, no separator between them.
+        VFE never put a line between two rollers - the trough IS the line.
+
+        With a `span` it follows the channel profile, so it darkens to BED_SHADE and LOSES ITS
+        RELIEF on the way: each roller's steps are pulled towards their own mean, and by the
+        far end the bed is one flat tone. Theirs does exactly that, and it is the difference
+        between a belt that fades out and a belt that goes under something.
+
+        Without one it keeps the old local behaviour - full at the lip, 38% down by the far end
+        - which is what a bay feeding the spine wants, since the spine carries on at full tone.
+        """
+        period = self.r(ROLLER_PERIOD)
+        depth = abs(q1 - q0)
+        sign = 1.0 if q1 >= q0 else -1.0
+        n = int(depth / period) + 1
+        for i in range(n):
+            for f0, f1, col in ROLLER:
+                e0 = q0 + sign * (i + f0) * period
+                e1 = q0 + sign * (i + f1) * period
+                if abs(e0 - q0) > depth:
+                    continue
+                if abs(e1 - q0) > depth:
+                    e1 = q1
+                if span is None:
+                    c = tuple(v * (1.0 - 0.38 * min(1.0, abs(e0 - q0) / max(depth, 1.0)))
+                              for v in col)
+                else:
+                    t = self.chan_at(0.5 * (e0 + e1), span)
+                    flat = self.chan_flat(t)
+                    mean = sum(col) / 3.0
+                    k = self.chan_tone(t, BED_SHADE)
+                    c = tuple((v * (1 - flat) + mean * flat) * k for v in col)
+                box = rect(along - half, along + half, face + inward * e0, face + inward * e1)
+                if box[2] - box[0] >= 1 and box[3] - box[1] >= 1:
+                    self.fill(box, c)
 
     def rail_band(self, rect, along, half, face, inward, q0, q1, colour, span):
         """The rail strips either side of a bed, graded along the channel.
@@ -127,13 +184,11 @@ class Chassis:
             self.fill(rect(along - half, along + half,
                            face + inward * q0, face + inward * q1), colour)
             return
-        s0, s1 = span
-        length = max(abs(s1 - s0), 1.0)
         n = max(1, int(abs(q1 - q0)))
         for i in range(n):
             e0 = q0 + (q1 - q0) * i / n
             e1 = q0 + (q1 - q0) * (i + 1) / n
-            k = self.rail_tone(min(1.0, max(0.0, (0.5 * (e0 + e1) - s0) / length)))
+            k = self.chan_tone(self.chan_at(0.5 * (e0 + e1), span), RAIL_SHADE)
             self.fill(rect(along - half, along + half,
                            face + inward * e0, face + inward * e1),
                       tuple(v * k for v in colour))
@@ -420,29 +475,20 @@ class Chassis:
         """A shallow inset panel: one flat tone a step below its surroundings."""
         self.fill(box, colour, radius=int(self.r(5)))
 
-    def belt_run(self, along, side, d0, d1, width=None, shade0=0.62, shade1=0.62,
-                 rail=None, rail_span=None):
-        """A stretch of roller bed carrying on from a port bay.
+    def belt_run(self, along, side, d0, d1, width=None, rail=None, rail_span=None):
+        """The rest of a channel: the stretch of bed and rail carrying on past a port bay.
 
-        It defaults to the BAY'S OWN BED WIDTH and holds the brightness the bay ends at, flat,
-        because the join has to be invisible. A narrower run stepped down from the bay and that
-        change of width at the seam was the thing that read as jarring - VFE never change a
-        belt's width along its length. Letting the run keep darkening past the bay was no better:
-        it arrived at the chute as dark as the chute and the two merged.
-
-        `rail` carries the port's own accent line on inward alongside the run, graded by
-        rail_tone() over `rail_span`. Without it the rail stopped at the bay's inner end, which
-        left the accent as a stub on the outside of the building. Carrying it through at a flat
-        dimmer tone was no better: a step from one tone to another reads as a wall, and what the
-        channel actually does is climb, so the tone has to fall the way VFE's does - held for
-        the outer stretch, then straight down to about half by the time it meets the machine.
+        It is the bay's own bed width, because a change of width at that seam is the one thing
+        that reads as jarring and VFE never change a belt's width along its length. What it does
+        change is TONE, and it is the same slope the bay is already on: `rail_span` says where
+        the whole channel starts and ends, so the bay and the run grade as one and the seam
+        between them is invisible. The bay stops at the outer third of that slope; everything
+        past it is the steep part, which is why this stretch is where the dive actually reads.
         """
         w = (self.r(BED_W) if width is None else width) / 2.0
         face = {'top': self.y0, 'bottom': self.y1, 'left': self.x0, 'right': self.x1}[side]
         inward = 1.0 if side in ('top', 'left') else -1.0
         vertical = side in ('top', 'bottom')
-        a, b = face + inward * d0, face + inward * d1
-        span = max(abs(b - a), 1.0)
 
         def rect(a0, a1, e0, e1):
             box = [a0, e0, a1, e1] if vertical else [e0, a0, e1, a1]
@@ -453,22 +499,7 @@ class Chassis:
             # and leave exactly the rail_w strip either side that a bay leaves.
             self.rail_band(rect, along, w + self.r(RAIL_W), face, inward, d0, d1,
                            RAILS[rail][0], rail_span)
-
-        period = self.r(ROLLER_PERIOD)
-        n = int(span / period) + 1
-        for i in range(n):
-            for f0, f1, col in ROLLER:
-                e0 = a + inward * (i + f0) * period
-                e1 = a + inward * (i + f1) * period
-                if abs(e0 - a) > span:
-                    continue
-                if abs(e1 - a) > span:
-                    e1 = b
-                t = min(1.0, abs(e0 - a) / span)
-                sh = shade0 + (shade1 - shade0) * t
-                box = rect(along - w, along + w, e0, e1)
-                if box[2] - box[0] >= 1 and box[3] - box[1] >= 1:
-                    self.fill(box, tuple(v * sh for v in col))
+        self.rollers(rect, along, w, face, inward, d0, d1, rail_span)
 
     def mouth(self, along, side, depth_at, width=None, deep=None):
         """The dark opening a belt runs into.
@@ -537,9 +568,8 @@ class Chassis:
         # falls just inside the bay's inner end, so the bay grades too and the run picks the
         # slope up exactly where the bay left it.
         q0, q1 = -self.r(PROTRUDE), self.r(BAY_DEPTH - PROTRUDE)
-        self.rail_band(rect, along, bed / 2 + rail_w, face, inward, q0, q1, lo,
-                       rail_span)
-        self._bed(along, bed, outer, deep, inward, rect)
+        self.rail_band(rect, along, bed / 2 + rail_w, face, inward, q0, q1, lo, rail_span)
+        self.rollers(rect, along, bed / 2, face, inward, q0, q1, rail_span)
 
         # The bay's outer lip is part of the machine's silhouette, so it - and only it - is black.
         # Long enough to meet the chassis outline either side of the bay, so the silhouette
@@ -552,30 +582,6 @@ class Chassis:
             # read as taking things in on all four sides and never putting anything out. VFE's
             # point with the flow: in at the top, out at the bottom, same direction throughout.
             self._chevron(along, face, inward, vertical, lo, bed, outward=outward)
-
-    def _bed(self, along, bed, outer, face, inward, rect):
-        """Rollers: a six-step ramp per roller, no separator between them, darkening towards
-        the machine. VFE never put a line between two rollers - the trough IS the line."""
-        depth = abs(face - outer)
-        period = self.r(ROLLER_PERIOD)
-        start = outer + inward * self.r(7)                 # just under the black lip
-        n = int(depth / period) + 1
-        for i in range(n):
-            for f0, f1, col in ROLLER:
-                d0 = start + inward * (i + f0) * period
-                d1 = start + inward * (i + f1) * period
-                t = min(1.0, (i + f0) * period / max(depth - self.r(7), 1.0))
-                col = tuple(v * (1.0 - 0.38 * t) for v in col)
-                box = rect(along - bed / 2, along + bed / 2, d0, d1)
-                lo_d, hi_d = min(outer, face), max(outer, face)
-                if rect is None:
-                    continue
-                if box[3] - box[1] < 1 or box[2] - box[0] < 1:
-                    continue
-                # clip to the bay
-                if abs(d0 - outer) > depth:
-                    continue
-                self.fill(box, col)
 
     def _chevron(self, along, face, inward, vertical, colour, bed, outward=False):
         """A flat triangle on the chassis face, no outline - exactly how VFE mark flow."""
