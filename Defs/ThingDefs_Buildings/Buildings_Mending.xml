@@ -188,6 +188,14 @@
     <!-- Without this the def defaults to TickerType.Never and Thing.DoTick never calls Tick(),
          so the mender's whole state machine (and its power draw) silently never runs. -->
     <tickerType>Normal</tickerType>
+    <!-- Same shape of trap, one layer over: BuildingBase is MapMeshOnly, and
+         Thing.DynamicDrawPhase does not call DrawAt on a MapMeshOnly thing at all - so the
+         repair progress bar in Building_AutomatedMender.DrawAt never drew, with nothing logged
+         to say why. MapMeshAndRealTime keeps the chassis printed into the map mesh and gets
+         DrawAt called each frame; it does not double-draw the chassis, because Thing.DrawAt only
+         draws the graphic itself when drawerType is RealtimeOnly. Vanilla's battery draws its
+         charge bar exactly this way. -->
+    <drawerType>MapMeshAndRealTime</drawerType>
     <graphicData>
       <texPath>Things/Building/Production/AutomatedMender</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
