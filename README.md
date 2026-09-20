@@ -75,7 +75,7 @@ and silently does nothing.
 | `ElectricMending` | behind Fabrication |
 | `AutomatedMending` | behind Advanced Fabrication and Basic Mechtech |
 | right-click repair | order one item repaired, or be told exactly why it can't be |
-| `Bill_Mend` | a mend bill pinned to one material, which no ThingFilter can express |
+| `Bill_Mend` | a mend bill pinned to one material, for installs without Material Filter |
 
 `MendingUtility` is where the cost, time, waste and failure numbers are worked out, and it
 is the file to read first. `WorkGiver_Mend` extends vanilla's `WorkGiver_DoBill` and
@@ -89,13 +89,22 @@ take it, adding a one-off bill if that bench has none, and the bill is left behi
 so it can be reused. When the order is not possible the entry is still there, greyed out and
 carrying the reason - which bench has no power, which materials are short and how many, which
 skill is too low, or that the item is beyond what any station you have built can repair.
-The bill it leaves behind is pinned to the item's own material - "mend apparel (steel)" - so
-it stays scoped to the gear the order was about. That pin lives on `Bill_Mend` rather than in a
-filter because no filter in the game can express it: `ThingFilter.Allows(Thing)` tests the
-thing's def, hit points, quality and special filters, and never looks at `Thing.Stuff`. The
-Material Filter mod does not change that either - its assembly is a UI shortcut that toggles
-stuff defs on the vanilla filter, which only bites where the stuff is itself an ingredient, and
-a mend bill's ingredient is the damaged item. So the restriction works with or without it.
+The bill it leaves behind is pinned to the item's own material, so it stays scoped to the gear
+the order was about.
+
+Material filtering works because `WorkGiver_Mend` honours the BILL's ingredient filter and not
+just the recipe's - it read only the recipe's before, which meant narrowing a mend bill in its
+own config dialog did nothing at all. With that fixed, the [Material Filter][mf] mod's
+checkboxes restrict mend bills through vanilla: it builds a `SpecialThingFilterDef` per
+material whose runtime-emitted worker compares `Thing.Stuff`, and `ThingFilter.Allows(Thing)`
+evaluates those. Untick plasteel on a mend bill and plasteel swords stop being picked up.
+`MaterialFilters` finds them by name, so there is no hard reference and no reflection.
+
+Without that mod there is no material UI, and `Bill_Mend` is the fallback - the same
+restriction carried on the bill and shown in its label. It is deliberately NOT used when the
+mod is present, because a pin there would silently override the checkboxes the player can see.
+
+[mf]: https://steamcommunity.com/workshop/filedetails/?id=1541305730
 
 `MendJobMaker` is the whole of it and `FloatMenuOptionProvider_Repair` is the hook; there is
 no Harmony patch involved, because 1.6's provider system finds any subclass on its own.

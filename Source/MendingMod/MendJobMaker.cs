@@ -256,13 +256,20 @@ namespace MendingMod
                 return existing;
             }
 
-            // Pinned to the item's own material, so the bill left behind reads "mend apparel
-            // (steel)" and stays scoped to the gear the order was about. Unstuffed items get no
-            // pin - see Bill_Mend.
+            // Pinned to the item's own material, so the bill left behind stays scoped to the
+            // gear the order was about. Unstuffed items get no pin at all.
+            //
+            // Where Material Filter is installed the pin goes through ITS filters, not through
+            // onlyStuff, and that is deliberate: those are the checkboxes the player sees in the
+            // bill dialog, so a pin written there is visible and can be changed. A pin held in
+            // onlyStuff as well would silently override whatever they then ticked.
             Bill_Mend bill = new Bill_Mend(recipe);
             bill.repeatMode = BillRepeatModeDefOf.RepeatCount;
             bill.repeatCount = 1;
-            bill.onlyStuff = item.Stuff;
+
+            if (!MaterialFilters.TryRestrictTo(bill, item.Stuff))
+                bill.onlyStuff = item.Stuff;
+
             stack.AddBill(bill);
             return bill;
         }

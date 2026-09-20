@@ -3,20 +3,17 @@ using Verse;
 
 namespace MendingMod
 {
-    // A mend bill that can be pinned to ONE material.
+    // A mend bill pinned to ONE material, for installs without Material Filter.
     //
-    // This exists because nothing else can do it. ThingFilter.Allows(Thing) was decompiled and it
-    // tests exactly four things - the thing's def, its hit points, its quality and the special
-    // filters - and never looks at Thing.Stuff. Bill.IsFixedOrAllowedIngredient is built on that
-    // same call, so a bill's ingredient filter cannot express "steel ones only" either. The
-    // Material Filter mod does not change this: its assembly is a UI shortcut that opens a window
-    // of stuff defs and toggles them on the VANILLA filter via SetAllow(ThingDef, bool), storing
-    // nothing of its own and patching no ingredient check. Those toggles only bite on recipes
-    // where the stuff is itself consumed as an ingredient, and a mend bill's ingredient is the
-    // damaged item, not what it is made of.
+    // WITH that mod this is not used, and should not be - see MaterialFilters. It generates a
+    // SpecialThingFilterDef per material whose emitted worker compares Thing.Stuff, and
+    // ThingFilter.Allows(Thing) evaluates those, so its checkboxes restrict a mend bill through
+    // vanilla once the work scan honours the bill's ingredient filter. Those checkboxes are
+    // visible and editable; a pin held here as well would silently override them.
     //
-    // So the restriction is carried here instead, on the bill, and enforced where the mend target
-    // is chosen. It works with or without that mod installed.
+    // Without it there is no UI for materials at all, and this is the fallback: the same
+    // restriction, carried on the bill and checked where the mend target is chosen. The label
+    // says so, because a restriction with no UI behind it must at least be readable.
     public class Bill_Mend : Bill_Production
     {
         // null means no restriction, which is also what an unstuffed item gets - a plasteel knife
