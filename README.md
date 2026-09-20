@@ -74,12 +74,22 @@ and silently does nothing.
 | `BasicMending` | behind Complex Clothing and Smithing |
 | `ElectricMending` | behind Fabrication |
 | `AutomatedMending` | behind Advanced Fabrication and Basic Mechtech |
+| right-click repair | order one item repaired, or be told exactly why it can't be |
 
 `MendingUtility` is where the cost, time, waste and failure numbers are worked out, and it
 is the file to read first. `WorkGiver_Mend` extends vanilla's `WorkGiver_DoBill` and
 overrides only `JobOnThing`, so bill handling, ingredient search and the failed-bill throttle
 stay vanilla's - an earlier version replaced the whole job-start path and cost about 40 TPS
 on a heavily modded save.
+
+Right-clicking a damaged weapon or piece of apparel with a colonist selected offers to
+repair that specific item: the colonist carries it to the nearest mending station that can
+take it, adding a one-off bill if that bench has none, and the bill is left behind at zero
+so it can be reused. When the order is not possible the entry is still there, greyed out and
+carrying the reason - which bench has no power, which materials are short and how many, which
+skill is too low, or that the item is beyond what any station you have built can repair.
+`MendJobMaker` is the whole of it and `FloatMenuOptionProvider_Repair` is the hook; there is
+no Harmony patch involved, because 1.6's provider system finds any subclass on its own.
 
 `MenderSpots` derives the repair centre's ten spots from its footprint and rotation, so the
 C# and the artwork cannot drift: `Source/Art/verify_spots.py` reimplements it and checks the

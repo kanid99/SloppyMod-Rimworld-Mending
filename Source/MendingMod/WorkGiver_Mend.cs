@@ -295,8 +295,11 @@ namespace MendingMod
         // It passes bill == null internally, which makes the selection read
         // IngredientCount.GetBaseCount() directly, so the dynamically computed amounts are used
         // as-is rather than re-derived from the recipe, which declares no materials at all.
-        private static bool TryFindMaterials(List<ThingDefCountClass> costs, Pawn pawn, Thing billGiver,
-                                             float searchRadius, List<ThingCount> found)
+        // internal rather than private: MendJobMaker runs the same search for the right-click
+        // "repair this" order, and for the shortfall message behind it, so that the float menu
+        // and the work scan can never disagree about whether the materials are there.
+        internal static bool TryFindMaterials(List<ThingDefCountClass> costs, Pawn pawn, Thing billGiver,
+                                              float searchRadius, List<ThingCount> found)
         {
             if (costs.NullOrEmpty())
                 return true;

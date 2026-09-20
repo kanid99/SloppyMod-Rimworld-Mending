@@ -26,4 +26,21 @@
   <DynamicMending.MenderCannotRepair>Idle: {0} is beyond what this machine can repair.</DynamicMending.MenderCannotRepair>
   <DynamicMending.TooAdvancedForBench>Too advanced for this station (repairs up to {0} tech).</DynamicMending.TooAdvancedForBench>
 
+  <!-- Right-click "repair this" order. -->
+  <DynamicMending.RepairLabel>Repair {0}</DynamicMending.RepairLabel>
+  <DynamicMending.CannotRepair>Cannot repair {0}</DynamicMending.CannotRepair>
+  <DynamicMending.RepairWorkingBlind>working blind - double materials, higher risk</DynamicMending.RepairWorkingBlind>
+  <DynamicMending.RepairNotDamaged>it is not damaged</DynamicMending.RepairNotDamaged>
+  <DynamicMending.RepairIncapable>{0} is incapable of {1}</DynamicMending.RepairIncapable>
+  <DynamicMending.RepairSkillTooLow>requires {0} {1}</DynamicMending.RepairSkillTooLow>
+  <DynamicMending.RepairForbidden>it is forbidden</DynamicMending.RepairForbidden>
+  <DynamicMending.RepairUnreachableItem>no path to it</DynamicMending.RepairUnreachableItem>
+  <DynamicMending.RepairNoBench>no mending station built</DynamicMending.RepairNoBench>
+  <DynamicMending.RepairBenchForbidden>the mending station is forbidden</DynamicMending.RepairBenchForbidden>
+  <DynamicMending.RepairBenchUnreachable>no path to a mending station</DynamicMending.RepairBenchUnreachable>
+  <DynamicMending.RepairBenchUnusable>{0} is not working - check power, fuel and breakdowns</DynamicMending.RepairBenchUnusable>
+  <DynamicMending.RepairWasteFull>the waste container is full</DynamicMending.RepairWasteFull>
+  <DynamicMending.RepairMissingMaterials>missing {0}</DynamicMending.RepairMissingMaterials>
+  <DynamicMending.RepairNotEnoughMaterials>not enough repair materials in reach</DynamicMending.RepairNotEnoughMaterials>
+
 </LanguageData>
