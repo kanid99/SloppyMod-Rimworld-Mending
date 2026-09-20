@@ -75,6 +75,7 @@ and silently does nothing.
 | `ElectricMending` | behind Fabrication |
 | `AutomatedMending` | behind Advanced Fabrication and Basic Mechtech |
 | right-click repair | order one item repaired, or be told exactly why it can't be |
+| `Bill_Mend` | a mend bill pinned to one material, which no ThingFilter can express |
 
 `MendingUtility` is where the cost, time, waste and failure numbers are worked out, and it
 is the file to read first. `WorkGiver_Mend` extends vanilla's `WorkGiver_DoBill` and
@@ -88,6 +89,14 @@ take it, adding a one-off bill if that bench has none, and the bill is left behi
 so it can be reused. When the order is not possible the entry is still there, greyed out and
 carrying the reason - which bench has no power, which materials are short and how many, which
 skill is too low, or that the item is beyond what any station you have built can repair.
+The bill it leaves behind is pinned to the item's own material - "mend apparel (steel)" - so
+it stays scoped to the gear the order was about. That pin lives on `Bill_Mend` rather than in a
+filter because no filter in the game can express it: `ThingFilter.Allows(Thing)` tests the
+thing's def, hit points, quality and special filters, and never looks at `Thing.Stuff`. The
+Material Filter mod does not change that either - its assembly is a UI shortcut that toggles
+stuff defs on the vanilla filter, which only bites where the stuff is itself an ingredient, and
+a mend bill's ingredient is the damaged item. So the restriction works with or without it.
+
 `MendJobMaker` is the whole of it and `FloatMenuOptionProvider_Repair` is the hook; there is
 no Harmony patch involved, because 1.6's provider system finds any subclass on its own.
 

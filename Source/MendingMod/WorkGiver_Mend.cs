@@ -166,6 +166,17 @@ namespace MendingMod
                     if (!IsDamaged(t) || !targetFilter.filter.Allows(t))
                         return false;
 
+                    // The BILL's filter as well as the recipe's. This read only the recipe's,
+                    // which meant narrowing a mend bill in its own config dialog did nothing at
+                    // all - every other workbench in the game honours this, via the same call.
+                    if (!bill.IsFixedOrAllowedIngredient(t))
+                        return false;
+
+                    // And the material, if this bill is pinned to one. See Bill_Mend: no filter
+                    // in the game can express this, so it is carried on the bill and checked here.
+                    if (bill is Bill_Mend mendBill && !mendBill.AllowsStuffOf(t))
+                        return false;
+
                     if (t.IsForbidden(pawn) || !pawn.CanReserve(t))
                         return false;
 

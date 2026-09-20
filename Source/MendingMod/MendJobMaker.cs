@@ -119,7 +119,7 @@ namespace MendingMod
             List<ThingDefCountClass> costs =
                 MendingUtility.GetDynamicIngredientCosts(item, MendingUtility.GetSkillLevel(item, pawn));
 
-            float radius = Mathf.Min(ExistingBill(bench, recipe)?.ingredientSearchRadius ?? 999f, 200f);
+            float radius = Mathf.Min(ExistingBill(bench, recipe, item)?.ingredientSearchRadius ?? 999f, 200f);
 
             List<ThingCount> materials = new List<ThingCount>();
             if (!WorkGiver_Mend.TryFindMaterials(costs, pawn, bench, radius, materials))
@@ -127,7 +127,7 @@ namespace MendingMod
 
             // --- commit ----------------------------------------------------------------------
             // Nothing above this line has changed anything, so a dry run can stop here.
-            Bill bill = commit ? EnsureBill(bench, recipe, item) : ExistingBill(bench, recipe);
+            Bill bill = commit ? EnsureBill(bench, recipe, item) : ExistingBill(bench, recipe, item);
             if (bill == null && !commit)
                 return true;            // a bill WOULD be added; the order is still valid
 
@@ -213,12 +213,23 @@ namespace MendingMod
                 : "DynamicMending.RepairNotEnoughMaterials".Translate();
         }
 
-        private static Bill ExistingBill(Thing bench, RecipeDef recipe)
+        // A bill can only carry THIS order if it would actually accept the item: the same three
+        // tests the work scan makes. Without the last two, an order could be attached to a bill
+        // the work giver then refuses the target for, and the job would sit there doing nothing.
+        private static Bill ExistingBill(Thing bench, RecipeDef recipe, Thing item)
         {
             foreach (Bill bill in ((IBillGiver)bench).BillStack)
             {
-                if (bill.recipe == recipe && !bill.suspended)
-                    return bill;
+                if (bill.recipe != recipe || bill.suspended)
+                    continue;
+
+                if (!bill.IsFixedOrAllowedIngredient(item))
+                    continue;
+
+                if (bill is Bill_Mend mendBill && !mendBill.AllowsStuffOf(item))
+                    continue;
+
+                return bill;
             }
 
             return null;
@@ -232,7 +243,7 @@ namespace MendingMod
         {
             BillStack stack = ((IBillGiver)bench).BillStack;
 
-            Bill existing = ExistingBill(bench, recipe);
+            Bill existing = ExistingBill(bench, recipe, item);
             if (existing != null)
             {
                 if (existing is Bill_Production production
@@ -245,10 +256,13 @@ namespace MendingMod
                 return existing;
             }
 
-            Bill_Production bill = new Bill_Production(recipe);
+            // Pinned to the item's own material, so the bill left behind reads "mend apparel
+            // (steel)" and stays scoped to the gear the order was about. Unstuffed items get no
+            // pin - see Bill_Mend.
+            Bill_Mend bill = new Bill_Mend(recipe);
             bill.repeatMode = BillRepeatModeDefOf.RepeatCount;
             bill.repeatCount = 1;
-            MaterialFilterCompat.RestrictToStuffOf(bill, item);
+            bill.onlyStuff = item.Stuff;
             stack.AddBill(bill);
             return bill;
         }
