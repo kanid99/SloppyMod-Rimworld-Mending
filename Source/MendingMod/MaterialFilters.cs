@@ -31,8 +31,44 @@ namespace MendingMod
 
         static MaterialFilters()
         {
-            if (Prefs.DevMode)
-                Log.Message($"[DynamicMending] Material Filter: {(Installed ? all.Count + " material filters found" : "not installed")}");
+            if (!Prefs.DevMode)
+                return;
+
+            Log.Message($"[DynamicMending] Material Filter: {(Installed ? all.Count + " material filters found" : "not installed")}");
+            ReportMendRecipes();
+        }
+
+        // Why that mod's "Filter >>" button does or does not appear on a given mend bill.
+        //
+        // Its gate decompiles to: any ThingDef allowed by any of recipe.ingredients[*].filter
+        // that is MadeFromStuff. A recipe whose ingredient filter resolves to nothing stuffed
+        // gets no button, and the same filter is what the work scan picks targets from - so a
+        // surprising number here is worth knowing about for its own sake, not just for the UI.
+        private static void ReportMendRecipes()
+        {
+            foreach (RecipeDef recipe in DefDatabase<RecipeDef>.AllDefsListForReading)
+            {
+                if (recipe.workerClass == null
+                    || !typeof(RecipeWorker_Mend).IsAssignableFrom(recipe.workerClass)
+                    || recipe.ingredients.NullOrEmpty())
+                {
+                    continue;
+                }
+
+                List<ThingDef> allowed = recipe.ingredients[0].filter.AllowedThingDefs.ToList();
+                List<ThingDef> stuffed = allowed.Where(d => d.MadeFromStuff).ToList();
+
+                Log.Message($"[DynamicMending] {recipe.defName}: {allowed.Count} defs allowed, "
+                            + $"{stuffed.Count} made from stuff"
+                            + (stuffed.Count == 0 ? "  <- Material Filter shows no button for this recipe" : "")
+                            + (allowed.Count == 0 ? "  <- AND NOTHING CAN BE REPAIRED BY IT" : "")
+                            + (allowed.Count > 0
+                                ? "\n    allowed e.g. " + allowed.Take(8).Select(d => d.defName).ToCommaList()
+                                : "")
+                            + (stuffed.Count > 0
+                                ? "\n    stuffed e.g. " + stuffed.Take(8).Select(d => d.defName).ToCommaList()
+                                : ""));
+            }
         }
 
         // "Only things made of this" expressed the way the player's own UI expresses it: every
