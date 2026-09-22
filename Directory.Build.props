@@ -1,0 +1,85 @@
+<Project>
+
+  <!--
+    Shared by every SloppyMod RimWorld repository. MSBuild picks this up
+    automatically by walking up from the project directory, so the .csproj next
+    to the sources only has to say what the mod is called.
+
+    Copy this file between repositories when it changes; it is deliberately
+    identical in all of them.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <!-- RimWorld loads the assembly itself; a generated entry point or deps
+         file sitting next to it is noise at best. -->
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <DebugType>portable</DebugType>
+
+    <!-- Assemblies/ at the repository root, whatever the project is called. -->
+    <OutputPath>$(MSBuildThisFileDirectory)Assemblies\</OutputPath>
+
+    <!-- Point this at your local RimWorld install (the folder containing
+         RimWorldWin64_Data), or pass -p:RimWorldManagedDir=... -->
+    <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\RimWorld\RimWorldWin64_Data\Managed</RimWorldManagedDir>
+
+    <!-- Keep in step with the RimWorld version in About.xml. -->
+    <RimWorldRefVersion Condition="'$(RimWorldRefVersion)' == ''">1.6.4871</RimWorldRefVersion>
+
+    <!--
+      Two ways to get RimWorld's types, chosen automatically.
+
+      A real install is preferred when there is one: it is the exact build
+      being modded, so a mismatch cannot hide. With no install - a CI runner, a
+      container, a machine that owns the game on another drive - it falls back
+      to Krafs.Rimworld.Ref, the reference-assembly package published for
+      precisely this. Reference assemblies carry signatures and no IL, so the
+      fallback is a type check rather than a substitute for running the game,
+      but it is what makes the mod compilable by anyone but the author.
+
+      Override with -p:UseLocalRimWorldRefs=true|false.
+    -->
+    <UseLocalRimWorldRefs Condition="'$(UseLocalRimWorldRefs)' == '' And Exists('$(RimWorldManagedDir)\Assembly-CSharp.dll')">true</UseLocalRimWorldRefs>
+    <UseLocalRimWorldRefs Condition="'$(UseLocalRimWorldRefs)' == ''">false</UseLocalRimWorldRefs>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseLocalRimWorldRefs)' == 'true'">
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(RimWorldManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(RimWorldManagedDir)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(RimWorldManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(RimWorldManagedDir)\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalRimWorldRefs)' != 'true'">
+    <!-- ExcludeAssets="runtime" so none of these land in Assemblies/: RimWorld
+         supplies the real assemblies at run time, and shipping API-only stubs
+         next to the mod would have the game try to load them. -->
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="$(RimWorldRefVersion)"
+                      ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lets net472 be targeted on a machine with no .NET Framework targeting
+         pack, which is every Linux and macOS one. Harmless on Windows, where
+         the real pack wins. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

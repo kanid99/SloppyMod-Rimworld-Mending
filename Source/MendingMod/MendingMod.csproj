@@ -1,29 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Everything else comes from Directory.Build.props at the repository root,
+       which is shared with the other SloppyMod repositories. -->
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
-    <LangVersion>latest</LangVersion>
     <RootNamespace>MendingMod</RootNamespace>
     <AssemblyName>MendingMod</AssemblyName>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <OutputPath>..\..\Assemblies\</OutputPath>
-    <!-- Point this at your local RimWorld install (folder containing RimWorldWin64_Data). -->
-    <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\RimWorld\RimWorldWin64_Data\Managed</RimWorldManagedDir>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Reference Include="Assembly-CSharp">
-      <HintPath>$(RimWorldManagedDir)\Assembly-CSharp.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>$(RimWorldManagedDir)\UnityEngine.CoreModule.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>$(RimWorldManagedDir)\UnityEngine.IMGUIModule.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
 
 </Project>
