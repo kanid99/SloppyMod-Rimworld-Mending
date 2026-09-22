@@ -27,6 +27,16 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 
+# The build number is the commit count, which a shallow clone does not have.
+# Packaging from one would stamp a number far below the last release and make
+# versions appear to go backwards, so refuse rather than quietly mislabel.
+if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+  echo "refusing to package: this is a shallow clone, so the commit count the" >&2
+  echo "build number comes from is not the real one. Run:" >&2
+  echo "  git fetch --unshallow   (or: git fetch --depth=100000)" >&2
+  exit 1
+fi
+
 SHA="$(git rev-parse --short HEAD)"
 DATE="$(git log -1 --format=%cd --date=format:%Y-%m-%d)"
 BUILD="$(git rev-list --count HEAD)"
