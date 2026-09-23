@@ -38,6 +38,11 @@ namespace MendingMod
             }
         }
 
+        public static bool IsMendRecipe(RecipeDef recipe)
+        {
+            return recipe != null && MendRecipes.Contains(recipe);
+        }
+
         // Cheap enough to run on every thing under the cursor: no map queries, no pathing.
         public static bool IsMendable(Thing item)
         {

@@ -92,6 +92,7 @@ namespace MendingMod
         public MendingModMain(ModContentPack content) : base(content)
         {
             Settings = GetSettings<MendingModSettings>();
+            new HarmonyLib.Harmony("sloppymod.dynamicmending").PatchAll();
         }
 
         public override void DoSettingsWindowContents(Rect inRect)

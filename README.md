@@ -78,6 +78,7 @@ and silently does nothing.
 | right-click yourself | repair worn or wielded gear: take it off, repair it, put it back on |
 | inspect pane | damaged gear shows what its repair would cost at your best crafter's skill |
 | auto-repair threshold | automatic repair only picks up gear below a set share of its hit points |
+| repair order | each mend bill picks nearest, most damaged, most or least valuable first |
 | `Bill_Mend` | a mend bill pinned to one material, for installs without Material Filter |
 
 `MendingUtility` is where the cost, time, waste and failure numbers are worked out, and it
@@ -120,6 +121,14 @@ Design notes live next to the code they explain. The art pipeline has its own wr
 [`Source/Art/README.md`](Source/Art/README.md) - it covers how the sprites are drawn and
 measured against Vanilla Furniture Expanded's, and why nothing in the repair centre is
 generated.
+
+## Harmony
+
+One patch, on `BillUtility.MakeNewBill`, so that player-added mend bills are `Bill_Mend` and
+can carry a repair order. The game hardcodes the bill class there with no def field or virtual
+to choose it. Everything else - both float-menu orders, the inspect preview, worn-gear repair -
+goes through extension points the game provides. Harmony is already required transitively by
+Vanilla Recycling Expanded, via Vanilla Expanded Framework.
 
 ## Settings
 

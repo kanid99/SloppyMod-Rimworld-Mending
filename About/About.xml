@@ -12,6 +12,12 @@
   <description>Repair damaged apparel and weapons at a hand mending station, an electrical mending station, or a fully automated industrial repair center at higher tech. Material cost, work time, waste and the risk of a botched repair all scale with how damaged the item is and how skilled the mender is. Requires Biotech and Vanilla Recycling Expanded: repair work always produces real waste byproducts (Wastepacks and recyclable trash) as a core mechanic, not an optional extra.</description>
   <modDependencies>
     <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+      <downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+    </li>
+    <li>
       <packageId>Ludeon.RimWorld.Biotech</packageId>
       <displayName>Biotech</displayName>
     </li>
@@ -21,6 +27,7 @@
     </li>
   </modDependencies>
   <loadAfter>
+    <li>brrainz.harmony</li>
     <li>Ludeon.RimWorld.Biotech</li>
     <li>VanillaExpanded.Recycling</li>
   </loadAfter>

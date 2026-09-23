@@ -152,14 +152,7 @@ namespace MendingMod
             bool rejectedForTech = false;
             bool rejectedForComponents = false;
 
-            Thing mendTarget = GenClosest.ClosestThingReachable(
-                billGiver.Position,
-                billGiver.Map,
-                ThingRequest.ForGroup(TargetGroupFor(bill.recipe)),
-                PathEndMode.ClosestTouch,
-                TraverseParms.For(pawn),
-                searchRadius,
-                t =>
+            System.Predicate<Thing> validator = t =>
                 {
                     // Ordered cheapest and most selective first: almost nothing on the map is
                     // damaged gear, so reject on that before paying for a reservation lookup.
@@ -192,7 +185,23 @@ namespace MendingMod
                     }
 
                     return true;
-                });
+                };
+
+            MendOrder order = (bill as Bill_Mend)?.order ?? MendOrder.Nearest;
+            ThingRequestGroup group = TargetGroupFor(bill.recipe);
+
+            // Nearest keeps vanilla's region-walking search, which is also the cheapest: it stops
+            // at the first hit. Every other order has to see all the candidates to rank them.
+            Thing mendTarget = order == MendOrder.Nearest
+                ? GenClosest.ClosestThingReachable(
+                    billGiver.Position,
+                    billGiver.Map,
+                    ThingRequest.ForGroup(group),
+                    PathEndMode.ClosestTouch,
+                    TraverseParms.For(pawn),
+                    searchRadius,
+                    validator)
+                : BestByOrder(order, group, pawn, billGiver, searchRadius, validator);
 
             if (mendTarget == null)
             {
@@ -253,6 +262,45 @@ namespace MendingMod
             }
 
             return true;
+        }
+
+        // Ranks every candidate in range, then walks the ranking and takes the first one the
+        // pawn can actually reach. The validator runs before any pathing and rejects nearly
+        // everything - almost nothing on a map is damaged gear - so reachability, the expensive
+        // part, is only ever asked of the few that survive it, and stops at the first yes.
+        private static Thing BestByOrder(MendOrder order, ThingRequestGroup group, Pawn pawn, Thing billGiver,
+                                         float radius, System.Predicate<Thing> validator)
+        {
+            float radiusSq = radius * radius;
+            IntVec3 from = billGiver.Position;
+
+            IEnumerable<Thing> candidates = billGiver.Map.listerThings.ThingsInGroup(group)
+                .Where(t => t.Spawned
+                            && (t.Position - from).LengthHorizontalSquared <= radiusSq
+                            && validator(t));
+
+            IOrderedEnumerable<Thing> ranked;
+            switch (order)
+            {
+                case MendOrder.MostDamaged:
+                    ranked = candidates.OrderBy(t => (float)t.HitPoints / t.MaxHitPoints);
+                    break;
+                case MendOrder.MostValuable:
+                    ranked = candidates.OrderByDescending(t => t.MarketValue);
+                    break;
+                default:
+                    ranked = candidates.OrderBy(t => t.MarketValue);
+                    break;
+            }
+
+            // Distance breaks ties, so two identical parkas still go nearest-first.
+            foreach (Thing t in ranked.ThenBy(t => (t.Position - from).LengthHorizontalSquared))
+            {
+                if (pawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))
+                    return t;
+            }
+
+            return null;
         }
 
         // HaulableEver is every wood log, meal, chunk and steel bar on the map - thousands of

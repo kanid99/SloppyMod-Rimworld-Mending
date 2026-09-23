@@ -26,4 +26,11 @@
     </Reference>
   </ItemGroup>
 
+  <!-- Compile-time only. Harmony itself is provided at runtime by the Harmony mod, which is a
+       declared dependency (and already required transitively via Vanilla Recycling Expanded ->
+       Vanilla Expanded Framework). Shipping our own copy of 0Harmony.dll would conflict with it. -->
+  <ItemGroup>
+    <PackageReference Include="Lib.Harmony" Version="2.3.3" ExcludeAssets="runtime" />
+  </ItemGroup>
+
 </Project>
