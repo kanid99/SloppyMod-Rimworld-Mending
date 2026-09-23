@@ -58,11 +58,15 @@
   <DynamicMending.MenderAboveThreshold>Idle: {0} is above the auto-repair threshold ({1}).</DynamicMending.MenderAboveThreshold>
 
   <!-- Repair order, on a mend bill's status line. -->
-  <DynamicMending.OrderStatus>Repair order: {0}</DynamicMending.OrderStatus>
-  <DynamicMending.OrderTip>Click to choose which damaged item this bill picks up next.</DynamicMending.OrderTip>
+  <DynamicMending.OrderStatus>Order: {0}</DynamicMending.OrderStatus>
+  <DynamicMending.OrderTip>Click to choose which item this bill picks up next.</DynamicMending.OrderTip>
   <DynamicMending.Order_Nearest>nearest first</DynamicMending.Order_Nearest>
   <DynamicMending.Order_MostDamaged>most damaged first</DynamicMending.Order_MostDamaged>
   <DynamicMending.Order_MostValuable>most valuable first</DynamicMending.Order_MostValuable>
   <DynamicMending.Order_LeastValuable>least valuable first</DynamicMending.Order_LeastValuable>
+
+  <!-- Recycling. -->
+  <DynamicMending.MoteRecycled>Recycled {0}</DynamicMending.MoteRecycled>
+  <DynamicMending.MoteRecycledNothing>{0} was too worn to salvage</DynamicMending.MoteRecycledNothing>
 
 </LanguageData>

@@ -52,7 +52,8 @@ namespace MendingMod
                 // IsAssignableFrom rather than exact type equality, so another mod can subclass
                 // RecipeWorker_Mend to add its own mend recipe and still be picked up here.
                 if (bill.recipe.workerClass == null
-                    || !typeof(RecipeWorker_Mend).IsAssignableFrom(bill.recipe.workerClass))
+                    || (!typeof(RecipeWorker_Mend).IsAssignableFrom(bill.recipe.workerClass)
+                        && !MendJobMaker.IsRecycleRecipe(bill.recipe)))
                 {
                     if (Prefs.DevMode)
                         DevLog(thing, $"bill '{bill.Label}' workerClass is {bill.recipe.workerClass} not a RecipeWorker_Mend");
@@ -145,6 +146,11 @@ namespace MendingMod
 
             IngredientCount targetFilter = bill.recipe.ingredients[0];
 
+            // A recycle bill runs through the same search, minus the parts that only make sense
+            // for a repair: the item need not be damaged, there is no tech gate on breaking
+            // something down, and there are no materials to gather.
+            bool recycling = MendJobMaker.IsRecycleRecipe(bill.recipe);
+
             // Tracked so a bench that rejected everything on tech level can say so, rather than
             // reporting the same "nothing in range" as an empty stockpile would. Components are
             // tracked separately because "needs a powered bench" is a different fix for the player
@@ -156,7 +162,7 @@ namespace MendingMod
                 {
                     // Ordered cheapest and most selective first: almost nothing on the map is
                     // damaged gear, so reject on that before paying for a reservation lookup.
-                    if (!IsDamaged(t) || !targetFilter.filter.Allows(t))
+                    if ((!recycling && !IsDamaged(t)) || !targetFilter.filter.Allows(t))
                         return false;
 
                     // The BILL's filter as well as the recipe's. This read only the recipe's,
@@ -172,6 +178,9 @@ namespace MendingMod
 
                     if (t.IsForbidden(pawn) || !pawn.CanReserve(t))
                         return false;
+
+                    if (recycling)
+                        return MendingUtility.CanEverRecycle(t);
 
                     if (!MendingUtility.CanBenchRepair(billGiver.def, t))
                     {
@@ -230,6 +239,9 @@ namespace MendingMod
             }
 
             chosen.Add(new ThingCount(mendTarget, 1));
+
+            if (recycling)
+                return true;
 
             // Two-pass verification: every material cost is located (read-only) before any of
             // it is added to `chosen`. Nothing is reserved or consumed until JobOnThing returns

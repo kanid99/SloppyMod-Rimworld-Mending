@@ -17,7 +17,9 @@ namespace MendingMod
             if (__result == null || __result.GetType() != typeof(Bill_Production))
                 return;
 
-            if (!MendJobMaker.IsMendRecipe(recipe))
+            // Recycle bills too: "least valuable first" is at least as useful when choosing
+            // what to break down as when choosing what to fix.
+            if (!MendJobMaker.IsMendRecipe(recipe) && !MendJobMaker.IsRecycleRecipe(recipe))
                 return;
 
             __result = new Bill_Mend(recipe, precept);

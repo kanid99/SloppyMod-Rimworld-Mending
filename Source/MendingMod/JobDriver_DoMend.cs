@@ -39,9 +39,13 @@ namespace MendingMod
             // the check or an unpowered table keeps working.
             this.FailOn(() => !BillGiver.CurrentlyUsableForBills());
 
-            Thing mendTarget = job.GetTargetQueue(IngredientInd)
-                .Select(t => t.Thing)
-                .FirstOrDefault(t => t != null && t.def.useHitPoints && t.HitPoints < t.MaxHitPoints);
+            // A recycle target need not be damaged, so it is found by position instead: it is
+            // always first in the queue, where WorkGiver_Mend puts it.
+            Thing mendTarget = Recycling
+                ? job.GetTargetQueue(IngredientInd).Select(t => t.Thing).FirstOrDefault(t => t != null)
+                : job.GetTargetQueue(IngredientInd)
+                    .Select(t => t.Thing)
+                    .FirstOrDefault(t => t != null && t.def.useHitPoints && t.HitPoints < t.MaxHitPoints);
 
             foreach (Toil toil in CollectIngredientsToils(IngredientInd, BillGiverInd, IngredientPlaceCellInd))
                 yield return toil;
@@ -62,9 +66,13 @@ namespace MendingMod
             yield return FinishMendToil(mendTarget);
         }
 
+        private bool Recycling => MendJobMaker.IsRecycleRecipe(job.bill?.recipe);
+
         private int WorkTicksFor(Thing mendTarget)
         {
-            float workAmount = mendTarget != null ? MendingUtility.GetDynamicWorkAmount(mendTarget, MendingUtility.GetSkillLevel(mendTarget, pawn)) : 300f;
+            float workAmount = mendTarget == null ? 300f
+                : Recycling ? MendingUtility.RecycleWorkAmount(mendTarget)
+                : MendingUtility.GetDynamicWorkAmount(mendTarget, MendingUtility.GetSkillLevel(mendTarget, pawn));
             // WorkTableWorkSpeedFactor is what separates the two benches (0.25 on the manual
             // table, 1.0 on the electric one); vanilla applies it in Toils_Recipe.DoRecipeWork,
             // which this driver doesn't use.
@@ -91,6 +99,12 @@ namespace MendingMod
                     return;
                 }
 
+                if (Recycling)
+                {
+                    FinishRecycle(actor, mendTarget, billGiverThing);
+                    return;
+                }
+
                 ConsumeMaterialsNearBillGiver(billGiverThing, mendTarget, actor);
                 RecipeWorker_Mend.CompleteMend(mendTarget, actor, billGiverThing);
 
@@ -110,6 +124,28 @@ namespace MendingMod
         // products, so the bill's own "drop on floor / best stockpile / specific stockpile"
         // dropdown means the same thing here as on any vanilla bench. Returns true if it queued a
         // haul job (which ends this one), false if the item should just stay where it is.
+        // What comes back is dropped by the bench for haulers to store, the same as a bill set
+        // to "drop on floor" - a recycle has several products of different kinds, and vanilla's
+        // one-product storing path does not fit that.
+        private void FinishRecycle(Pawn actor, Thing item, Thing bench)
+        {
+            int skill = MendingUtility.GetSkillLevel(item, actor);
+            string label = item.LabelShortCap;
+            Map map = actor.Map;
+
+            // Notify before Recycle destroys the item: the bill reads its ingredients.
+            job.bill.Notify_IterationCompleted(actor, new List<Thing> { item });
+            MendingUtility.AwardSkillXp(item, actor, RecipeWorker_Mend.BaseXpPerMend * 0.5f);
+
+            List<Thing> made = MendingUtility.Recycle(item, skill, bench.InteractionCell, map);
+
+            MoteMaker.ThrowText(bench.DrawPos, map, made.Count == 0
+                ? "DynamicMending.MoteRecycledNothing".Translate(label).ToString()
+                : "DynamicMending.MoteRecycled".Translate(label).ToString());
+
+            actor.jobs.EndCurrentJob(JobCondition.Succeeded);
+        }
+
         private bool TryStartStoringMendedItem(Pawn actor, Thing mendTarget)
         {
             if (job.bill.GetStoreMode() == BillStoreModeDefOf.DropOnFloor)

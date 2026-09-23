@@ -194,6 +194,82 @@ namespace MendingMod
 
         // Which skill a repair TRAINS: the item's own, so a modded item that declares something
         // unusual grants XP there. Only used for the XP award.
+        // Recycling: at most half the build cost comes back, scaled by the item's condition and
+        // the recycler's skill. The skill factor runs 0.04 at skill 0 to 1.0 at skill 20, which
+        // is what puts a half-health item at 25% for a master and 1% for a novice:
+        //   returned = cost x 0.5 x hp% x (0.04 + 0.96 x skill/20)
+        // Counts round DOWN, so rounding can never push a stack over the cap.
+        public const float RecycleCap = 0.5f;
+        private const float RecycleWorkFactor = 0.2f;
+
+        public static float RecycleSkillFactor(int skillLevel)
+        {
+            return 0.04f + 0.96f * Mathf.Clamp(skillLevel, 0, 20) / 20f;
+        }
+
+        public static List<ThingDefCountClass> RecycleYield(Thing item, int skillLevel)
+        {
+            List<ThingDefCountClass> result = new List<ThingDefCountClass>();
+            List<ThingDefCountClass> costs = CostListCalculator.CostListAdjusted(item);
+            if (costs.NullOrEmpty())
+                return result;
+
+            float hp = item.def.useHitPoints ? (float)item.HitPoints / item.MaxHitPoints : 1f;
+            float share = RecycleCap * Mathf.Clamp01(hp) * RecycleSkillFactor(skillLevel);
+
+            foreach (ThingDefCountClass cost in costs)
+            {
+                int count = Mathf.FloorToInt(cost.count * share);
+                if (count > 0)
+                    result.Add(new ThingDefCountClass(cost.thingDef, count));
+            }
+
+            return result;
+        }
+
+        // Nothing to get back at all - a quest reward with no recipe, a def with no cost list.
+        // Recycling one would simply destroy it, so bills and the repair centre refuse them.
+        public static bool CanEverRecycle(Thing item)
+        {
+            return !CostListCalculator.CostListAdjusted(item).NullOrEmpty();
+        }
+
+        public static float RecycleWorkAmount(Thing item)
+        {
+            float baseWork = item.GetStatValue(StatDefOf.WorkToMake);
+            if (baseWork <= 0f && item.def.recipeMaker != null)
+                baseWork = item.def.recipeMaker.workAmount;
+            if (baseWork <= 0f)
+                baseWork = 300f;
+            return baseWork * RecycleWorkFactor;
+        }
+
+        // Spawns what an item recycles into, beside `at`, and destroys the item. Returns what
+        // was made so the caller can report it.
+        public static List<Thing> Recycle(Thing item, int skillLevel, IntVec3 at, Map map)
+        {
+            List<ThingDefCountClass> yield = RecycleYield(item, skillLevel);
+            List<Thing> made = new List<Thing>();
+
+            if (!item.Destroyed)
+                item.Destroy(DestroyMode.Vanish);
+
+            foreach (ThingDefCountClass part in yield)
+            {
+                int left = part.count;
+                while (left > 0)
+                {
+                    Thing stack = ThingMaker.MakeThing(part.thingDef);
+                    stack.stackCount = Mathf.Min(left, part.thingDef.stackLimit);
+                    left -= stack.stackCount;
+                    if (GenPlace.TryPlaceThing(stack, at, map, ThingPlaceMode.Near))
+                        made.Add(stack);
+                }
+            }
+
+            return made;
+        }
+
         // Whether automatic repair should pick this item up at all. See the setting.
         public static bool BelowAutoRepairThreshold(Thing item)
         {

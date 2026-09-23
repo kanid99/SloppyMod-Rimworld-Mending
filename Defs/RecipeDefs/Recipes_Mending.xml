@@ -93,4 +93,94 @@
     </recipeUsers>
   </RecipeDef>
 
+  <!--
+    Recycling. The same benches and the same two work types as mending, so a colonist allowed
+    only Smithing breaks down weapons and one allowed only Crafting breaks down apparel.
+
+    What comes back: at most half the build cost, scaled by the item's hit points and the
+    recycler's Crafting skill - see MendingUtility.RecycleYield.
+
+    fixedIngredientFilter takes gear in ANY condition, so the player can widen the bill as far as
+    they like. defaultIngredientFilter - what a new bill starts with - only takes gear at or
+    below half health. A recycle bill that started out accepting every piece of apparel on the
+    map would start shredding the colony's stockpiles the moment it was added.
+  -->
+  <RecipeDef>
+    <defName>RecycleApparel</defName>
+    <label>recycle apparel</label>
+    <description>Break down apparel for materials. Returns up to half of what it cost to make, less the more worn it is and the less skilled the recycler.</description>
+    <jobString>Recycling apparel.</jobString>
+    <workSkill>Crafting</workSkill>
+    <requiredGiverWorkType>Crafting</requiredGiverWorkType>
+    <workerClass>MendingMod.RecipeWorker_Recycle</workerClass>
+    <workAmount>300</workAmount>
+    <effectWorking>Tailor</effectWorking>
+    <soundWorking>Recipe_Tailor</soundWorking>
+    <ingredients>
+      <li>
+        <filter>
+          <categories>
+            <li>Apparel</li>
+          </categories>
+        </filter>
+        <count>1</count>
+      </li>
+    </ingredients>
+    <fixedIngredientFilter>
+      <categories>
+        <li>Apparel</li>
+      </categories>
+    </fixedIngredientFilter>
+    <defaultIngredientFilter>
+      <categories>
+        <li>Apparel</li>
+      </categories>
+      <allowedHitPointsPercents>0~0.5</allowedHitPointsPercents>
+    </defaultIngredientFilter>
+    <products />
+    <recipeUsers>
+      <li>TableMending_Manual</li>
+      <li>TableMending_Electric</li>
+    </recipeUsers>
+  </RecipeDef>
+
+  <RecipeDef>
+    <defName>RecycleWeapon</defName>
+    <label>recycle weapon</label>
+    <description>Break down a weapon for materials. Returns up to half of what it cost to make, less the more worn it is and the less skilled the recycler.</description>
+    <jobString>Recycling weapon.</jobString>
+    <workSkill>Crafting</workSkill>
+    <requiredGiverWorkType>Smithing</requiredGiverWorkType>
+    <workerClass>MendingMod.RecipeWorker_Recycle</workerClass>
+    <workAmount>300</workAmount>
+    <effectWorking>Smith</effectWorking>
+    <soundWorking>Recipe_Smith</soundWorking>
+    <ingredients>
+      <li>
+        <filter>
+          <categories>
+            <li>Weapons</li>
+          </categories>
+        </filter>
+        <count>1</count>
+      </li>
+    </ingredients>
+    <fixedIngredientFilter>
+      <categories>
+        <li>Weapons</li>
+      </categories>
+    </fixedIngredientFilter>
+    <defaultIngredientFilter>
+      <categories>
+        <li>Weapons</li>
+      </categories>
+      <allowedHitPointsPercents>0~0.5</allowedHitPointsPercents>
+    </defaultIngredientFilter>
+    <products />
+    <recipeUsers>
+      <li>TableMending_Manual</li>
+      <li>TableMending_Electric</li>
+    </recipeUsers>
+  </RecipeDef>
+
 </Defs>

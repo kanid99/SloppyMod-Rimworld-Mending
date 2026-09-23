@@ -79,6 +79,7 @@ and silently does nothing.
 | inspect pane | damaged gear shows what its repair would cost at your best crafter's skill |
 | auto-repair threshold | automatic repair only picks up gear below a set share of its hit points |
 | repair order | each mend bill picks nearest, most damaged, most or least valuable first |
+| `RecycleApparel` / `RecycleWeapon` | break gear down at the benches for up to half its build cost |
 | `Bill_Mend` | a mend bill pinned to one material, for installs without Material Filter |
 
 `MendingUtility` is where the cost, time, waste and failure numbers are worked out, and it

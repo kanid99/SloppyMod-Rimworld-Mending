@@ -43,6 +43,11 @@ namespace MendingMod
             return recipe != null && MendRecipes.Contains(recipe);
         }
 
+        public static bool IsRecycleRecipe(RecipeDef recipe)
+        {
+            return recipe?.workerClass != null && typeof(RecipeWorker_Recycle).IsAssignableFrom(recipe.workerClass);
+        }
+
         // Cheap enough to run on every thing under the cursor: no map queries, no pathing.
         public static bool IsMendable(Thing item)
         {
