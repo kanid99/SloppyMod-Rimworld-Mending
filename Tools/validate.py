@@ -165,10 +165,12 @@ for name, node in terrain_defs.items():
 
 # --- every recreation building must be reachable through a JoyGiverDef ------
 listed = {}
+listed_jobs = {}     # building -> {jobDef: [givers]}
 for giver in joy_givers:
     giver_name = giver.findtext("defName")
     for li in giver.findall("./thingDefs/li"):
         listed.setdefault(li.text, []).append(giver_name)
+        listed_jobs.setdefault(li.text, {}).setdefault(giver.findtext("jobDef"), []).append(giver_name)
     job = giver.findtext("jobDef")
     if job and ours(job) and job not in job_defs:
         fail("JoyGiverDef %s points at undefined jobDef %s" % (giver_name, job))
@@ -179,8 +181,14 @@ for name, node in thing_defs.items():
     if name not in listed:
         fail("%s has a joyKind but no JoyGiverDef lists it - pawns would never "
              "use it" % name)
-    elif len(listed[name]) > 1:
-        fail("%s is listed by several JoyGiverDefs: %s" % (name, listed[name]))
+    else:
+        # Several givers are fine when they hand out different jobs - one
+        # colonist tells a story, the rest listen. Two giving the same job is
+        # a copy-paste mistake, and doubles how often the building is chosen.
+        for job, givers in sorted(listed_jobs[name].items()):
+            if len(givers) > 1:
+                fail("%s is listed by several JoyGiverDefs with the same jobDef %s: %s"
+                     % (name, job, givers))
 
 for name, givers in listed.items():
     if name not in thing_defs:
