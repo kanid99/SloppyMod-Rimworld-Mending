@@ -209,11 +209,21 @@ namespace MendingMod
             // name what it had turned down.
             Thing damagedItem = null;
             Thing rejected = null;
+            Thing tooHealthy = null;
 
             foreach (Thing thing in ThingsOn(ItemInputCell))
             {
                 if (!IsDamagedGear(thing))
                     continue;
+
+                // Named separately from "can't repair it": the fix is a setting, not a better
+                // machine, and the player should be told which.
+                if (!MendingUtility.BelowAutoRepairThreshold(thing))
+                {
+                    if (tooHealthy == null)
+                        tooHealthy = thing;
+                    continue;
+                }
 
                 if (IsMendable(thing))
                 {
@@ -229,7 +239,10 @@ namespace MendingMod
             {
                 idleReason = rejected != null
                     ? "DynamicMending.MenderCannotRepair".Translate(rejected.LabelShortCap)
-                    : "DynamicMending.MenderNoItem".Translate();
+                    : tooHealthy != null
+                        ? "DynamicMending.MenderAboveThreshold".Translate(
+                            tooHealthy.LabelShortCap, MendingModMain.Settings.autoRepairBelow.ToStringPercent())
+                        : "DynamicMending.MenderNoItem".Translate();
                 return;
             }
 

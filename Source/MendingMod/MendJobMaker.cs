@@ -79,17 +79,23 @@ namespace MendingMod
                 return Fail("DynamicMending.RepairSkillTooLow".Translate(
                     unmet.skill.LabelCap, unmet.minLevel), out reason);
 
-            if (item.IsForbidden(pawn))
+            // Gear the colonist is wearing or wielding is not on the map, so it cannot be
+            // forbidden, reserved or pathed to - it goes where they go. The worn-gear order asks
+            // this question before anything is taken off, so it has to be answerable for it.
+            bool held = HeldBy(pawn, item);
+
+            if (!held && item.IsForbidden(pawn))
                 return Fail("DynamicMending.RepairForbidden".Translate(), out reason);
 
-            if (!pawn.CanReserveAndReach(item, PathEndMode.ClosestTouch, Danger.Deadly))
+            if (!held && !pawn.CanReserveAndReach(item, PathEndMode.ClosestTouch, Danger.Deadly))
                 return Fail("DynamicMending.RepairUnreachableItem".Translate(), out reason);
 
             // --- the bench -------------------------------------------------------------------
             // Ordered by distance from the ITEM rather than from the colonist: they collect it
             // first and carry it, so that leg is the one worth keeping short.
+            IntVec3 from = item.PositionHeld;
             List<Thing> benches = BenchesFor(pawn, recipe)
-                .OrderBy(b => (b.Position - item.Position).LengthHorizontalSquared)
+                .OrderBy(b => (b.Position - from).LengthHorizontalSquared)
                 .ToList();
 
             if (benches.Count == 0)
@@ -126,7 +132,12 @@ namespace MendingMod
                 return Fail(MissingMaterialsReason(costs, pawn, bench, radius), out reason);
 
             // --- commit ----------------------------------------------------------------------
-            // Nothing above this line has changed anything, so a dry run can stop here.
+            // Nothing above this line has changed anything, so a dry run can stop here. A held
+            // item can only ever be dry-run: a job cannot target something that is not on the
+            // map, so the worn-gear driver takes it off first and asks again.
+            if (held)
+                return !commit || Fail("DynamicMending.RepairUnreachableItem".Translate(), out reason);
+
             Bill bill = commit ? EnsureBill(bench, recipe, item) : ExistingBill(bench, recipe, item);
             if (bill == null && !commit)
                 return true;            // a bill WOULD be added; the order is still valid
@@ -141,6 +152,12 @@ namespace MendingMod
             job.targetQueueB.AddRange(materials.Select(tc => new LocalTargetInfo(tc.Thing)));
             job.countQueue.AddRange(materials.Select(tc => tc.Count));
             return true;
+        }
+
+        public static bool HeldBy(Pawn pawn, Thing item)
+        {
+            return (item.ParentHolder is Pawn_ApparelTracker apparel && apparel.pawn == pawn)
+                || (item.ParentHolder is Pawn_EquipmentTracker equipment && equipment.pawn == pawn);
         }
 
         private static bool Fail(string why, out string reason)

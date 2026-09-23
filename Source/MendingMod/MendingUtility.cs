@@ -194,6 +194,16 @@ namespace MendingMod
 
         // Which skill a repair TRAINS: the item's own, so a modded item that declares something
         // unusual grants XP there. Only used for the XP award.
+        // Whether automatic repair should pick this item up at all. See the setting.
+        public static bool BelowAutoRepairThreshold(Thing item)
+        {
+            if (item == null || !item.def.useHitPoints || item.HitPoints >= item.MaxHitPoints)
+                return false;
+
+            float threshold = MendingModMain.Settings.autoRepairBelow;
+            return threshold >= 0.995f || (float)item.HitPoints / item.MaxHitPoints < threshold;
+        }
+
         public static SkillDef GetRelevantWorkSkill(Thing item)
         {
             return item.def.recipeMaker?.workSkill ?? SkillDefOf.Crafting;

@@ -8,6 +8,13 @@
   </JobDef>
 
   <JobDef>
+    <defName>RepairWorn</defName>
+    <driverClass>MendingMod.JobDriver_RepairWorn</driverClass>
+    <reportString>taking off TargetA to repair it.</reportString>
+    <casualInterruptible>false</casualInterruptible>
+  </JobDef>
+
+  <JobDef>
     <defName>EmptyMenderWaste</defName>
     <driverClass>MendingMod.JobDriver_EmptyMenderWaste</driverClass>
     <reportString>emptying waste from TargetA.</reportString>

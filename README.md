@@ -75,6 +75,9 @@ and silently does nothing.
 | `ElectricMending` | behind Fabrication |
 | `AutomatedMending` | behind Advanced Fabrication and Basic Mechtech |
 | right-click repair | order one item repaired, or be told exactly why it can't be |
+| right-click yourself | repair worn or wielded gear: take it off, repair it, put it back on |
+| inspect pane | damaged gear shows what its repair would cost at your best crafter's skill |
+| auto-repair threshold | automatic repair only picks up gear below a set share of its hit points |
 | `Bill_Mend` | a mend bill pinned to one material, for installs without Material Filter |
 
 `MendingUtility` is where the cost, time, waste and failure numbers are worked out, and it

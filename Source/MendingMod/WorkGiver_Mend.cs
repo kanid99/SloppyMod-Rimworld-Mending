@@ -293,9 +293,11 @@ namespace MendingMod
             return group;
         }
 
+        // The auto-repair threshold, not just "any damage": this is the automatic scan. A
+        // right-click order builds its own job and never comes through here.
         private static bool IsDamaged(Thing t)
         {
-            return t.def.useHitPoints && t.HitPoints < t.MaxHitPoints;
+            return MendingUtility.BelowAutoRepairThreshold(t);
         }
 
         // Vanilla's own ingredient locator rather than a bespoke one. Hauling and storage mods

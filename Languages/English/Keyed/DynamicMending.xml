@@ -43,4 +43,18 @@
   <DynamicMending.RepairMissingMaterials>missing {0}</DynamicMending.RepairMissingMaterials>
   <DynamicMending.RepairNotEnoughMaterials>not enough repair materials in reach</DynamicMending.RepairNotEnoughMaterials>
 
+  <!-- Right-click a colonist on themselves to repair worn gear. -->
+  <DynamicMending.RepairWornLabel>Repair worn {0}</DynamicMending.RepairWornLabel>
+  <DynamicMending.CannotRepairWorn>Cannot repair worn {0}</DynamicMending.CannotRepairWorn>
+
+  <!-- Inspect pane preview on damaged gear. -->
+  <DynamicMending.InfoCost>Repair cost: {0} (at crafting {1})</DynamicMending.InfoCost>
+  <DynamicMending.InfoCostFree>Repair cost: free</DynamicMending.InfoCostFree>
+  <DynamicMending.InfoNothing>no materials</DynamicMending.InfoNothing>
+  <DynamicMending.InfoUnfamiliar>Unfamiliar gear - double materials, higher risk</DynamicMending.InfoUnfamiliar>
+  <DynamicMending.InfoAboveThreshold>Above the auto-repair threshold ({0}) - right-click to repair it anyway</DynamicMending.InfoAboveThreshold>
+
+  <!-- Auto-repair threshold on the repair centre. -->
+  <DynamicMending.MenderAboveThreshold>Idle: {0} is above the auto-repair threshold ({1}).</DynamicMending.MenderAboveThreshold>
+
 </LanguageData>

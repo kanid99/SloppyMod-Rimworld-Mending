@@ -40,6 +40,11 @@ namespace MendingMod
         // as operating at that tier. See ColonyTech.
         public float techTierThreshold = 0.5f;
 
+        // Automatic repair only picks up gear below this share of its hit points - work scans
+        // and the repair centre alike. 1.0 means any damage at all. An explicit right-click
+        // order ignores it: the player asking for that one item is the whole point.
+        public float autoRepairBelow = 1.0f;
+
         // Field-by-field rather than replacing the settings object, because Mod.GetSettings hands
         // out a single instance that everything else already holds a reference to.
         public void ResetToDefaults()
@@ -58,6 +63,7 @@ namespace MendingMod
             hpLossOnFailure = defaults.hpLossOnFailure;
             qualityLossMode = defaults.qualityLossMode;
             techTierThreshold = defaults.techTierThreshold;
+            autoRepairBelow = defaults.autoRepairBelow;
         }
 
         public override void ExposeData()
@@ -75,6 +81,7 @@ namespace MendingMod
             Scribe_Values.Look(ref hpLossOnFailure, "hpLossOnFailure", true);
             Scribe_Values.Look(ref qualityLossMode, "qualityLossMode", QualityLossMode.Always);
             Scribe_Values.Look(ref techTierThreshold, "techTierThreshold", 0.5f);
+            Scribe_Values.Look(ref autoRepairBelow, "autoRepairBelow", 1.0f);
         }
     }
 
@@ -123,6 +130,16 @@ namespace MendingMod
 
             listing.Label($"Repair time: {Settings.repairWorkMultiplier:F2}x the item's full build time");
             Settings.repairWorkMultiplier = listing.Slider(Settings.repairWorkMultiplier, 0.02f, 2.0f);
+
+            listing.Gap();
+            Header(listing, "Automatic repair");
+
+            listing.Label(Settings.autoRepairBelow >= 0.995f
+                ? "Auto-repair gear with any damage"
+                : $"Auto-repair gear below {Settings.autoRepairBelow:P0} hit points");
+            Settings.autoRepairBelow = Mathf.Round(listing.Slider(Settings.autoRepairBelow, 0.1f, 1f) * 20f) / 20f;
+            listing.Label("    Applies to bills and the repair centre. A right-click order repairs the "
+                        + "item whatever its condition.");
 
             listing.Gap();
             Header(listing, "Waste");
