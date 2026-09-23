@@ -261,6 +261,21 @@ of turning into noise the way an outlined detail would.
 The spot geometry follows the footprint, so the C# and the art cannot drift: see
 `MenderSpots.ResourceInputCells`.
 
+### Reject chutes
+
+Two red bays either side of the orange output, both doing the same job. Two rather than one
+because RimWorld draws west by MIRRORING the east texture when there is no `_west` file, so a
+single off-centre chute would be drawn on one side of the output and read by the C# on the
+other whenever the machine faced west. A symmetric pair lands on the same cells both ways,
+keeps the layout mirror-symmetric like every factory machine, and `verify_spots.py` checks it -
+including a negative test, moving the chutes to the wrong cells, which it catches.
+
+The two bottom drums were placed where they were because nothing fed those positions. They are
+now the reject hoppers: each chute's run is laid down before its drum, so the tank is drawn
+over the run's inner end and the belt reads as coming out from under it. The red is not a VFE
+colour - they have no reject port - so it is pitched to sit with theirs: the lightness of their
+orange at the same muted saturation.
+
 ### Measured against their 19 sprites
 
 `measure.py` scores a sprite on nine metrics and prints them against the same nine measured

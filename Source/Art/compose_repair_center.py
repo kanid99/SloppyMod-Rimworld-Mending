@@ -104,8 +104,16 @@ def build():
         x, y = c.x0 + cx * PX, c.y0 + 0.92 * PX
         c.raised_casing(pentagon(x, y, 0.96 * PX, 0.70 * PX, 'b' + corner))
         c.slashes(x - PX * 0.20, y - PX * 0.10, n=3, colour=(118, 142, 148))
-    for cx in (1.46, 5 - 1.46):
-        c.drum(c.x0 + cx * PX, c.y0 + 4.16 * PX, 0.40 * PX)
+    # The bottom pair are the reject hoppers. Each red chute's run is laid down FIRST, so the
+    # tank is drawn over its inner end and the belt reads as coming out from under it - rejects
+    # and recycled materials collect in the tank and drop out through the chute. They were
+    # "fed by nothing" before the chutes existed; now they are the thing the chutes are for.
+    REJECT_SPAN = ((11 - 5) * (PX / 128.0), 0.50 * PX)
+    for i in (CW // 2 - 1, CW // 2 + 1):
+        along = c.x0 + int((i + 0.5) * PX)
+        c.belt_run(along, 'bottom', 36 * (PX / 128.0), 0.50 * PX, rail='red', rail_span=REJECT_SPAN)
+    for cx in (1.5, 5 - 1.5):
+        c.drum(c.x0 + cx * PX, c.y0 + 4.04 * PX, 0.38 * PX)
 
     # The machine. Three things it has to say, which the old flat slab said none of:
     #   * work passes THROUGH it - the belt runs unbroken from the item bay to the output bay
@@ -190,6 +198,8 @@ def build():
         for j in (1, 2, 3):
             c.port(c.y0 + int((j + 0.5) * PX), side, 'green', rail_span=FLANK)
     c.port(c.x0 + int((mid + 0.5) * PX), 'bottom', 'orange', outward=True)
+    for i in (mid - 1, mid + 1):                # the reject chutes, either side of the output
+        c.port(c.x0 + int((i + 0.5) * PX), 'bottom', 'red', outward=True, rail_span=REJECT_SPAN)
     return c.image()
 
 

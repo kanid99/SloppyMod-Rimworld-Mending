@@ -11,7 +11,7 @@ PX, CW, CH, MARGIN = 192, 5, 5, 0.5
 T = 'Textures/Things/Building/Production/AutomatedMender_'
 FACING = {'North': (0, 1), 'East': (1, 0), 'South': (0, -1), 'West': (-1, 0)}
 OPP = {'North': 'South', 'South': 'North', 'East': 'West', 'West': 'East'}
-RAIL = {'green': (91, 175, 94), 'cyan': (72, 168, 178), 'orange': (175, 120, 65)}
+RAIL = {'green': (91, 175, 94), 'cyan': (72, 168, 178), 'orange': (175, 120, 65), 'red': (184, 78, 70)}
 
 MIN_X, MAX_X, MIN_Z, MAX_Z = 0, CW - 1, 0, CH - 1
 INTAKE_IS_FACING = len(sys.argv) > 1 and sys.argv[1] == 'flipped'
@@ -52,7 +52,9 @@ def spots(rot):
         res.append(intake[mid + 1])
     res += side_cells(rot)[:8 - len(res)]
     out = edge_cells(rot, front=not INTAKE_IS_FACING)
-    return {'cyan': [intake[mid]], 'green': res, 'orange': [out[len(out) // 2]]}
+    omid = len(out) // 2
+    reject = [out[omid - 1], out[omid + 1]]              # MenderSpots.RejectCells
+    return {'cyan': [intake[mid]], 'green': res, 'orange': [out[omid]], 'red': reject}
 
 
 RAIL_OFFSET = (78 / 2 + 7 / 2) * (PX / 128.0)     # bed half-width plus half a rail

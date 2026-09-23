@@ -11,7 +11,7 @@
   <DynamicMending.MenderOutputUnreachable>{1} could not reach its output spot, so {0} was set down nearby. Check that the output spot is clear.</DynamicMending.MenderOutputUnreachable>
   <DynamicMending.MenderOutputBlocked>Finished {0} - waiting for the output spot (orange) to clear.</DynamicMending.MenderOutputBlocked>
   <DynamicMending.MenderCannotTakeItem>Idle: can't draw {0} in from the item spot (cyan).</DynamicMending.MenderCannotTakeItem>
-  <DynamicMending.MenderSpotLegend>Cyan spot: damaged item in. Green spots: repair materials in. Orange spot: repaired item out.</DynamicMending.MenderSpotLegend>
+  <DynamicMending.MenderSpotLegend>Cyan spot: damaged item in. Green spots: repair materials in. Orange spot: repaired item out. Red spots: rejected items and recycled materials out.</DynamicMending.MenderSpotLegend>
 
   <DynamicMending.NeedsPoweredBench>Contains components - needs a powered mending station.</DynamicMending.NeedsPoweredBench>
   <DynamicMending.WasteFull>Waste container full - must be emptied before more repairs.</DynamicMending.WasteFull>
@@ -23,7 +23,6 @@
   <DynamicMending.WasteBuffered>Waste container: {0}</DynamicMending.WasteBuffered>
   <DynamicMending.DumpWasteLabel>Dump waste</DynamicMending.DumpWasteLabel>
   <DynamicMending.DumpWasteDesc>Dump the accumulated waste onto the ground now, without waiting for a hauler. Rounds up to whole items and deducts the full amount, so dumping early is borrowed against later repairs rather than free.</DynamicMending.DumpWasteDesc>
-  <DynamicMending.MenderCannotRepair>Idle: {0} is beyond what this machine can repair.</DynamicMending.MenderCannotRepair>
   <DynamicMending.TooAdvancedForBench>Too advanced for this station (repairs up to {0} tech).</DynamicMending.TooAdvancedForBench>
 
   <!-- Right-click "repair this" order. -->
@@ -54,8 +53,6 @@
   <DynamicMending.InfoUnfamiliar>Unfamiliar gear - double materials, higher risk</DynamicMending.InfoUnfamiliar>
   <DynamicMending.InfoAboveThreshold>Above the auto-repair threshold ({0}) - right-click to repair it anyway</DynamicMending.InfoAboveThreshold>
 
-  <!-- Auto-repair threshold on the repair centre. -->
-  <DynamicMending.MenderAboveThreshold>Idle: {0} is above the auto-repair threshold ({1}).</DynamicMending.MenderAboveThreshold>
 
   <!-- Repair order, on a mend bill's status line. -->
   <DynamicMending.OrderStatus>Order: {0}</DynamicMending.OrderStatus>
@@ -68,5 +65,23 @@
   <!-- Recycling. -->
   <DynamicMending.MoteRecycled>Recycled {0}</DynamicMending.MoteRecycled>
   <DynamicMending.MoteRecycledNothing>{0} was too worn to salvage</DynamicMending.MoteRecycledNothing>
+
+  <!-- Repair centre: accept filter, tainted gear, reject chutes. -->
+  <DynamicMending.AcceptFilterLabel>Accepted gear</DynamicMending.AcceptFilterLabel>
+  <DynamicMending.AcceptFilterDesc>Choose what this machine will repair. Anything else that reaches its item spot - along with undamaged gear, gear above the auto-repair threshold and gear beyond its tech - is sent out the red reject chutes instead of blocking the spot.</DynamicMending.AcceptFilterDesc>
+  <DynamicMending.AcceptFilterHint>Gear this filter rejects leaves by the red chutes. Tainted apparel has its own setting on the machine.</DynamicMending.AcceptFilterHint>
+  <DynamicMending.Tainted_Repair>Tainted apparel: repair</DynamicMending.Tainted_Repair>
+  <DynamicMending.Tainted_Recycle>Tainted apparel: recycle</DynamicMending.Tainted_Recycle>
+  <DynamicMending.Tainted_Reject>Tainted apparel: reject</DynamicMending.Tainted_Reject>
+  <DynamicMending.TaintedDesc>What to do with apparel taken from a corpse: repair it like anything else, break it down for materials, or send it straight out the reject chutes. Click to change.</DynamicMending.TaintedDesc>
+  <DynamicMending.MenderRecycling>Recycling {0}: {1}</DynamicMending.MenderRecycling>
+  <DynamicMending.LastRejected>Last rejected: {0} ({1})</DynamicMending.LastRejected>
+  <DynamicMending.RejectTainted>tainted</DynamicMending.RejectTainted>
+  <DynamicMending.RejectFiltered>not in the accepted gear filter</DynamicMending.RejectFiltered>
+  <DynamicMending.RejectUndamaged>not damaged</DynamicMending.RejectUndamaged>
+  <DynamicMending.RejectThreshold>above the auto-repair threshold of {0}</DynamicMending.RejectThreshold>
+  <DynamicMending.RejectTooAdvanced>beyond what this machine can repair</DynamicMending.RejectTooAdvanced>
+  <DynamicMending.RejectChuteBlocked>Waiting: both reject chutes (red) are blocked, {0} item(s) held.</DynamicMending.RejectChuteBlocked>
+  <DynamicMending.RejectChuteUnreachable>{0} could not use its reject chutes, so it set what it was holding down nearby. Check that the red spots are clear.</DynamicMending.RejectChuteUnreachable>
 
 </LanguageData>

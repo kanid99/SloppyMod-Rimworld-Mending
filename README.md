@@ -80,6 +80,7 @@ and silently does nothing.
 | auto-repair threshold | automatic repair only picks up gear below a set share of its hit points |
 | repair order | each mend bill picks nearest, most damaged, most or least valuable first |
 | `RecycleApparel` / `RecycleWeapon` | break gear down at the benches for up to half its build cost |
+| reject chutes | two red ports on the repair centre for gear it won't take, and recycled materials |
 | `Bill_Mend` | a mend bill pinned to one material, for installs without Material Filter |
 
 `MendingUtility` is where the cost, time, waste and failure numbers are worked out, and it
@@ -114,7 +115,7 @@ mod is present, because a pin there would silently override the checkboxes the p
 `MendJobMaker` is the whole of it and `FloatMenuOptionProvider_Repair` is the hook; there is
 no Harmony patch involved, because 1.6's provider system finds any subclass on its own.
 
-`MenderSpots` derives the repair centre's ten spots from its footprint and rotation, so the
+`MenderSpots` derives the repair centre's twelve spots from its footprint and rotation, so the
 C# and the artwork cannot drift: `Source/Art/verify_spots.py` reimplements it and checks the
 drawn bays land on the cells the C# actually reads, for all four rotations.
 

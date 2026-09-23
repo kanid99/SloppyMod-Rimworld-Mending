@@ -109,6 +109,27 @@ namespace MendingMod
             return far[far.Count / 2];
         }
 
+        // Two reject chutes, one either side of the output port, both doing the same job.
+        //
+        // Two rather than one because the east texture is MIRRORED for west - RimWorld's
+        // Graphic_Multi does that when there is no _west texture - so a single off-centre port
+        // would be drawn on one side of the output and read by this code on the other whenever
+        // the machine faced west. A symmetric pair lands on the same two cells either way, keeps
+        // the layout mirror-symmetric like every factory machine, and doubles the chute's capacity.
+        public static List<IntVec3> RejectCells(CellRect rect, Rot4 rot)
+        {
+            List<IntVec3> far = EdgeCells(rect, rot, intake: false);
+            int middle = far.Count / 2;
+            List<IntVec3> cells = new List<IntVec3>();
+
+            if (middle - 1 >= 0)
+                cells.Add(far[middle - 1]);
+            if (middle + 1 < far.Count)
+                cells.Add(far[middle + 1]);
+
+            return cells;
+        }
+
         public static void DrawRings(CellRect rect, Rot4 rot)
         {
             DrawRing(ItemInputCell(rect, rot), SimpleColor.Cyan);
@@ -117,6 +138,9 @@ namespace MendingMod
                 DrawRing(cell, SimpleColor.Green);
 
             DrawRing(OutputCell(rect, rot), SimpleColor.Orange);
+
+            foreach (IntVec3 cell in RejectCells(rect, rot))
+                DrawRing(cell, SimpleColor.Red);
         }
 
         private static void DrawRing(IntVec3 cell, SimpleColor colour)

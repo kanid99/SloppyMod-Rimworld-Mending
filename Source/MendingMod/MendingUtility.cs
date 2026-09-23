@@ -244,9 +244,10 @@ namespace MendingMod
             return baseWork * RecycleWorkFactor;
         }
 
-        // Spawns what an item recycles into, beside `at`, and destroys the item. Returns what
-        // was made so the caller can report it.
-        public static List<Thing> Recycle(Thing item, int skillLevel, IntVec3 at, Map map)
+        // Destroys the item and returns what it breaks down into, as unspawned stacks - the
+        // repair centre keeps them inside until a reject chute is free, where a bench just puts
+        // them down (Recycle, below).
+        public static List<Thing> MakeRecycleProducts(Thing item, int skillLevel)
         {
             List<ThingDefCountClass> yield = RecycleYield(item, skillLevel);
             List<Thing> made = new List<Thing>();
@@ -262,12 +263,24 @@ namespace MendingMod
                     Thing stack = ThingMaker.MakeThing(part.thingDef);
                     stack.stackCount = Mathf.Min(left, part.thingDef.stackLimit);
                     left -= stack.stackCount;
-                    if (GenPlace.TryPlaceThing(stack, at, map, ThingPlaceMode.Near))
-                        made.Add(stack);
+                    made.Add(stack);
                 }
             }
 
             return made;
+        }
+
+        // Recycles the item and puts what comes back down beside `at`.
+        public static List<Thing> Recycle(Thing item, int skillLevel, IntVec3 at, Map map)
+        {
+            List<Thing> placed = new List<Thing>();
+            foreach (Thing stack in MakeRecycleProducts(item, skillLevel))
+            {
+                if (GenPlace.TryPlaceThing(stack, at, map, ThingPlaceMode.Near))
+                    placed.Add(stack);
+            }
+
+            return placed;
         }
 
         // Whether automatic repair should pick this item up at all. See the setting.

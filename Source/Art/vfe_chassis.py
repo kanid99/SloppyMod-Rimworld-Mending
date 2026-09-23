@@ -73,7 +73,10 @@ RAIL_SHADE = 0.18                 # what the rail has fallen to where it meets t
 BED_SHADE  = 0.32                 # and the bed, whose roller detail has gone flat by then
 RAILS = {'orange': ((175, 120, 65), (109, 79, 49)),
          'green':  ((91, 175, 94),  (57, 109, 59)),
-         'cyan':   ((72, 168, 178), (45, 105, 111))}
+         'cyan':   ((72, 168, 178), (45, 105, 111)),
+         # The reject chutes. Not a VFE colour - they have no reject port - so it is pitched to
+         # sit with theirs: the same lightness as their orange, the same muted saturation.
+         'red':    ((184, 78, 70),  (115, 49, 44))}
 
 
 class Chassis:

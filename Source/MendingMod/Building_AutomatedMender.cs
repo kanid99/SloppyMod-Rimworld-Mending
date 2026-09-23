@@ -7,6 +7,14 @@ using Verse;
 
 namespace MendingMod
 {
+    // What the repair centre does with tainted apparel that reaches its item spot.
+    public enum TaintedMode : byte
+    {
+        Repair,
+        Recycle,
+        Reject,
+    }
+
     // Tick-driven state machine: Idle scans its input spots for work, Working counts down a
     // dynamically-computed work duration on the swallowed item, then ejects it out the front.
     // Runs the same MendingUtility formulas as the pawn path, but with a fixed skill level
@@ -45,6 +53,20 @@ namespace MendingMod
         private MenderState state = MenderState.Idle;
         private string idleReason;
 
+        // What the machine will take. Anything on the item spot it will not take - filtered out,
+        // undamaged, above the auto-repair threshold, beyond its tech - goes out a reject chute
+        // rather than sitting on the spot and stalling the belt behind it.
+        private ThingFilter acceptFilter;
+        private TaintedMode taintedMode = TaintedMode.Repair;
+
+        // Things inside the machine waiting for a reject chute: rejected gear, and whatever a
+        // recycle broke down into. Held here while both chutes are blocked, exactly as a repaired
+        // item waits for the output spot.
+        private List<Thing> rejectQueue = new List<Thing>();
+        private int blockedRejects;
+        private bool recycling;
+        private string lastRejected;
+
         public Building_AutomatedMender()
         {
             innerContainer = new ThingOwner<Thing>(this, oneStackOnly: false);
@@ -69,7 +91,48 @@ namespace MendingMod
             Scribe_Values.Look(ref workTicksTotal, "workTicksTotal");
             Scribe_Values.Look(ref blockedEjects, "blockedEjects");
             Scribe_Values.Look(ref state, "state");
+            Scribe_Deep.Look(ref acceptFilter, "acceptFilter");
+            Scribe_Values.Look(ref taintedMode, "taintedMode", TaintedMode.Repair);
+            Scribe_Collections.Look(ref rejectQueue, "rejectQueue", LookMode.Reference);
+            Scribe_Values.Look(ref blockedRejects, "blockedRejects");
+            Scribe_Values.Look(ref recycling, "recycling");
+
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                // A machine built before these existed loads with neither.
+                acceptFilter = acceptFilter ?? DefaultAcceptFilter();
+                rejectQueue = rejectQueue ?? new List<Thing>();
+                rejectQueue.RemoveAll(t => t == null);
+            }
         }
+
+        // The tree the accept-filter window shows, and everything a new machine accepts: all
+        // apparel and all weapons, which is what the two mend recipes cover.
+        private static ThingFilter parentFilter;
+
+        public static ThingFilter ParentFilter
+        {
+            get
+            {
+                if (parentFilter == null)
+                {
+                    parentFilter = new ThingFilter();
+                    parentFilter.SetAllow(ThingCategoryDefOf.Apparel, true);
+                    parentFilter.SetAllow(ThingCategoryDefOf.Weapons, true);
+                }
+
+                return parentFilter;
+            }
+        }
+
+        private static ThingFilter DefaultAcceptFilter()
+        {
+            ThingFilter filter = new ThingFilter();
+            filter.CopyAllowancesFrom(ParentFilter);
+            return filter;
+        }
+
+        public ThingFilter AcceptFilter => acceptFilter ?? (acceptFilter = DefaultAcceptFilter());
 
         private bool PowerOn
         {
@@ -96,6 +159,9 @@ namespace MendingMod
             workTicksTotal = 0;
             idleReason = null;
             state = MenderState.Idle;
+            rejectQueue.Clear();         // dropped with everything else, just above
+            blockedRejects = 0;
+            recycling = false;
 
             base.DeSpawn(mode);
         }
@@ -132,6 +198,8 @@ namespace MendingMod
         public IEnumerable<IntVec3> ResourceInputCells => MenderSpots.ResourceInputCells(Footprint, Rotation);
 
         public IntVec3 OutputCell => MenderSpots.OutputCell(Footprint, Rotation);
+
+        public List<IntVec3> RejectCells => MenderSpots.RejectCells(Footprint, Rotation);
 
         public bool IsRepairing => state == MenderState.Working;
 
@@ -174,7 +242,8 @@ namespace MendingMod
         // building carries no cap by default.
         private bool IsMendable(Thing thing)
         {
-            return IsDamagedGear(thing)
+            return IsGear(thing)
+                && thing.HitPoints < thing.MaxHitPoints
                 && !IsOffLimits(thing)
                 && MendingUtility.CanBenchRepair(def, thing);
         }
@@ -187,62 +256,87 @@ namespace MendingMod
             return thing.IsForbidden(Faction ?? Faction.OfPlayer);
         }
 
-        // Same test minus the tech gates, so a rejected item can be named as rejected rather
-        // than reported as "no item present", which is what the player would otherwise see.
-        private static bool IsDamagedGear(Thing thing)
+        // Any apparel or weapon, damaged or not: undamaged gear on the item spot is now something
+        // to send back out, not something to ignore while it blocks the belt behind it.
+        private static bool IsGear(Thing thing)
         {
-            return (thing.def.IsApparel || thing.def.IsWeapon)
-                && thing.def.useHitPoints
-                && thing.HitPoints < thing.MaxHitPoints;
+            return (thing.def.IsApparel || thing.def.IsWeapon) && thing.def.useHitPoints;
+        }
+
+        private enum Intake : byte { Repair, Recycle, Reject }
+
+        // What to do with one piece of gear on the item spot, and - for a reject - why, so the
+        // inspect pane can say. Order matters: tainted handling first, because "recycle it" and
+        // "reject it" should apply whatever else is true of the item.
+        private Intake Decide(Thing thing, out string why)
+        {
+            why = null;
+
+            if (thing is Apparel apparel && apparel.WornByCorpse && taintedMode != TaintedMode.Repair)
+            {
+                if (taintedMode == TaintedMode.Recycle && MendingUtility.CanEverRecycle(thing))
+                    return Intake.Recycle;
+
+                why = "DynamicMending.RejectTainted".Translate();
+                return Intake.Reject;
+            }
+
+            if (!AcceptFilter.Allows(thing))
+                why = "DynamicMending.RejectFiltered".Translate();
+            else if (thing.HitPoints >= thing.MaxHitPoints)
+                why = "DynamicMending.RejectUndamaged".Translate();
+            else if (!MendingUtility.BelowAutoRepairThreshold(thing))
+                why = "DynamicMending.RejectThreshold".Translate(MendingModMain.Settings.autoRepairBelow.ToStringPercent());
+            else if (!IsMendable(thing))
+                why = "DynamicMending.RejectTooAdvanced".Translate();
+
+            return why == null ? Intake.Repair : Intake.Reject;
         }
 
         private void TryStartMend()
         {
-            if (GetComp<CompMenderWasteBuffer>()?.IsFull == true)
+            // Rejects leave before anything new comes in. A machine that kept taking items while
+            // both chutes were blocked would fill itself with things it cannot get rid of.
+            if (!FlushRejects())
             {
-                idleReason = "DynamicMending.WasteFull".Translate();
+                idleReason = "DynamicMending.RejectChuteBlocked".Translate(rejectQueue.Count);
                 return;
             }
 
-            // One pass over the item spot, not two. The old pair of FirstOrDefault calls walked
-            // it twice on the idle path - the common case - once to look for work and again to
-            // name what it had turned down.
+            // One item per scan, whichever way it goes, so a conveyor's worth of rejects leaves at
+            // a steady rate rather than all in one tick.
             Thing damagedItem = null;
-            Thing rejected = null;
-            Thing tooHealthy = null;
-
-            foreach (Thing thing in ThingsOn(ItemInputCell))
+            foreach (Thing thing in ThingsOn(ItemInputCell).ToList())
             {
-                if (!IsDamagedGear(thing))
+                if (!IsGear(thing) || IsOffLimits(thing))
                     continue;
 
-                // Named separately from "can't repair it": the fix is a setting, not a better
-                // machine, and the player should be told which.
-                if (!MendingUtility.BelowAutoRepairThreshold(thing))
+                switch (Decide(thing, out string why))
                 {
-                    if (tooHealthy == null)
-                        tooHealthy = thing;
-                    continue;
+                    case Intake.Reject:
+                        Reject(thing, why);
+                        return;
+
+                    case Intake.Recycle:
+                        StartRecycle(thing);
+                        return;
                 }
 
-                if (IsMendable(thing))
-                {
-                    damagedItem = thing;
-                    break;
-                }
-
-                if (rejected == null)
-                    rejected = thing;
+                damagedItem = thing;
+                break;
             }
 
             if (damagedItem == null)
             {
-                idleReason = rejected != null
-                    ? "DynamicMending.MenderCannotRepair".Translate(rejected.LabelShortCap)
-                    : tooHealthy != null
-                        ? "DynamicMending.MenderAboveThreshold".Translate(
-                            tooHealthy.LabelShortCap, MendingModMain.Settings.autoRepairBelow.ToStringPercent())
-                        : "DynamicMending.MenderNoItem".Translate();
+                idleReason = "DynamicMending.MenderNoItem".Translate();
+                return;
+            }
+
+            // Only a repair fills the waste container, so only a repair waits for it - rejects
+            // and recycling carry on while it is full.
+            if (GetComp<CompMenderWasteBuffer>()?.IsFull == true)
+            {
+                idleReason = "DynamicMending.WasteFull".Translate();
                 return;
             }
 
@@ -334,6 +428,84 @@ namespace MendingMod
             return false;
         }
 
+        private void Reject(Thing thing, string why)
+        {
+            if (!TryTakeIn(thing))
+            {
+                idleReason = "DynamicMending.MenderCannotTakeItem".Translate(thing.LabelShortCap);
+                return;
+            }
+
+            lastRejected = "DynamicMending.LastRejected".Translate(thing.LabelShortCap, why);
+            rejectQueue.Add(thing);
+            idleReason = null;
+            FlushRejects();
+        }
+
+        private void StartRecycle(Thing thing)
+        {
+            if (!TryTakeIn(thing))
+            {
+                idleReason = "DynamicMending.MenderCannotTakeItem".Translate(thing.LabelShortCap);
+                return;
+            }
+
+            currentItem = thing;
+            recycling = true;
+            idleReason = null;
+            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.RecycleWorkAmount(thing)));
+            workTicksRemaining = workTicksTotal;
+            state = MenderState.Working;
+        }
+
+        // Puts whatever is waiting onto a free reject chute. True once nothing is left waiting.
+        //
+        // Direct placement only, like the output port, so a belt laid on a chute collects from
+        // it. After a couple of minutes of both chutes refusing, it gives up and puts the lot
+        // down beside the machine - a chute built over is otherwise a machine that jams for good.
+        private bool FlushRejects()
+        {
+            rejectQueue.RemoveAll(t => t == null || t.Destroyed || !innerContainer.Contains(t));
+            if (rejectQueue.Count == 0)
+            {
+                blockedRejects = 0;
+                return true;
+            }
+
+            List<IntVec3> chutes = RejectCells;
+            foreach (Thing thing in rejectQueue.ToList())
+            {
+                foreach (IntVec3 cell in chutes)
+                {
+                    if (cell.InBounds(Map) && innerContainer.TryDrop(thing, cell, Map, ThingPlaceMode.Direct, out _))
+                    {
+                        rejectQueue.Remove(thing);
+                        break;
+                    }
+                }
+            }
+
+            if (rejectQueue.Count == 0)
+            {
+                blockedRejects = 0;
+                return true;
+            }
+
+            blockedRejects++;
+            if (blockedRejects < BlockedEjectsBeforeScatter)
+                return false;
+
+            foreach (Thing thing in rejectQueue)
+                innerContainer.TryDrop(thing, Position, Map, ThingPlaceMode.Near, out _);
+
+            Messages.Message("DynamicMending.RejectChuteUnreachable".Translate(Label),
+                             new TargetInfo(Position, Map), MessageTypeDefOf.CautionInput, historical: false);
+
+            rejectQueue.Clear();
+            blockedRejects = 0;
+            return true;
+        }
+
         private void TickWork()
         {
             if (currentItem == null || currentItem.Destroyed)
@@ -351,12 +523,46 @@ namespace MendingMod
 
         private void FinishMend()
         {
+            if (recycling)
+            {
+                FinishRecycle();
+                return;
+            }
+
             GetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(currentItem, FixedSkillLevel);
             MendResult result = MendingUtility.ResolveRepair(currentItem, FixedSkillLevel, ignoreResearch: true);
             MendingUtility.ShowRepairResult(result, this);
 
             state = MenderState.Ejecting;
             TryEject();
+        }
+
+        // What it breaks down into goes out the reject chutes, not the output port: the orange
+        // port is for repaired gear, and a belt feeding a stockpile of it should never find a
+        // stack of steel on it.
+        private void FinishRecycle()
+        {
+            recycling = false;
+            Thing item = currentItem;
+            currentItem = null;
+            state = MenderState.Idle;
+
+            if (item == null || item.Destroyed)
+                return;
+
+            string label = item.LabelShortCap;
+            List<Thing> products = MendingUtility.MakeRecycleProducts(item, FixedSkillLevel);
+            foreach (Thing product in products)
+            {
+                if (innerContainer.TryAdd(product))
+                    rejectQueue.Add(product);
+            }
+
+            MoteMaker.ThrowText(DrawPos, Map, products.Count == 0
+                ? "DynamicMending.MoteRecycledNothing".Translate(label).ToString()
+                : "DynamicMending.MoteRecycled".Translate(label).ToString());
+
+            FlushRejects();
         }
 
         // Direct placement first so the item lands exactly on an output cell (a conveyor laid
@@ -450,6 +656,32 @@ namespace MendingMod
             MenderSpots.DrawRings(Footprint, Rotation);
         }
 
+        public override IEnumerable<Gizmo> GetGizmos()
+        {
+            foreach (Gizmo gizmo in base.GetGizmos())
+                yield return gizmo;
+
+            yield return new Command_Action
+            {
+                defaultLabel = "DynamicMending.AcceptFilterLabel".Translate(),
+                defaultDesc = "DynamicMending.AcceptFilterDesc".Translate(),
+                icon = TexCommand.SelectShelf,
+                action = () => Find.WindowStack.Add(new Dialog_MenderAcceptFilter(this)),
+            };
+
+            // Cycles rather than opening a menu, so it behaves with several machines selected:
+            // each one steps on from its own setting.
+            yield return new Command_Action
+            {
+                defaultLabel = ("DynamicMending.Tainted_" + taintedMode).Translate(),
+                defaultDesc = "DynamicMending.TaintedDesc".Translate(),
+                icon = taintedMode == TaintedMode.Reject ? TexCommand.ForbidOn
+                     : taintedMode == TaintedMode.Recycle ? TexCommand.Replant
+                     : TexCommand.ForbidOff,
+                action = () => taintedMode = (TaintedMode)(((int)taintedMode + 1) % 3),
+            };
+        }
+
         public override string GetInspectString()
         {
             StringBuilder sb = new StringBuilder(base.GetInspectString());
@@ -466,12 +698,19 @@ namespace MendingMod
                 float progress = workTicksTotal > 0
                     ? 1f - (float)workTicksRemaining / workTicksTotal
                     : 0f;
-                sb.Append("DynamicMending.MenderRepairing".Translate(currentItem.LabelCap, progress.ToStringPercent()));
+                sb.Append((recycling ? "DynamicMending.MenderRecycling" : "DynamicMending.MenderRepairing")
+                    .Translate(currentItem.LabelCap, progress.ToStringPercent()));
             }
             else
             {
                 sb.Append(idleReason ?? "DynamicMending.MenderIdle".Translate().ToString());
             }
+
+            if (!lastRejected.NullOrEmpty())
+                sb.AppendLine().Append(lastRejected);
+
+            sb.AppendLine();
+            sb.Append(("DynamicMending.Tainted_" + taintedMode).Translate());
 
             sb.AppendLine();
             sb.Append("DynamicMending.MenderSpotLegend".Translate());
