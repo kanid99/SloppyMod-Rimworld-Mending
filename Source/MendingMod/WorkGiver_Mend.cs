@@ -12,12 +12,43 @@ namespace MendingMod
     // not declared in XML at all, they come from MendingUtility.GetDynamicIngredientCosts.
     public class WorkGiver_Mend : WorkGiver_DoBill
     {
+        // With more than one fixedBillGiverDef, vanilla's PotentialWorkThingRequest falls back to
+        // the whole PotentialBillGiver group - every pawn, corpse, stove and fabrication bench on
+        // the map (confirmed by decompiling WorkGiver_DoBill) - and so does its ShouldSkip.
+        // JobGiver_Work prefers PotentialWorkThingsGlobal when it is non-null, so listing only
+        // our benches here keeps every pawn's work scan down to a handful of things.
+        public override IEnumerable<Thing> PotentialWorkThingsGlobal(Pawn pawn)
+        {
+            return Benches(pawn.Map);
+        }
+
+        public override bool ShouldSkip(Pawn pawn, bool forced = false)
+        {
+            foreach (Thing thing in Benches(pawn.Map))
+            {
+                if (thing is IBillGiver billGiver && billGiver.BillStack.AnyShouldDoNow)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private IEnumerable<Thing> Benches(Map map)
+        {
+            if (def.fixedBillGiverDefs == null)
+                yield break;
+
+            foreach (ThingDef benchDef in def.fixedBillGiverDefs)
+            {
+                foreach (Thing thing in map.listerThings.ThingsOfDef(benchDef))
+                    yield return thing;
+            }
+        }
+
         public override Job JobOnThing(Pawn pawn, Thing thing, bool forced = false)
         {
-            // With more than one fixedBillGiverDef, vanilla's PotentialWorkThingRequest falls back
-            // to the whole PotentialBillGiver group - every pawn, stove and fabrication bench on the
-            // map - so most calls land here by design. Logging them flooded the dev log; only a
-            // forced (right-click) check is worth reporting.
+            // Right-click orders still arrive here for whatever was clicked, so only a forced
+            // check is worth reporting - the scan above never offers anything else.
             if (!(thing is IBillGiver billGiver) || !ThingIsUsableBillGiver(thing))
             {
                 if (forced)
