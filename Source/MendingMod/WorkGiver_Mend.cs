@@ -238,7 +238,7 @@ namespace MendingMod
 
             // Nearest keeps vanilla's region-walking search, which is also the cheapest: it stops
             // at the first hit. Every other order has to see all the candidates to rank them.
-            Thing mendTarget = order == MendOrder.Nearest
+            Thing first = order == MendOrder.Nearest
                 ? GenClosest.ClosestThingReachable(
                     billGiver.Position,
                     billGiver.Map,
@@ -247,9 +247,9 @@ namespace MendingMod
                     TraverseParms.For(pawn),
                     searchRadius,
                     validator)
-                : BestByOrder(order, group, pawn, billGiver, searchRadius, validator);
+                : RankedByOrder(order, group, pawn, billGiver, searchRadius, validator).FirstOrDefault();
 
-            if (mendTarget == null)
+            if (first == null)
             {
                 if (rejectedForComponents)
                 {
@@ -275,22 +275,62 @@ namespace MendingMod
                 return false;
             }
 
-            chosen.Add(new ThingCount(mendTarget, 1));
-
             if (recycling)
-                return true;
-
-            // Two-pass verification: every material cost is located (read-only) before any of
-            // it is added to `chosen`. Nothing is reserved or consumed until JobOnThing returns
-            // a fully-populated job, so a failed search here leaves no partial state behind.
-            List<ThingDefCountClass> costs =
-                MendingUtility.GetDynamicIngredientCosts(mendTarget, MendingUtility.GetSkillLevel(mendTarget, pawn));
-
-            List<ThingCount> materials = new List<ThingCount>();
-            if (!TryFindMaterials(costs, pawn, billGiver, searchRadius, materials))
             {
+                chosen.Add(new ThingCount(first, 1));
+                return true;
+            }
+
+            // The first target is the bill's own preference, but a missing material for it must
+            // not sink the whole bill: this used to give up here, so one fur T-shirt with no fur
+            // on the map stopped every other damaged item behind it from ever being mended. The
+            // rest of the candidates are walked in the same order until one can be supplied.
+            // Nearest falls back to straight-line distance for the tail, which only costs
+            // anything on the rare pass where the first choice was short.
+            IEnumerable<Thing> candidates = Enumerable.Repeat(first, 1).Concat(
+                RankedByOrder(order, group, pawn, billGiver, searchRadius, validator).Where(t => t != first));
+
+            // Each material search is a region walk of its own, so it is capped, and a cost that
+            // already failed (say "8 heavy fur") is not searched for again on the next item.
+            HashSet<string> failedCosts = new HashSet<string>();
+            int searches = 0;
+            Thing mendTarget = null;
+            List<ThingCount> materials = new List<ThingCount>();
+
+            foreach (Thing candidate in candidates)
+            {
+                if (searches >= MaxMaterialSearches)
+                    break;
+
+                // Two-pass verification: every material cost is located (read-only) before any
+                // of it is added to `chosen`. Nothing is reserved or consumed until JobOnThing
+                // returns a fully-populated job, so a failed search leaves no partial state behind.
+                List<ThingDefCountClass> costs =
+                    MendingUtility.GetDynamicIngredientCosts(candidate, MendingUtility.GetSkillLevel(candidate, pawn));
+
+                string costKey = string.Join(",", costs.Select(c => c.thingDef.defName + "x" + c.count));
+                if (failedCosts.Contains(costKey))
+                    continue;
+
+                searches++;
+                if (TryFindMaterials(costs, pawn, billGiver, searchRadius, materials))
+                {
+                    mendTarget = candidate;
+                    break;
+                }
+
+                failedCosts.Add(costKey);
+
                 if (Prefs.DevMode)
-                    DevLog(billGiver, $"found target {mendTarget.LabelShort} but could not gather {costs.Count} material(s) within radius {searchRadius}");
+                    DevLog(billGiver, $"found target {candidate.LabelShort} but could not gather {costs.Count} material(s) within radius {searchRadius} - trying the next item");
+            }
+
+            if (mendTarget == null)
+            {
+                JobFailReason.Is("DynamicMending.NoIngredientsOrTarget".Translate());
+
+                if (Prefs.DevMode)
+                    DevLog(billGiver, $"bill '{bill.Label}': no damaged item in range has its repair materials available ({searches} checked)");
 
                 if (!interactive)
                     bill.nextTickToSearchForIngredients =
@@ -299,6 +339,7 @@ namespace MendingMod
                 return false;
             }
 
+            chosen.Add(new ThingCount(mendTarget, 1));
             chosen.AddRange(materials);
 
             // DescribeCost recomputes the whole cost breakdown and allocates its way through two
@@ -313,12 +354,15 @@ namespace MendingMod
             return true;
         }
 
-        // Ranks every candidate in range, then walks the ranking and takes the first one the
+        // Distinct material searches one bill may try before giving up until its next re-check.
+        private const int MaxMaterialSearches = 8;
+
+        // Ranks every candidate in range, then yields, lazily and in rank order, the ones the
         // pawn can actually reach. The validator runs before any pathing and rejects nearly
         // everything - almost nothing on a map is damaged gear - so reachability, the expensive
-        // part, is only ever asked of the few that survive it, and stops at the first yes.
-        private static Thing BestByOrder(MendOrder order, ThingRequestGroup group, Pawn pawn, Thing billGiver,
-                                         float radius, System.Predicate<Thing> validator)
+        // part, is only ever asked of the few that survive it, and only as far as the caller reads.
+        private static IEnumerable<Thing> RankedByOrder(MendOrder order, ThingRequestGroup group, Pawn pawn, Thing billGiver,
+                                                        float radius, System.Predicate<Thing> validator)
         {
             float radiusSq = radius * radius;
             IntVec3 from = billGiver.Position;
@@ -331,6 +375,9 @@ namespace MendingMod
             IOrderedEnumerable<Thing> ranked;
             switch (order)
             {
+                case MendOrder.Nearest:
+                    ranked = candidates.OrderBy(t => (t.Position - from).LengthHorizontalSquared);
+                    break;
                 case MendOrder.MostDamaged:
                     ranked = candidates.OrderBy(t => (float)t.HitPoints / t.MaxHitPoints);
                     break;
@@ -346,10 +393,8 @@ namespace MendingMod
             foreach (Thing t in ranked.ThenBy(t => (t.Position - from).LengthHorizontalSquared))
             {
                 if (pawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))
-                    return t;
+                    yield return t;
             }
-
-            return null;
         }
 
         // HaulableEver is every wood log, meal, chunk and steel bar on the map - thousands of
