@@ -14,9 +14,15 @@ namespace MendingMod
     {
         public override Job JobOnThing(Pawn pawn, Thing thing, bool forced = false)
         {
+            // With more than one fixedBillGiverDef, vanilla's PotentialWorkThingRequest falls back
+            // to the whole PotentialBillGiver group - every pawn, stove and fabrication bench on the
+            // map - so most calls land here by design. Logging them flooded the dev log; only a
+            // forced (right-click) check is worth reporting.
             if (!(thing is IBillGiver billGiver) || !ThingIsUsableBillGiver(thing))
             {
-                DevLog(thing, "not a usable bill giver");
+                if (forced)
+                    DevLog(thing, "not a usable bill giver");
+
                 return null;
             }
 
