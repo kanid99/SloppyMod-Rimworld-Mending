@@ -335,6 +335,59 @@ if our_classes_used and len(built) < len(ASSEMBLIES):
          "Tools/build.sh (defs naming a missing class will not load)"
          % ", ".join(missing))
 
+# --- sounds -----------------------------------------------------------------
+# A SoundDef names its clips by path under Sounds/, and a wrong path is silent
+# in every sense: the sound simply never plays. Only paths under a folder this
+# mod ships are checked - a SoundDef may perfectly well point at one of the
+# game's own clips, which live inside the game, not here.
+SOUNDS = os.path.join(ROOT, "Sounds")
+AUDIO = (".wav", ".ogg", ".mp3")
+sound_clips = 0
+if os.path.isdir(SOUNDS):
+    ours_top = set(os.listdir(SOUNDS))
+    for path in xml_files(DEFS):
+        root = parsed(path)
+        if root is None:
+            continue
+        for grain in root.iter("li"):
+            klass = grain.get("Class") or ""
+            for tag, is_folder in (("clipPath", False), ("folderPath", True)):
+                clip = grain.findtext(tag)
+                if not clip or klass not in ("AudioGrain_Clip", "AudioGrain_Folder"):
+                    continue
+                if clip.split("/")[0] not in ours_top:
+                    continue                    # the game's own, or another mod's
+                sound_clips += 1
+                base = os.path.join(SOUNDS, clip.replace("/", os.sep))
+                if is_folder:
+                    found = os.path.isdir(base) and any(f.endswith(AUDIO) for f in os.listdir(base))
+                else:
+                    found = any(os.path.isfile(base + ext) for ext in AUDIO)
+                if not found:
+                    fail("%s: no sound %s for %s" % (os.path.relpath(path, ROOT),
+                                                   "folder" if is_folder else "file", clip))
+
+# --- references to this mod's own defs ----------------------------------------
+# Any value that looks like one of this mod's defNames has to be one. RimWorld
+# does report an unresolved cross-reference, but only once the game is loading
+# the mod; this reports it now, and covers every tag at once - a sound on a
+# comp, a job on a giver, a thought on a reaction - rather than one check per
+# kind of field.
+if PREFIXES:
+    defined = all_our_defs | set(named)
+    own_ref = re.compile(r"^(?:%s)[A-Za-z0-9_]+$" % "|".join(re.escape(p) for p in PREFIXES))
+    for path in xml_files(DEFS):
+        root = parsed(path)
+        if root is None:
+            continue
+        for node in root.iter():
+            if len(node) or node.tag in ("defName",) or not node.text:
+                continue
+            value = node.text.strip()
+            if own_ref.match(value) and value not in defined:
+                fail("%s: <%s> names %s, which this mod does not define"
+                     % (os.path.relpath(path, ROOT), node.tag, value))
+
 # --- patch targets ----------------------------------------------------------
 # A patch only runs when its gate matches, so an xpath left pointing at a def
 # this mod has since renamed fails silently and forever. Every one of our own
@@ -441,7 +494,7 @@ print("%d C# classes referenced from XML, %d [DefOf] fields, "
       % (len(our_classes_used), len(defof_fields), len(built), len(ASSEMBLIES)))
 print(", ".join("%d %s%s" % (len(names), tag, "" if len(names) == 1 else "s")
                 for tag, names in sorted(defs_by_type.items()))
-      + ", %d patch targets" % patch_targets)
+      + ", %d patch targets, %d sound clips" % (patch_targets, sound_clips))
 if problems:
     print("\nFAILED:")
     for line in problems:
