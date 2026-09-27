@@ -301,11 +301,15 @@ for path in xml_files(DEFS):
             if count < 1:
                 fail("%s: %s must be at least 1" % (frame_path, count_tag))
                 continue
-            missing = [i for i in range(count)
-                       if not os.path.isfile(os.path.join(TEX, frame_path.replace("/", os.sep)) + "_%d.png" % i)]
-            if missing:
-                fail("%s: missing frame textures %s"
-                     % (frame_path, ", ".join(str(i) for i in missing)))
+            # perFacing strips are one per facing, the facing's name appended.
+            per_facing = (node.findtext("perFacing") or "").strip().lower() == "true"
+            for strip in ([frame_path + f for f in ("North", "East", "South", "West")]
+                          if per_facing else [frame_path]):
+                missing = [i for i in range(count)
+                           if not os.path.isfile(os.path.join(TEX, strip.replace("/", os.sep)) + "_%d.png" % i)]
+                if missing:
+                    fail("%s: missing frame textures %s"
+                         % (strip, ", ".join(str(i) for i in missing)))
 
 # A texture path outside graphicData belongs to a comp - an aquarium's fish, a
 # set of cornhole sacks - and the building check above never looks at those.
