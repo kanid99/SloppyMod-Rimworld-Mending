@@ -43,6 +43,21 @@ for version in $VERSIONS; do
   done < <(grep -rhoE '(Class="|<driverClass>|<giverClass>|<compClass>|<graphicClass>|<li>PlaceWorker_)[A-Za-z_.]+' "$ROOT/Defs" \
              | sed -E 's/.*(Class="|<driverClass>|<giverClass>|<compClass>|<graphicClass>|<li>)//' | tr -d '"' | sort -u)
   echo "  XML class references: ok"
+
+  # Every XML tag must be a field this version has - a field only 1.6 has is
+  # an XML error on 1.5, and the defs are shared between versions. Needs
+  # ikdasm (mono-utils) to read the assemblies' field lists; skipped without.
+  if command -v ikdasm >/dev/null 2>&1; then
+    [ -f "$dir/Assembly-CSharp.il" ] || ikdasm "$refs/Assembly-CSharp.dll" > "$dir/Assembly-CSharp.il" 2>/dev/null
+    outdir="$(python3 "$ROOT/Tools/modtool.py" build | awk -v v="$version" '$2 == v {print $1; exit}')"
+    ours="$(mktemp)"
+    ikdasm "$ROOT/$outdir/$(python3 "$ROOT/Tools/modtool.py" assembly).dll" > "$ours" 2>/dev/null || true
+    folder="$(dirname "$outdir")"; [ "$folder" = "." ] && folder=""
+    python3 "$ROOT/Tools/xml_fields.py" "$version" "$ROOT" "$folder" "$dir/Assembly-CSharp.il" "$ours" || fail=1
+    rm -f "$ours"
+  else
+    echo "  XML fields: skipped (install ikdasm to check them)"
+  fi
 done
 
 if [ "$fail" -ne 0 ]; then
