@@ -9,7 +9,8 @@
 # BUILD.txt inside the folder repeats it for grepping.
 #
 # It also refuses to ship a zip whose contents contradict the mod's claims: see
-# the `require` and `forbid` keys in Tools/modtool.conf.
+# the `require` and `forbid` keys in Tools/modtool.conf; `omit` lists repo-only
+# paths to leave out.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -48,6 +49,13 @@ trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$STAGE/$FOLDER"
 git archive HEAD | tar -x -C "$STAGE/$FOLDER"
 rm -rf "$STAGE/$FOLDER/Source" "$STAGE/$FOLDER/Tools" "$STAGE/$FOLDER/.gitignore"
+
+# Repo-only paths listed under `omit` in modtool.conf - Steam page art, docs -
+# are kept in git but are no use inside the game's Mods folder.
+while read -r extra; do
+  [ -n "$extra" ] || continue
+  rm -rf "${STAGE:?}/$FOLDER/$extra"
+done < <(python3 Tools/modtool.py omit)
 
 # The assemblies are build output; some repos commit them, some ignore them.
 # Either way what ships has to be what is on disk right now.

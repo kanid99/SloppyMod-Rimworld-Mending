@@ -6,7 +6,7 @@ mod-specific lives in `modtool.conf`.
 
 | | |
 |---|---|
-| `modtool.conf` | the only per-mod file: names, namespace, what to build, what a release must and must not contain |
+| `modtool.conf` | the only per-mod file: names, namespace, what to build, what a release must and must not contain, repo-only paths to leave out |
 | `build.sh` | compiles one assembly per `build` line, against RimWorld reference assemblies pulled from NuGet |
 | `validate.py` | def sanity checks that would otherwise only show up at runtime |
 | `check_api.sh` | confirms every C# class the XML names still exists in each supported game version |
