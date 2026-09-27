@@ -9,7 +9,7 @@
   <supportedVersions>
     <li>1.6</li>
   </supportedVersions>
-  <description>Repair damaged apparel and weapons at a hand mending station, an electrical mending station, or a fully automated industrial repair center at higher tech. Material cost, work time, waste and the risk of a botched repair all scale with how damaged the item is and how skilled the mender is. Requires Biotech and Vanilla Recycling Expanded: repair work always produces real waste byproducts (Wastepacks and recyclable trash) as a core mechanic, not an optional extra.</description>
+  <description>Repair damaged apparel and weapons at a hand mending station, an electrical mending station, or a fully automated industrial repair center at higher tech. Material cost, work time, waste and the risk of a botched repair all scale with how damaged the item is and how skilled the mender is. Requires Biotech. Repair work produces real waste as a core mechanic: recyclable trash with Vanilla Recycling Expanded installed, wastepacks without it. Waste can be turned off in the mod settings.</description>
   <modDependencies>
     <li>
       <packageId>brrainz.harmony</packageId>
@@ -20,10 +20,6 @@
     <li>
       <packageId>Ludeon.RimWorld.Biotech</packageId>
       <displayName>Biotech</displayName>
-    </li>
-    <li>
-      <packageId>VanillaExpanded.Recycling</packageId>
-      <displayName>Vanilla Recycling Expanded</displayName>
     </li>
   </modDependencies>
   <loadAfter>
