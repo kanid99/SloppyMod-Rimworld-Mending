@@ -126,3 +126,11 @@ gear is merely expensive or outright refused. Whether resources are required. Wh
 failed repair costs hit points, and whether quality can drop - always, only on failure, or
 never. And the share of a tech tier your colony must have researched before it counts as
 that tier.
+
+## Licence
+
+Public domain, under [CC0 1.0](LICENSE). That covers everything here - code,
+textures, sounds and text. Copy it, change it, make your own version, fold it
+into another mod or re-upload it: no permission or credit needed.
+
+RimWorld belongs to Ludeon Studios, and nothing of theirs is included here.
