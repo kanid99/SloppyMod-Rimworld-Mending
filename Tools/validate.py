@@ -489,6 +489,16 @@ for deftype in modtool.many(CONF, "forbid"):
     else:
         print("no %s, as intended" % deftype)
 
+# Installed straight from GitHub, so About.xml's stamp is the version the game
+# and RimSort show. A stale one makes "is this the build with X?" a guess.
+import subprocess  # noqa: E402
+stamp_check = subprocess.run([sys.executable, os.path.join(ROOT, "Tools", "stamp_version.py"), "--check"],
+                             capture_output=True, text=True)
+if stamp_check.returncode == 1:
+    fail(stamp_check.stdout.strip())
+else:
+    print(stamp_check.stdout.strip())
+
 if not PREFIXES:
     print("no defName prefix configured: references that look like this mod's "
           "own are not cross-checked (see Tools/modtool.conf)")

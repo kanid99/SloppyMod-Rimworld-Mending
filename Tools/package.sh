@@ -78,8 +78,14 @@ if "<modVersion>" in s:
                "<modVersion>%s</modVersion>" % stamp, s, flags=re.S)
 else:
     s = s.replace("</packageId>", "</packageId>\n  <modVersion>%s</modVersion>" % stamp, 1)
-# Repeat it at the top of the description, which is what the mod info panel shows.
-s = s.replace("<description>", "<description>Build %s\n\n" % stamp, 1)
+# Repeat it at the top of the description, which is what the mod info panel
+# shows - replacing the plain "Build x.y" line Tools/stamp_version.py leaves
+# there for installs straight from GitHub, rather than adding a second one.
+line = "Build %s\n\n" % stamp
+if re.search(r"<description>Build [^\n<]*\n\n", s):
+    s = re.sub(r"(<description>)Build [^\n<]*\n\n", lambda m: m.group(1) + line, s, count=1)
+else:
+    s = s.replace("<description>", "<description>" + line, 1)
 open(path, "w", encoding="utf-8").write(s)
 PY
 
