@@ -94,10 +94,10 @@ namespace MendingMod
             IntVec3 at = pawn.PositionHeld;
 
             if (gear is Apparel apparel)
-                return pawn.apparel.TryDrop(apparel, out Apparel result, at, false) ? result : null;
+                return pawn.apparel.TryDrop(apparel, out Apparel droppedApparel, at, false) ? droppedApparel : null;
 
             if (gear is ThingWithComps weapon && pawn.equipment.Contains(weapon))
-                return pawn.equipment.TryDropEquipment(weapon, out ThingWithComps result, at, false) ? result : null;
+                return pawn.equipment.TryDropEquipment(weapon, out ThingWithComps droppedWeapon, at, false) ? droppedWeapon : null;
 
             return null;
         }

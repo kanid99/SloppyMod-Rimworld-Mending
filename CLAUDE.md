@@ -30,13 +30,17 @@ commit pushed to `main` is what the game loads next**.
   deliberate; `Source/`, `Tools/`, docs and images are ignored by the game.
 - A zip for the Steam Workshop or manual testing still comes from
   `bash Tools/package.sh` (shared tooling) when asked.
-- **Publish a GitHub Release for every build.** RimSort's GitHub Mods panel
-  reads "Latest Version" from the newest release's tag and installs that
-  release's single `.zip` asset; with no releases it shows only `HEAD` and a
-  blank version. Once `Tools/` (shared tooling) and the committed DLLs are on
-  this branch, copy `.github/workflows/release.yml` from
-  kanid99/Sloppymod-Rimworld-EntertainMe: on each push it checks the stamp,
-  packages with `Tools/package.sh` and publishes `v<modVersion>` with the zip.
+- **Every push to the default branch publishes a GitHub Release**,
+  `v<build>`, with the mod zip attached (`.github/workflows/release.yml`,
+  which runs `.github/release.sh`). RimSort's GitHub Mods panel reads "Latest
+  Version" from the newest release and installs its zip, so this is what
+  RimSort users get. The script compiles the assemblies from source with mcs
+  against Krafs' reference assemblies, so the zip always matches the commit;
+  if the build changes (a new assembly, a new reference), update `build()` at
+  the top of `release.sh`, and check it with
+  `bash .github/release.sh --no-release` (zip in `dist/`). mcs is stricter
+  than Roslyn in places (e.g. two `out var` of the same name in one method),
+  so keep the source compiling under it.
 - Harmony is provided at runtime by the Harmony mod: compile against it, never ship 0Harmony.dll.
 
 ## Standing preferences

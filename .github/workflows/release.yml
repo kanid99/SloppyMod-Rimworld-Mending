@@ -1,0 +1,39 @@
+# Publishes a GitHub Release, v<build>, with the mod zip attached, for every
+# push to the default branch. RimSort's GitHub Mods panel reads "Latest
+# Version" from the newest release and installs its zip. The work is in
+# .github/release.sh.
+name: Release
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'Workshop/**'
+      - '*/Workshop/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install the C# compiler
+        run: |
+          command -v mcs || { sudo apt-get update -qq && sudo apt-get install -y -qq mono-mcs; }
+
+      - name: Build, package and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/release.sh
