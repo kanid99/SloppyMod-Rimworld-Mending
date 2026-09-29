@@ -223,7 +223,7 @@ namespace MendingMod
         // short, because "missing 12 steel" is worth a great deal more to a player than
         // "not enough materials". If every cost passes alone, the shortfall is an overlap - two
         // costs wanting the same stack - and there is nothing single to name.
-        private static string MissingMaterialsReason(List<ThingDefCountClass> costs, Pawn pawn,
+        internal static string MissingMaterialsReason(List<ThingDefCountClass> costs, Pawn pawn,
                                                      Thing bench, float radius)
         {
             List<string> missing = new List<string>();
