@@ -35,8 +35,10 @@ MendingSolutions/
 
 * **Biotech** - the basic subcore the repair centre is built around, and the mech tech
   research it sits behind.
-* **Vanilla Recycling Expanded** - supplies the trash that repair work produces. Without it
-  the stations fall back to wastepacks alone; the def names they look for are XML-tunable.
+**Vanilla Recycling Expanded** is optional. With it, ordinary repair waste comes out as its
+recyclable trash; without it, all repair waste comes out as Biotech wastepacks. The def names the
+stations look for are XML-tunable, and waste can be switched off entirely in the mod settings.
+It stays in `loadAfter` so its trash def is loaded first when present.
 
 **Vanilla Furniture Expanded - Factory** is not required, but is detected. With it present
 the mod's own feed port is dropped from the architect menu in favour of VFE's factory hopper,
@@ -129,8 +131,8 @@ generated.
 One patch, on `BillUtility.MakeNewBill`, so that player-added mend bills are `Bill_Mend` and
 can carry a repair order. The game hardcodes the bill class there with no def field or virtual
 to choose it. Everything else - both float-menu orders, the inspect preview, worn-gear repair -
-goes through extension points the game provides. Harmony is already required transitively by
-Vanilla Recycling Expanded, via Vanilla Expanded Framework.
+goes through extension points the game provides. Harmony is listed as a dependency in
+`About.xml`.
 
 ## Settings
 

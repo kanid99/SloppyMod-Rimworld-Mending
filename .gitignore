@@ -1,6 +1,9 @@
 dist/
 obj/
 bin/
-Assemblies/
+# Build output, except the one assembly RimWorld loads: RimSort clones this repo
+# straight into the Mods folder, so a clone must carry the DLL (see CLAUDE.md).
+Assemblies/*
+!Assemblies/MendingMod.dll
 *.user
 __pycache__/

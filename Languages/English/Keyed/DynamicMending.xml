@@ -3,6 +3,18 @@
 
   <DynamicMending.NoIngredientsOrTarget>No damaged item or repair materials in range.</DynamicMending.NoIngredientsOrTarget>
 
+  <!-- Right-clicking a mending station: the greyed-out "Cannot {MendAtBench}: {reason}" entry. -->
+  <DynamicMending.MendAtBench>{0} at {1}</DynamicMending.MendAtBench>
+  <DynamicMending.BenchInUse>the mending station is in use</DynamicMending.BenchInUse>
+  <DynamicMending.BillNotActive>"{0}" is suspended or already at its target count</DynamicMending.BillNotActive>
+  <DynamicMending.BillPawnNotAllowed>{0} is not allowed on this bill</DynamicMending.BillPawnNotAllowed>
+  <DynamicMending.BillBroken>"{0}" has no item slot in its recipe</DynamicMending.BillBroken>
+  <DynamicMending.NothingToMend>nothing damaged in range for "{0}" - check the bill's filter and search radius</DynamicMending.NothingToMend>
+  <DynamicMending.NothingToMendBelow>nothing in range for "{0}" below the auto-repair threshold of {1} - check the bill's filter and search radius, or right-click the item itself to repair it anyway</DynamicMending.NothingToMendBelow>
+  <DynamicMending.NothingToRecycle>nothing in range for "{0}" to break down - check the bill's filter and search radius</DynamicMending.NothingToRecycle>
+  <DynamicMending.ShortFor>{0}: {1}</DynamicMending.ShortFor>
+  <DynamicMending.ShortForAll>{0}: {1} ({2} other item(s) short of materials too)</DynamicMending.ShortForAll>
+
   <DynamicMending.MenderIdle>Idle.</DynamicMending.MenderIdle>
   <DynamicMending.MenderNoPower>Unpowered.</DynamicMending.MenderNoPower>
   <DynamicMending.MenderRepairing>Repairing {0}: {1}</DynamicMending.MenderRepairing>

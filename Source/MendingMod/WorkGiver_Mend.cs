@@ -24,6 +24,12 @@ namespace MendingMod
 
         public override bool ShouldSkip(Pawn pawn, bool forced = false)
         {
+            // A right-click order is exactly when a player wants to hear why nothing will
+            // happen - a suspended bill included - so it always goes on to JobOnThing, which
+            // says why. Skipping here drops the menu entry without a word.
+            if (forced)
+                return false;
+
             foreach (Thing thing in Benches(pawn.Map))
             {
                 if (thing is IBillGiver billGiver && billGiver.BillStack.AnyShouldDoNow)
@@ -57,11 +63,54 @@ namespace MendingMod
                 return null;
             }
 
+            Job job = TryMakeJob(pawn, thing, billGiver, forced, out string why);
+
+            // The float menu only shows a greyed-out "Cannot mend..." entry when a reason has
+            // been recorded; with none it drops the entry and a right-click on the bench does
+            // nothing at all. Every refusal below therefore carries a reason, and it is only
+            // reported here if this bench actually has a bill of ours - otherwise the weapon
+            // work giver would complain about a bench that only has apparel bills on it.
+            if (job == null && forced && why != null)
+                JobFailReason.Is(why, "DynamicMending.MendAtBench".Translate(def.label, thing.LabelShort));
+
+            return job;
+        }
+
+        // The bills on this bench that this work giver would run: ours, and of its work type.
+        // Both mend recipes sit on the same benches but belong to different work types, and
+        // vanilla's WorkGiver_DoBill honours requiredGiverWorkType - without it a colonist
+        // allowed only Smithing would pick up apparel bills, and vice versa.
+        private bool IsOurBill(Bill bill)
+        {
+            // IsAssignableFrom rather than exact type equality, so another mod can subclass
+            // RecipeWorker_Mend to add its own mend recipe and still be picked up here.
+            if (bill.recipe.workerClass == null
+                || (!typeof(RecipeWorker_Mend).IsAssignableFrom(bill.recipe.workerClass)
+                    && !MendJobMaker.IsRecycleRecipe(bill.recipe)))
+                return false;
+
+            return bill.recipe.requiredGiverWorkType == null || bill.recipe.requiredGiverWorkType == def.workType;
+        }
+
+        // why comes back null when there is nothing of ours on the bench to explain - no
+        // bill for this work giver at all - and otherwise names the first reason it met, in
+        // the order a player can act on them: the bench, then each bill in stack order.
+        private Job TryMakeJob(Pawn pawn, Thing thing, IBillGiver billGiver, bool forced, out string why)
+        {
+            why = null;
+            billGiver.BillStack.RemoveIncompletableBills();
+
+            if (!billGiver.BillStack.Bills.Any(IsOurBill))
+            {
+                DevLog(thing, "no bill for " + def.defName);
+                return null;
+            }
+
             // A full waste container stops the bench until someone empties it.
             if (thing.TryGetComp<CompMenderWasteBuffer>()?.IsFull == true)
             {
-                JobFailReason.Is("DynamicMending.WasteFull".Translate());
                 DevLog(thing, "waste container full");
+                why = "DynamicMending.WasteFull".Translate();
                 return null;
             }
 
@@ -70,77 +119,96 @@ namespace MendingMod
             if (!billGiver.CurrentlyUsableForBills())
             {
                 DevLog(thing, "not currently usable for bills (unpowered / broken down?)");
+                why = "DynamicMending.RepairBenchUnusable".Translate(thing.LabelShort);
                 return null;
             }
 
-            if (!pawn.CanReserve(thing, 1, -1, null, forced) || thing.IsForbidden(pawn) || thing.IsBurning())
+            if (thing.IsForbidden(pawn) || thing.IsBurning())
             {
-                DevLog(thing, "can't reserve / forbidden / burning");
+                DevLog(thing, "forbidden / burning");
+                why = "DynamicMending.RepairBenchForbidden".Translate();
                 return null;
             }
 
-            billGiver.BillStack.RemoveIncompletableBills();
-
-            if (billGiver.BillStack.Count == 0)
-                DevLog(thing, "bill stack is empty");
+            if (!pawn.CanReserve(thing, 1, -1, null, forced))
+            {
+                DevLog(thing, "can't reserve");
+                Pawn holder = pawn.Map.reservationManager.FirstRespectedReserver(thing, pawn);
+                why = holder != null
+                    ? "IsReservedBy".Translate(thing.LabelShort, holder.LabelShort).ToString()
+                    : "DynamicMending.BenchInUse".Translate().ToString();
+                return null;
+            }
 
             foreach (Bill bill in billGiver.BillStack)
             {
-                // IsAssignableFrom rather than exact type equality, so another mod can subclass
-                // RecipeWorker_Mend to add its own mend recipe and still be picked up here.
-                if (bill.recipe.workerClass == null
-                    || (!typeof(RecipeWorker_Mend).IsAssignableFrom(bill.recipe.workerClass)
-                        && !MendJobMaker.IsRecycleRecipe(bill.recipe)))
-                {
-                    if (Prefs.DevMode)
-                        DevLog(thing, $"bill '{bill.Label}' workerClass is {bill.recipe.workerClass} not a RecipeWorker_Mend");
-
+                if (!IsOurBill(bill))
                     continue;
+
+                // Only the first bill's reason is kept: it is the one the player put on top.
+                // JobFailReason is also written as a side effect by the vanilla calls below, so
+                // each is read back straight after its own check rather than at the end.
+                string billWhy = null;
+                Job job = TryBill(bill, pawn, thing, forced, ref billWhy);
+                if (job != null)
+                {
+                    why = null;
+                    return job;
                 }
 
-                // Vanilla's WorkGiver_DoBill honours this and we did not. Both mend recipes are
-                // offered on the same benches but belong to different work types, so without it a
-                // colonist allowed only Smithing would pick up apparel bills, and vice versa.
-                if (bill.recipe.requiredGiverWorkType != null && bill.recipe.requiredGiverWorkType != def.workType)
-                    continue;
-
-                // Also vanilla's, and the reason recipe skillRequirements exist. Neither of our
-                // recipes declares any, but a mod patching one in should have it respected.
-                SkillRequirement unmet = bill.recipe.FirstSkillRequirementPawnDoesntSatisfy(pawn);
-                if (unmet != null)
-                {
-                    JobFailReason.Is("UnderRequiredSkill".Translate(unmet.minLevel), bill.Label);
-                    continue;
-                }
-
-                // Both calls are kept, not repeated inside a log string: PawnAllowedToStartAnew
-                // sets JobFailReason as a side effect, so calling it twice overwrote the reason
-                // with a second evaluation, and it ran even with dev mode off.
-                bool shouldDoNow = bill.ShouldDoNow();
-                bool pawnAllowed = shouldDoNow && bill.PawnAllowedToStartAnew(pawn);
-                if (!shouldDoNow || !pawnAllowed)
-                {
-                    if (Prefs.DevMode)
-                        DevLog(thing, $"bill '{bill.Label}' ShouldDoNow={shouldDoNow} PawnAllowedToStartAnew={pawnAllowed}");
-
-                    continue;
-                }
-
-                List<ThingCount> chosen = new List<ThingCount>();
-
-                // TryBuildMendIngredients reports its own reason - it knows whether the bench
-                // found nothing at all or rejected what it found as too advanced.
-                if (!TryBuildMendIngredients(bill, pawn, thing, chosen, forced))
-                    continue;
-
-                Job job = JobMaker.MakeJob(MendingDefOf.DoMend, thing);
-                job.bill = bill;
-                job.targetQueueB = chosen.Select(tc => new LocalTargetInfo(tc.Thing)).ToList();
-                job.countQueue = chosen.Select(tc => tc.Count).ToList();
-                return job;
+                if (why == null)
+                    why = billWhy;
             }
 
             return null;
+        }
+
+        private Job TryBill(Bill bill, Pawn pawn, Thing thing, bool forced, ref string why)
+        {
+            // Also vanilla's, and the reason recipe skillRequirements exist. Neither of our
+            // recipes declares any, but a mod patching one in should have it respected.
+            SkillRequirement unmet = bill.recipe.FirstSkillRequirementPawnDoesntSatisfy(pawn);
+            if (unmet != null)
+            {
+                why = "UnderRequiredSkill".Translate(unmet.minLevel);
+                return null;
+            }
+
+            if (!bill.ShouldDoNow())
+            {
+                if (Prefs.DevMode)
+                    DevLog(thing, $"bill '{bill.Label}' ShouldDoNow=false");
+
+                why = "DynamicMending.BillNotActive".Translate(bill.LabelCap);
+                return null;
+            }
+
+            // PawnAllowedToStartAnew records its own reason (the bill's pawn or skill limits) as a
+            // side effect, so it is cleared first and read back straight after.
+            JobFailReason.Clear();
+            if (!bill.PawnAllowedToStartAnew(pawn))
+            {
+                if (Prefs.DevMode)
+                    DevLog(thing, $"bill '{bill.Label}' PawnAllowedToStartAnew=false");
+
+                why = JobFailReason.HaveReason
+                    ? JobFailReason.Reason
+                    : "DynamicMending.BillPawnNotAllowed".Translate(pawn.LabelShort).ToString();
+                return null;
+            }
+
+            List<ThingCount> chosen = new List<ThingCount>();
+
+            // TryBuildMendIngredients says why it failed - nothing to repair, rejected as too
+            // advanced, or found something but its materials are short, and which.
+            if (!TryBuildMendIngredients(bill, pawn, thing, chosen, forced, out why))
+                return null;
+
+            Job job = JobMaker.MakeJob(MendingDefOf.DoMend, thing);
+            job.bill = bill;
+            job.targetQueueB = chosen.Select(tc => new LocalTargetInfo(tc.Thing)).ToList();
+            job.countQueue = chosen.Select(tc => tc.Count).ToList();
+            return job;
         }
 
         private static void DevLog(Thing thing, string message)
@@ -163,12 +231,17 @@ namespace MendingMod
         // never lies to the player.
         private static readonly IntRange ReCheckFailedBillTicksRange = new IntRange(500, 600);
 
-        private bool TryBuildMendIngredients(Bill bill, Pawn pawn, Thing billGiver, List<ThingCount> chosen, bool forced)
+        private bool TryBuildMendIngredients(Bill bill, Pawn pawn, Thing billGiver, List<ThingCount> chosen,
+                                             bool forced, out string why)
         {
             chosen.Clear();
+            why = null;
 
             if (bill.recipe.ingredients.NullOrEmpty())
+            {
+                why = "DynamicMending.BillBroken".Translate(bill.LabelCap);
                 return false;
+            }
 
             bool interactive = forced || FloatMenuMakerMap.makingFor == pawn;
             if (!interactive && Find.TickManager.TicksGame <= bill.nextTickToSearchForIngredients)
@@ -253,16 +326,23 @@ namespace MendingMod
             {
                 if (rejectedForComponents)
                 {
-                    JobFailReason.Is("DynamicMending.NeedsPoweredBench".Translate());
+                    why = "DynamicMending.NeedsPoweredBench".Translate();
                 }
                 else if (rejectedForTech)
                 {
                     TechLevel cap = billGiver.def.GetModExtension<MendingTechLimitExtension>().maxTechLevel;
-                    JobFailReason.Is("DynamicMending.TooAdvancedForBench".Translate(cap.ToStringHuman()));
+                    why = "DynamicMending.TooAdvancedForBench".Translate(cap.ToStringHuman());
+                }
+                else if (recycling)
+                {
+                    why = "DynamicMending.NothingToRecycle".Translate(bill.LabelCap);
                 }
                 else
                 {
-                    JobFailReason.Is("DynamicMending.NoIngredientsOrTarget".Translate());
+                    float threshold = MendingModMain.Settings.autoRepairBelow;
+                    why = threshold >= 0.995f
+                        ? "DynamicMending.NothingToMend".Translate(bill.LabelCap).ToString()
+                        : "DynamicMending.NothingToMendBelow".Translate(bill.LabelCap, threshold.ToStringPercent()).ToString();
                 }
 
                 if (Prefs.DevMode)
@@ -295,6 +375,9 @@ namespace MendingMod
             HashSet<string> failedCosts = new HashSet<string>();
             int searches = 0;
             Thing mendTarget = null;
+            Thing firstShort = null;
+            List<ThingDefCountClass> firstShortCosts = null;
+            int shortItems = 0;
             List<ThingCount> materials = new List<ThingCount>();
 
             foreach (Thing candidate in candidates)
@@ -310,7 +393,10 @@ namespace MendingMod
 
                 string costKey = string.Join(",", costs.Select(c => c.thingDef.defName + "x" + c.count));
                 if (failedCosts.Contains(costKey))
+                {
+                    shortItems++;
                     continue;
+                }
 
                 searches++;
                 if (TryFindMaterials(costs, pawn, billGiver, searchRadius, materials))
@@ -320,6 +406,12 @@ namespace MendingMod
                 }
 
                 failedCosts.Add(costKey);
+                shortItems++;
+                if (firstShort == null)
+                {
+                    firstShort = candidate;
+                    firstShortCosts = costs;
+                }
 
                 if (Prefs.DevMode)
                     DevLog(billGiver, $"found target {candidate.LabelShort} but could not gather {costs.Count} material(s) within radius {searchRadius} - trying the next item");
@@ -327,7 +419,19 @@ namespace MendingMod
 
             if (mendTarget == null)
             {
-                JobFailReason.Is("DynamicMending.NoIngredientsOrTarget".Translate());
+                // Naming the exact shortfall re-runs the search once per material, so it is only
+                // worked out when someone is looking at the menu; the work scan has no reader.
+                if (interactive && firstShort != null)
+                {
+                    string missing = MendJobMaker.MissingMaterialsReason(firstShortCosts, pawn, billGiver, searchRadius);
+                    why = shortItems > 1
+                        ? "DynamicMending.ShortForAll".Translate(firstShort.LabelShort, missing, shortItems - 1).ToString()
+                        : "DynamicMending.ShortFor".Translate(firstShort.LabelShort, missing).ToString();
+                }
+                else
+                {
+                    why = "DynamicMending.NoIngredientsOrTarget".Translate();
+                }
 
                 if (Prefs.DevMode)
                     DevLog(billGiver, $"bill '{bill.Label}': no damaged item in range has its repair materials available ({searches} checked)");
