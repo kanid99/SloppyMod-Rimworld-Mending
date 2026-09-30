@@ -103,6 +103,11 @@ namespace MendingMod
             listing.ColumnWidth = (inRect.width - 34f) / 2f;
             listing.Begin(inRect);
 
+            // The installed build, from About.xml's <modVersion> (0.9.<commit count>), so a bug
+            // report can name it.
+            listing.Label("Build " + Content.ModMetaData.ModVersion);
+            listing.Gap(6f);
+
             Header(listing, "Repair cost");
 
             listing.CheckboxLabeled(
