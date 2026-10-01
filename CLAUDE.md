@@ -9,6 +9,16 @@ commit pushed to `main` is what the game loads next**.
 
 - Push finished work to `main`. Nothing half-done: each commit must load
   and play as-is.
+- **Snapshot every build on its own branch.** Every commit carries a build
+  number (`0.9.<commit count>`, stamped below). Push the same commit to
+  `main` AND to a branch named after that build, so any build can be
+  restored:
+
+      git push origin HEAD:main HEAD:refs/heads/build/0.9.N
+
+  Build branches are restore points: never move or delete one. To roll back,
+  reset `main` to an earlier `build/...` branch - only when the owner asks.
+  The release workflow only runs on `main`, so build branches publish nothing.
 - **Commit the compiled assemblies.** RimWorld loads the DLL, not the source,
   and a clone gets only what is in git. This mod needs:
   - `Assemblies/MendingMod.dll`
@@ -48,6 +58,6 @@ commit pushed to `main` is what the game loads next**.
 - Licence is CC0 for every SloppyMods mod.
 - Replies to the owner: concise summaries; attach a build zip when they will
   test in game.
-- For art changes, show prototypes or before/after comparisons and get the
-  owner's approval per item before replacing anything.
+- For art changes, show the owner before/after comparisons - but they ship to
+  the default branch like any other change; the build branch is the way back.
 
