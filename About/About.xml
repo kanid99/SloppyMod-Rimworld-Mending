@@ -3,14 +3,14 @@
   <name>SloppyMods Mending Solutions</name>
   <author>SloppyMod</author>
   <packageId>sloppymod.dynamicmending</packageId>
-  <modVersion>0.9.108</modVersion>
+  <modVersion>0.9.109</modVersion>
   <!-- 1.6 only. The assembly is built against 1.6 signatures - Thing.Tick and Thing.DrawAt are
        protected there and were public in 1.4/1.5 - so it cannot load on earlier versions.
        Listing them would give those players a mod that installs and silently does nothing. -->
   <supportedVersions>
     <li>1.6</li>
   </supportedVersions>
-  <description>Build 0.9.108
+  <description>Build 0.9.109
 
 Repair damaged apparel and weapons at a hand mending station, an electrical mending station, or a fully automated industrial repair center at higher tech. Material cost, work time, waste and the risk of a botched repair all scale with how damaged the item is and how skilled the mender is. Requires Biotech. Repair work produces real waste as a core mechanic: recyclable trash with Vanilla Recycling Expanded installed, wastepacks without it. Waste can be turned off in the mod settings.</description>
   <modDependencies>

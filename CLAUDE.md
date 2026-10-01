@@ -19,6 +19,19 @@ commit pushed to `main` is what the game loads next**.
   Build branches are restore points: never move or delete one. To roll back,
   reset `main` to an earlier `build/...` branch - only when the owner asks.
   The release workflow only runs on `main`, so build branches publish nothing.
+- **Every update carries its change notes** as BBCode (the Steam Workshop
+  change-notes format), in `Changelog/<build>.bbcode` - e.g.
+  `Changelog/0.9.N.bbcode` - committed in the same commit as the change, so
+  each `build/` branch carries its own notes. Write them for players: what was
+  added, changed and fixed, not how. Format:
+
+      [h2]Build 0.9.N[/h2]
+      [h3]Added[/h3]
+      [list]
+      [*]...
+      [/list]
+
+  Use only the sections that apply (Added, Changed, Fixed, Removed).
 - **Commit the compiled assemblies.** RimWorld loads the DLL, not the source,
   and a clone gets only what is in git. This mod needs:
   - `Assemblies/MendingMod.dll`
