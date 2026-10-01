@@ -34,7 +34,8 @@
     <passability>PassThroughOnly</passability>
     <pathCost>50</pathCost>
     <fillPercent>0.5</fillPercent>
-    <constructEffect>ConstructMetal</constructEffect>
+    <!-- No constructEffect: both benches are made from stuff, and the stuff's own construction
+         effect always wins, so naming one here only earns a config error. -->
     <designationCategory>Production</designationCategory>
     <surfaceType>Item</surfaceType>
     <rotatable>true</rotatable>
@@ -42,6 +43,11 @@
          bill list, and the repair center drops whatever it was holding before it goes in the
          crate (see Building_AutomatedMender.DeSpawn). -->
     <minifiedDef>MinifiedThing</minifiedDef>
+    <!-- Anything minifiable must be in a thing category, so the crate has a place in
+         stockpile filters. -->
+    <thingCategories>
+      <li>BuildingsProduction</li>
+    </thingCategories>
     <!-- Without hasInteractionCell, ThingUtility.InteractionCellWhenAt has no work spot to
          return for a multi-cell building, so the game draws no work-spot circle and the pawn
          ends up standing wherever it can touch the bench instead of in front of it. -->
@@ -121,7 +127,8 @@
     <passability>PassThroughOnly</passability>
     <pathCost>50</pathCost>
     <fillPercent>0.5</fillPercent>
-    <constructEffect>ConstructMetal</constructEffect>
+    <!-- No constructEffect: both benches are made from stuff, and the stuff's own construction
+         effect always wins, so naming one here only earns a config error. -->
     <designationCategory>Production</designationCategory>
     <surfaceType>Item</surfaceType>
     <rotatable>true</rotatable>
@@ -129,6 +136,11 @@
          bill list, and the repair center drops whatever it was holding before it goes in the
          crate (see Building_AutomatedMender.DeSpawn). -->
     <minifiedDef>MinifiedThing</minifiedDef>
+    <!-- Anything minifiable must be in a thing category, so the crate has a place in
+         stockpile filters. -->
+    <thingCategories>
+      <li>BuildingsProduction</li>
+    </thingCategories>
     <!-- Without hasInteractionCell, ThingUtility.InteractionCellWhenAt has no work spot to
          return for a multi-cell building, so the game draws no work-spot circle and the pawn
          ends up standing wherever it can touch the bench instead of in front of it. -->
@@ -188,6 +200,14 @@
     <!-- Without this the def defaults to TickerType.Never and Thing.DoTick never calls Tick(),
          so the mender's whole state machine (and its power draw) silently never runs. -->
     <tickerType>Normal</tickerType>
+    <!-- Same shape of trap, one layer over: BuildingBase is MapMeshOnly, and
+         Thing.DynamicDrawPhase does not call DrawAt on a MapMeshOnly thing at all - so the repair
+         progress bar in Building_AutomatedMender.DrawAt never drew, with nothing logged to say
+         why. MapMeshAndRealTime keeps the chassis printed into the map mesh and gets DrawAt called
+         each frame; it does not double-draw the chassis, because Thing.DrawAt only draws the
+         graphic itself when drawerType is RealtimeOnly. Vanilla's battery draws its charge bar
+         exactly this way. -->
+    <drawerType>MapMeshAndRealTime</drawerType>
     <graphicData>
       <texPath>Things/Building/Production/AutomatedMender</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
@@ -233,6 +253,11 @@
          bill list, and the repair center drops whatever it was holding before it goes in the
          crate (see Building_AutomatedMender.DeSpawn). -->
     <minifiedDef>MinifiedThing</minifiedDef>
+    <!-- Anything minifiable must be in a thing category, so the crate has a place in
+         stockpile filters. -->
+    <thingCategories>
+      <li>BuildingsProduction</li>
+    </thingCategories>
     <neverMultiSelect>true</neverMultiSelect>
     <uiIconScale>0.8</uiIconScale>
     <constructionSkillPrerequisite>6</constructionSkillPrerequisite>
