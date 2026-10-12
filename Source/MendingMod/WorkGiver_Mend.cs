@@ -416,8 +416,10 @@ namespace MendingMod
                 RankedByOrder(order, group, pawn, billGiver, searchRadius, validator).Where(t => t != first));
 
             // Each material search is a region walk of its own, so it is capped, and a cost that
-            // already failed (say "8 heavy fur") is not searched for again on the next item.
-            HashSet<string> failedCosts = new HashSet<string>();
+            // already failed (say "8 heavy fur") is not searched for again on the next item - nor
+            // on the next bill or bench in the same pawn's scan, since the answer depends only on
+            // the pawn and the materials (see FailedCostsFor). Interactive checks start clean.
+            HashSet<string> failedCosts = interactive ? new HashSet<string>() : FailedCostsFor(pawn);
             int searches = 0;
             Thing mendTarget = null;
             Thing firstShort = null;
@@ -505,6 +507,26 @@ namespace MendingMod
 
         // Distinct material searches one bill may try before giving up until its next re-check.
         private const int MaxMaterialSearches = 8;
+
+        // A pawn's work scan asks every bench, and every mend bill on it, the same material
+        // questions from the same spot within one tick. A cost list that failed for this pawn
+        // this tick fails again, so it is remembered until the pawn or the tick changes.
+        private static readonly HashSet<string> scanFailedCosts = new HashSet<string>();
+        private static Pawn scanFailedPawn;
+        private static int scanFailedTick = -1;
+
+        private static HashSet<string> FailedCostsFor(Pawn pawn)
+        {
+            int tick = Find.TickManager.TicksGame;
+            if (pawn != scanFailedPawn || tick != scanFailedTick)
+            {
+                scanFailedCosts.Clear();
+                scanFailedPawn = pawn;
+                scanFailedTick = tick;
+            }
+
+            return scanFailedCosts;
+        }
 
         // Ranks every candidate in range, then yields, lazily and in rank order, the ones the
         // pawn can actually reach. The validator runs before any pathing and rejects nearly
@@ -609,14 +631,15 @@ namespace MendingMod
                 return true;
 
             // Each search below walks every region the pawn can reach, and the case that keeps
-            // failing - the material simply isn't on the map, say no fur at all - pays for the
-            // full walk every time, up to MaxMaterialSearches times per bill. The search only
-            // ever takes spawned things of exactly that def, so if every spawned stack of it put
-            // together falls short, it cannot succeed and is not worth starting.
-            Map map = billGiver.Map;
+            // failing - the material isn't on the map, or none of it is usable - pays for the full
+            // walk every time, up to MaxMaterialSearches times per bill. The search only takes
+            // things of exactly that def, spawned within the radius and neither forbidden nor
+            // reserved, or held in a haul source (bookcase, outfit stand, modded storage) or the
+            // bench's own container. If all of those put together fall short, it cannot succeed
+            // and is not worth starting. Reachability is left to the real search.
             foreach (ThingDefCountClass cost in costs)
             {
-                if (!EnoughSpawned(map, cost.thingDef, cost.count))
+                if (!EnoughAvailable(pawn, billGiver, searchRadius, cost.thingDef, cost.count))
                 {
                     found.Clear();
                     return false;
@@ -637,21 +660,62 @@ namespace MendingMod
             return TryFindBestFixedIngredients(ingredients, pawn, billGiver, found, searchRadius);
         }
 
-        private static bool EnoughSpawned(Map map, ThingDef def, int needed)
+        private static readonly List<Thing> heldThings = new List<Thing>();
+
+        // An upper bound on what TryFindBestFixedIngredients could gather of one def, built from
+        // the same sources and the same cheap checks as its own validator.
+        private static bool EnoughAvailable(Pawn pawn, Thing billGiver, float searchRadius, ThingDef def, int needed)
         {
+            Map map = billGiver?.Map;
             if (map == null || def == null)
                 return true;
 
             int total = 0;
+            float radiusSq = searchRadius * searchRadius;
             List<Thing> things = map.listerThings.ThingsOfDef(def);
             for (int i = 0; i < things.Count; i++)
             {
-                total += things[i].stackCount;
+                Thing t = things[i];
+                if ((t.Position - billGiver.Position).LengthHorizontalSquared >= radiusSq
+                    || t.IsForbidden(pawn) || !pawn.CanReserve(t))
+                    continue;
+
+                total += t.stackCount;
                 if (total >= needed)
                     return true;
             }
 
-            return false;
+            // Held, not spawned, so the lister above never sees them. Counted generously.
+            if (billGiver is Building_WorkTableAutonomous autonomous)
+                total += CountHeld(autonomous.innerContainer, def);
+
+            foreach (IHaulSource source in map.haulDestinationManager.AllHaulSourcesListForReading)
+            {
+                if (total >= needed)
+                    return true;
+
+                if (source.HaulSourceEnabled && source is Thing holder && holder.Spawned)
+                {
+                    heldThings.Clear();
+                    ThingOwnerUtility.GetAllThingsRecursively(source, heldThings);
+                    total += CountHeld(heldThings, def);
+                }
+            }
+
+            heldThings.Clear();
+            return total >= needed;
+        }
+
+        private static int CountHeld(IEnumerable<Thing> things, ThingDef def)
+        {
+            int count = 0;
+            foreach (Thing t in things)
+            {
+                if (t.def == def)
+                    count += t.stackCount;
+            }
+
+            return count;
         }
     }
 }
