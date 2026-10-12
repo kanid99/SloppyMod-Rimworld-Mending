@@ -276,7 +276,43 @@ namespace MendingMod
         // never lies to the player.
         private static readonly IntRange ReCheckFailedBillTicksRange = new IntRange(500, 600);
 
+        // Dev mode only: a mend search slower than SlowSearchMs logs where the time went, at most
+        // once a minute, so a stutter in a big colony can be pinned on a phase without a profiler.
+        private const double SlowSearchMs = 10.0;
+        private static readonly System.Diagnostics.Stopwatch diagWatch = System.Diagnostics.Stopwatch.StartNew();
+        private static long diagTargetTicks, diagMaterialTicks;
+        private static int diagCandidates, diagReachChecks, diagSearches;
+        private static float nextSlowLogTime;
+
         private bool TryBuildMendIngredients(Bill bill, Pawn pawn, Thing billGiver, List<ThingCount> chosen,
+                                             bool forced, out string why)
+        {
+            if (!Prefs.DevMode)
+                return TryBuildMendIngredientsCore(bill, pawn, billGiver, chosen, forced, out why);
+
+            diagTargetTicks = diagMaterialTicks = 0;
+            diagCandidates = diagReachChecks = diagSearches = 0;
+            long start = diagWatch.ElapsedTicks;
+            bool result = TryBuildMendIngredientsCore(bill, pawn, billGiver, chosen, forced, out why);
+            double ms = TicksToMs(diagWatch.ElapsedTicks - start);
+
+            if (ms >= SlowSearchMs && UnityEngine.Time.realtimeSinceStartup >= nextSlowLogTime)
+            {
+                nextSlowLogTime = UnityEngine.Time.realtimeSinceStartup + 60f;
+                Log.Warning($"[DynamicMending] slow mend search: {ms:0.0} ms for bill '{bill.Label}' at {billGiver.LabelShort} " +
+                            $"by {pawn.LabelShort} (order {((bill as Bill_Mend)?.order ?? MendOrder.Nearest)}, " +
+                            $"{billGiver.Map.listerThings.ThingsInGroup(TargetGroupFor(bill.recipe)).Count} items in group). " +
+                            $"Target search {TicksToMs(diagTargetTicks):0.0} ms; {diagCandidates} candidates costed, " +
+                            $"{diagReachChecks} reachability checks, {diagSearches} material searches taking {TicksToMs(diagMaterialTicks):0.0} ms; " +
+                            $"result: {(result ? "job" : "none")}.");
+            }
+
+            return result;
+        }
+
+        private static double TicksToMs(long ticks) => ticks * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+
+        private bool TryBuildMendIngredientsCore(Bill bill, Pawn pawn, Thing billGiver, List<ThingCount> chosen,
                                              bool forced, out string why)
         {
             chosen.Clear();
@@ -356,6 +392,7 @@ namespace MendingMod
 
             // Nearest keeps vanilla's region-walking search, which is also the cheapest: it stops
             // at the first hit. Every other order has to see all the candidates to rank them.
+            long targetStart = diagWatch.ElapsedTicks;
             Thing first = order == MendOrder.Nearest
                 ? GenClosest.ClosestThingReachable(
                     billGiver.Position,
@@ -366,6 +403,7 @@ namespace MendingMod
                     searchRadius,
                     validator)
                 : RankedByOrder(order, group, pawn, billGiver, searchRadius, validator).FirstOrDefault();
+            diagTargetTicks += diagWatch.ElapsedTicks - targetStart;
 
             if (first == null)
             {
@@ -412,8 +450,14 @@ namespace MendingMod
             // rest of the candidates are walked in the same order until one can be supplied.
             // Nearest falls back to straight-line distance for the tail, which only costs
             // anything on the rare pass where the first choice was short.
+            // The work scan checks reachability only for a candidate whose material list has not
+            // already failed: with auto-repair at "any damage" a colony can hold hundreds of
+            // candidates sharing a handful of cost lists, and reachability for every one of them
+            // was most of the cost of a failed pass. The order they are tried in is unchanged.
+            // A right-click check keeps the old order, so its "N more items" count stays exact.
+            bool lazyReach = !interactive;
             IEnumerable<Thing> candidates = Enumerable.Repeat(first, 1).Concat(
-                RankedByOrder(order, group, pawn, billGiver, searchRadius, validator).Where(t => t != first));
+                RankedByOrder(order, group, pawn, billGiver, searchRadius, validator, requireReach: !lazyReach).Where(t => t != first));
 
             // Each material search is a region walk of its own, so it is capped, and a cost that
             // already failed (say "8 heavy fur") is not searched for again on the next item - nor
@@ -438,6 +482,7 @@ namespace MendingMod
                 List<ThingDefCountClass> costs =
                     MendingUtility.GetDynamicIngredientCosts(candidate, MendingUtility.GetSkillLevel(candidate, pawn));
 
+                diagCandidates++;
                 string costKey = string.Join(",", costs.Select(c => c.thingDef.defName + "x" + c.count));
                 if (failedCosts.Contains(costKey))
                 {
@@ -445,8 +490,20 @@ namespace MendingMod
                     continue;
                 }
 
+                // `first` was found by a reachable-only search already.
+                if (lazyReach && candidate != first)
+                {
+                    diagReachChecks++;
+                    if (!pawn.CanReach(candidate, PathEndMode.ClosestTouch, Danger.Deadly))
+                        continue;
+                }
+
                 searches++;
-                if (TryFindMaterials(costs, pawn, billGiver, searchRadius, materials))
+                diagSearches++;
+                long materialStart = diagWatch.ElapsedTicks;
+                bool gathered = TryFindMaterials(costs, pawn, billGiver, searchRadius, materials);
+                diagMaterialTicks += diagWatch.ElapsedTicks - materialStart;
+                if (gathered)
                 {
                     mendTarget = candidate;
                     break;
@@ -533,7 +590,7 @@ namespace MendingMod
         // everything - almost nothing on a map is damaged gear - so reachability, the expensive
         // part, is only ever asked of the few that survive it, and only as far as the caller reads.
         private static IEnumerable<Thing> RankedByOrder(MendOrder order, ThingRequestGroup group, Pawn pawn, Thing billGiver,
-                                                        float radius, System.Predicate<Thing> validator)
+                                                        float radius, System.Predicate<Thing> validator, bool requireReach = true)
         {
             float radiusSq = radius * radius;
             IntVec3 from = billGiver.Position;
@@ -563,6 +620,13 @@ namespace MendingMod
             // Distance breaks ties, so two identical parkas still go nearest-first.
             foreach (Thing t in ranked.ThenBy(t => (t.Position - from).LengthHorizontalSquared))
             {
+                if (!requireReach)
+                {
+                    yield return t;
+                    continue;
+                }
+
+                diagReachChecks++;
                 if (pawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))
                     yield return t;
             }
