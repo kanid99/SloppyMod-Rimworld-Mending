@@ -1,0 +1,6 @@
+[h2]Build 0.9.111[/h2]
+[h3]Fixed[/h3]
+[list]
+[*]Large stutters (up to ~60 ms) when colonists look for mending work. Each successful mend search was being run twice in a row; it now runs once.
+[*]Mend bills no longer search the whole map for a repair material that the map does not have enough of in total (for example no fur at all). They give up straight away instead, so pawns are not slowed down by searches that could never succeed.
+[/list]

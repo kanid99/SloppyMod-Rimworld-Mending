@@ -51,8 +51,53 @@ namespace MendingMod
             }
         }
 
+        // WorkGiver_Scanner.HasJobOnThing is just "JobOnThing(...) != null", and JobGiver_Work
+        // calls it as the validator of its bench search and then calls JobOnThing again on the
+        // bench it picked - so every successful scan ran the whole item and material search
+        // twice, back to back. The job built for the validator is kept and handed straight back
+        // when the very next question is the same pawn, bench and tick. Forced (right-click)
+        // checks never use it: they must always rebuild, and their reasons with them.
+        private static Job lastValidatedJob;
+        private static WorkGiver_Mend lastValidatedGiver;
+        private static Pawn lastValidatedPawn;
+        private static Thing lastValidatedThing;
+        private static int lastValidatedTick = -1;
+
+        public override bool HasJobOnThing(Pawn pawn, Thing t, bool forced = false)
+        {
+            Job job = JobOnThing(pawn, t, forced);
+            if (!forced && job != null)
+            {
+                lastValidatedJob = job;
+                lastValidatedGiver = this;
+                lastValidatedPawn = pawn;
+                lastValidatedThing = t;
+                lastValidatedTick = Find.TickManager.TicksGame;
+            }
+
+            return job != null;
+        }
+
+        private Job TakeValidatedJob(Pawn pawn, Thing thing)
+        {
+            if (lastValidatedJob == null || lastValidatedGiver != this || lastValidatedPawn != pawn
+                || lastValidatedThing != thing || lastValidatedTick != Find.TickManager.TicksGame)
+                return null;
+
+            Job job = lastValidatedJob;
+            lastValidatedJob = null;
+            return job;
+        }
+
         public override Job JobOnThing(Pawn pawn, Thing thing, bool forced = false)
         {
+            if (!forced)
+            {
+                Job validated = TakeValidatedJob(pawn, thing);
+                if (validated != null)
+                    return validated;
+            }
+
             // Right-click orders still arrive here for whatever was clicked, so only a forced
             // check is worth reporting - the scan above never offers anything else.
             if (!(thing is IBillGiver billGiver) || !ThingIsUsableBillGiver(thing))
@@ -563,6 +608,21 @@ namespace MendingMod
             if (costs.NullOrEmpty())
                 return true;
 
+            // Each search below walks every region the pawn can reach, and the case that keeps
+            // failing - the material simply isn't on the map, say no fur at all - pays for the
+            // full walk every time, up to MaxMaterialSearches times per bill. The search only
+            // ever takes spawned things of exactly that def, so if every spawned stack of it put
+            // together falls short, it cannot succeed and is not worth starting.
+            Map map = billGiver.Map;
+            foreach (ThingDefCountClass cost in costs)
+            {
+                if (!EnoughSpawned(map, cost.thingDef, cost.count))
+                {
+                    found.Clear();
+                    return false;
+                }
+            }
+
             List<IngredientCount> ingredients = new List<IngredientCount>(costs.Count);
             foreach (ThingDefCountClass cost in costs)
             {
@@ -575,6 +635,23 @@ namespace MendingMod
             // The helper clears whatever list it is handed, which is why this gets its own rather
             // than the one already holding the mend target.
             return TryFindBestFixedIngredients(ingredients, pawn, billGiver, found, searchRadius);
+        }
+
+        private static bool EnoughSpawned(Map map, ThingDef def, int needed)
+        {
+            if (map == null || def == null)
+                return true;
+
+            int total = 0;
+            List<Thing> things = map.listerThings.ThingsOfDef(def);
+            for (int i = 0; i < things.Count; i++)
+            {
+                total += things[i].stackCount;
+                if (total >= needed)
+                    return true;
+            }
+
+            return false;
         }
     }
 }
