@@ -1,6 +1,6 @@
 # SloppyMods Mending Solutions
 
-Repair damaged apparel and weapons in RimWorld 1.6. Three stations, gated behind three
+Repair damaged apparel and weapons in RimWorld 1.6 and 1.7. Three stations, gated behind three
 research projects: a hand bench that works on what your colony could plausibly have made
 by hand, an electrical bench that lifts those limits, and an industrial repair centre that
 runs on conveyors with no pawn labour at all.
