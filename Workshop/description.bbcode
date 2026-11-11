@@ -1,0 +1,143 @@
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/banner-01-overview.png[/img]
+[b]Repair damaged apparel and weapons instead of throwing them away.[/b] Build a hand mending station, an electrical mending station, or a fully automated industrial repair center.
+
+A repair has no flat price. Materials, work time, waste and the chance of botching it all scale with how damaged the item is and how skilled the mender is. Every repair produces real waste. That's the core mechanic, not an optional extra.
+
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/glance.png[/img]
+
+[b]Required[/b]
+[list]
+[*][url=https://steamcommunity.com/workshop/filedetails/?id=2009463077]Harmony[/url]
+[*][b]Biotech[/b]: the repair center is built around a basic subcore
+[*][url=[VRE WORKSHOP LINK]]Vanilla Recycling Expanded[/url]: provides the trash that repairs produce
+[/list]
+
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/banner-02-stations.png[/img]
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/card-01-hand-bench.png[/img]
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/card-02-electric-bench.png[/img]
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/card-03-repair-centre.png[/img]
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/card-04-feed-port.png[/img]
+
+[table]
+[tr][th]Research[/th][th]Needs[/th][th]Unlocks[/th][/tr]
+[tr][td]Basic mending (500)[/td][td]Complex clothing, Smithing[/td][td]Hand mending station[/td][/tr]
+[tr][td]Electrical mending (1,400)[/td][td]Fabrication[/td][td]Electrical mending station[/td][/tr]
+[tr][td]Automated mending (3,000)[/td][td]Advanced fabrication, Basic mechtech[/td][td]Industrial repair center[/td][/tr]
+[/table]
+
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/banner-03-how-it-works.png[/img]
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/scaling.png[/img]
+
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/banner-04-orders.png[/img]
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/features.png[/img]
+
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/banner-05-settings.png[/img]
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/settings.png[/img]
+
+Everything here is changed in [b]Options > Mod Settings > SloppyMods Mending Solutions[/b]. Changes apply straight away and are safe mid-save.
+
+[b]Repair cost[/b]
+[list]
+[*][b]Repairs require resources[/b] (default: on). Repairs consume a share of the item's own build materials, scaled by damage and crafter skill. Turn off for free repairs; work time and risk still apply.
+[*][b]Simple mode (steel only)[/b] (default: off). Charges a flat steel cost instead of the item's own materials.
+[*][b]Steel per full repair[/b] (1 to 50, default 10). The steel cost of a full repair in simple mode.
+[/list]
+
+[b]Repair time[/b]
+[list]
+[*][b]Repair time[/b] (0.02x to 2x, default 0.35x). How long a repair takes, as a multiple of the item's full build time.
+[/list]
+
+[b]Automatic repair[/b]
+[list]
+[*][b]Auto-repair threshold[/b] (10% to 100% hit points, default: any damage). Bills and the repair center only pick up gear below this condition. A right-click repair order ignores it.
+[/list]
+
+[b]Waste[/b]
+[list]
+[*][b]Repairs produce waste[/b] (default: on). Repairs fill a waste container on the station with wastepacks or recyclable trash, and a full container stops work until it is emptied. Turn off to remove waste entirely.
+[/list]
+
+[b]Failed repairs[/b]
+[list]
+[*][b]Failed repairs lose hit points[/b] (default: on). A botched repair damages the item further. Turn off and a failure only wastes the work and materials.
+[/list]
+
+[b]Quality loss[/b] (default: any repair)
+[list]
+[*][b]Can lose quality any repair[/b]: any repair can drop a quality tier, far more likely on a failure.
+[*][b]Only on failed repairs[/b]: a successful repair never costs quality.
+[*][b]Never lose quality[/b]: repairs never change quality.
+[/list]
+
+[b]Tech requirements[/b]
+[list]
+[*][b]Apply tech requirements[/b] (default: on). Master switch for the three options below. Turn off and any station repairs any item with no restriction or penalty.
+[*][b]Restrict benches by tech level[/b] (default: on). Each station only repairs gear up to its own tech level, and gear containing components needs a powered station.
+[*][b]Penalise repairs beyond your research[/b] (default: on). Gear your colony hasn't researched how to build costs double materials and is riskier to repair.
+[*][b]Counts as a tech tier at[/b] (5% to 100%, default 50%). The share of a tech tier's research your colony needs before it counts as being at that tier.
+[/list]
+
+[b]Severity[/b]
+[list]
+[*][b]Degradation multiplier[/b] (0 to 2, default 1). Scales failure chance, how much a failure costs, and how fast waste builds up.
+[/list]
+
+[b]Reset to defaults[/b] restores every option above.
+
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/banner-06-faq.png[/img]
+[b]Is Vanilla Recycling Expanded really required?[/b]
+Yes and no. Every repair produces waste. With VRE you get both wastepacks and recyclable trash depending on whats being fixed, and VRE provides the trash. You can lower or turn off waste in settings.
+
+[b]Why does it need Biotech?[/b]
+The industrial repair center is built around a basic subcore and sits behind Basic mechtech research.
+
+[b]Why 1.6 only?[/b]
+It's built against 1.6 code and cannot load on 1.5 or earlier.
+
+[b]Can I add it to an existing save?[/b]
+Yes. The stations appear once you research them. Removing it mid-save isn't recommended; if you must, deconstruct the stations and delete the mend bills first.
+
+[b]My colonists aren't repairing anything. Why?[/b]
+Quickest check: select a colonist and right-click the damaged item. The menu says exactly what's blocking it. Otherwise check:
+[list]
+[*]Items are only picked up below the auto-repair threshold.
+[*]The bill's ingredient filter and search radius must cover the item.
+[*]The repair materials must be in range.
+[*]The electrical station needs power.
+[*]Someone has Crafting (apparel) or Smithing (weapons) enabled.
+[/list]
+
+[b]Why won't the hand station repair my gear?[/b]
+It handles up to industrial tech and nothing that contains components. Build the electrical mending station for anything beyond that.
+
+[b]How much does a repair cost?[/b]
+It depends on the item's material, how damaged it is and the mender's skill. Select any damaged item: the inspect pane shows the cost at your best crafter's skill.
+
+[b]Can a repair fail?[/b]
+Yes. Low-skill menders botch more often. By default a failure costs hit points, and quality can drop. Both are adjustable in settings.
+
+[b]Does the industrial repair center need a colonist?[/b]
+No. Feed it by conveyor and it works like a skill 10 mender. Someone still needs to empty its waste.
+
+[b]Material Filter?[/b]
+Supported. Its checkboxes restrict mend bills: untick plasteel and plasteel swords are skipped.
+
+[b]Vanilla Furniture Expanded - Factory?[/b]
+Detected automatically. The mod's feed port is swapped for VFE's belt-aware factory hopper.
+
+[b]Storage and hauling mods?[/b]
+Materials are found through vanilla's ingredient search, so mods that patch it also work for repairs.
+
+[b]Will it slow my game down?[/b]
+It's built not to. Colonists only check mending stations, not every workbench on the map, and a bill that finds nothing to repair waits before checking again.
+
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/banner-07-bugs.png[/img]
+Every build shows its version number in the mod list. [b]Please include it[/b], plus your log, and I'll see what I can do.
+Turn on Development mode, reproduce the problem and share your log. Mending lines start with [noparse][DynamicMending][/noparse].
+[url=https://github.com/kanid99/SloppyMod-Rimworld-Mending]Source code on GitHub[/url]
+
+[img]https://raw.githubusercontent.com/kanid99/SloppyMod-Rimworld-Mending/refs/heads/main/Workshop/banner-08-sloppymods.png[/img]
+The mods I upload are AI slop. I don't code them: I vibe-code them with Claude, and debug with Claude and Gemini as needed. Please use them with that in mind.
+
+[i]Please don't re-upload this mod. Translations and compatibility patches are welcome, so get in touch.[/i]
