@@ -38,6 +38,33 @@ namespace MendingMod
         {
         }
 
+        // The last ranking the work scan built for this bill, kept for a moment so the next
+        // colonist to ask does not sort the whole map's damaged gear again - see
+        // WorkGiver_Mend.RankedByOrder. Never saved, never cloned: it is rebuilt on demand.
+        private List<Thing> rankedCache;
+        private int rankedCacheTick = -1;
+        private MendOrder rankedCacheOrder;
+        private float rankedCacheRadius;
+        private IntVec3 rankedCacheFrom;
+
+        internal List<Thing> RankingFor(MendOrder forOrder, float radius, IntVec3 from, int now, int maxAge)
+        {
+            if (rankedCache == null || rankedCacheOrder != forOrder || rankedCacheRadius != radius
+                || rankedCacheFrom != from || now < rankedCacheTick || now - rankedCacheTick > maxAge)
+                return null;
+
+            return rankedCache;
+        }
+
+        internal void StoreRanking(MendOrder forOrder, float radius, IntVec3 from, int now, List<Thing> ranked)
+        {
+            rankedCache = ranked;
+            rankedCacheOrder = forOrder;
+            rankedCacheRadius = radius;
+            rankedCacheFrom = from;
+            rankedCacheTick = now;
+        }
+
         public bool AllowsStuffOf(Thing item)
         {
             return onlyStuff == null || item.Stuff == onlyStuff;

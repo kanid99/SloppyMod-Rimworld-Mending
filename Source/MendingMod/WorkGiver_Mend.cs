@@ -402,7 +402,8 @@ namespace MendingMod
                     TraverseParms.For(pawn),
                     searchRadius,
                     validator)
-                : RankedByOrder(order, group, pawn, billGiver, searchRadius, validator).FirstOrDefault();
+                : RankedByOrder(order, group, pawn, billGiver, searchRadius, validator,
+                                keepOn: interactive ? null : bill as Bill_Mend).FirstOrDefault();
             diagTargetTicks += diagWatch.ElapsedTicks - targetStart;
 
             if (first == null)
@@ -457,7 +458,8 @@ namespace MendingMod
             // A right-click check keeps the old order, so its "N more items" count stays exact.
             bool lazyReach = !interactive;
             IEnumerable<Thing> candidates = Enumerable.Repeat(first, 1).Concat(
-                RankedByOrder(order, group, pawn, billGiver, searchRadius, validator, requireReach: !lazyReach).Where(t => t != first));
+                RankedByOrder(order, group, pawn, billGiver, searchRadius, validator, requireReach: !lazyReach,
+                              keepOn: interactive ? null : bill as Bill_Mend).Where(t => t != first));
 
             // Each material search is a region walk of its own, so it is capped, and a cost that
             // already failed (say "8 heavy fur") is not searched for again on the next item - nor
@@ -589,8 +591,58 @@ namespace MendingMod
         // pawn can actually reach. The validator runs before any pathing and rejects nearly
         // everything - almost nothing on a map is damaged gear - so reachability, the expensive
         // part, is only ever asked of the few that survive it, and only as far as the caller reads.
+        //
+        // Ranking is the other cost. Every order but Nearest has to see all the candidates, and
+        // most-/least-valuable works out a market value for each one: with auto-repair at "any
+        // damage" that is hundreds of stat calculations per bill, per bench, for every colonist
+        // who looks for work. So the work scan keeps the ranking on the bill for RankingMaxAge
+        // ticks (`keepOn`). The list is only ever a head start: each entry is put through the
+        // caller's own validator again before it is used, so an item that has since been
+        // mended, carried off, forbidden or reserved drops out, and nothing can be picked that
+        // the caller would not have picked from a fresh ranking. What a stale list can do is
+        // miss an item damaged in the last second and a half, which the next ranking finds.
+        // Right-click checks pass no bill and always rank afresh, so their counts stay exact.
+        private const int RankingMaxAge = 90;
+
         private static IEnumerable<Thing> RankedByOrder(MendOrder order, ThingRequestGroup group, Pawn pawn, Thing billGiver,
-                                                        float radius, System.Predicate<Thing> validator, bool requireReach = true)
+                                                        float radius, System.Predicate<Thing> validator, bool requireReach = true,
+                                                        Bill_Mend keepOn = null)
+        {
+            IntVec3 from = billGiver.Position;
+            int now = Find.TickManager.TicksGame;
+
+            List<Thing> ranked = keepOn == null ? null : keepOn.RankingFor(order, radius, from, now, RankingMaxAge);
+            bool reused = ranked != null;
+            if (!reused)
+            {
+                ranked = RankAll(order, group, billGiver, radius, validator);
+                if (keepOn != null)
+                    keepOn.StoreRanking(order, radius, from, now, ranked);
+            }
+
+            Map map = billGiver.Map;
+            for (int i = 0; i < ranked.Count; i++)
+            {
+                Thing t = ranked[i];
+
+                // A reused ranking was validated for whoever built it, a moment ago.
+                if (reused && (t == null || t.Destroyed || !t.Spawned || t.Map != map || !validator(t)))
+                    continue;
+
+                if (!requireReach)
+                {
+                    yield return t;
+                    continue;
+                }
+
+                diagReachChecks++;
+                if (pawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))
+                    yield return t;
+            }
+        }
+
+        private static List<Thing> RankAll(MendOrder order, ThingRequestGroup group, Thing billGiver,
+                                           float radius, System.Predicate<Thing> validator)
         {
             float radiusSq = radius * radius;
             IntVec3 from = billGiver.Position;
@@ -618,18 +670,7 @@ namespace MendingMod
             }
 
             // Distance breaks ties, so two identical parkas still go nearest-first.
-            foreach (Thing t in ranked.ThenBy(t => (t.Position - from).LengthHorizontalSquared))
-            {
-                if (!requireReach)
-                {
-                    yield return t;
-                    continue;
-                }
-
-                diagReachChecks++;
-                if (pawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))
-                    yield return t;
-            }
+            return ranked.ThenBy(t => (t.Position - from).LengthHorizontalSquared).ToList();
         }
 
         // HaulableEver is every wood log, meal, chunk and steel bar on the map - thousands of

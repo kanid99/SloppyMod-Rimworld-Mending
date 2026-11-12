@@ -7,7 +7,9 @@ import sys
 import numpy as np
 from PIL import Image
 
-PX, CW, CH, MARGIN = 192, 5, 5, 0.5
+# PX is the SHIPPED texture's pixels per cell (compose_repair_center.OUT_PX), not the 192 it
+# is drawn at: this samples the files the game loads.
+PX, CW, CH, MARGIN = 128, 5, 5, 0.5
 T = 'Textures/Things/Building/Production/AutomatedMender_'
 FACING = {'North': (0, 1), 'East': (1, 0), 'South': (0, -1), 'West': (-1, 0)}
 OPP = {'North': 'South', 'South': 'North', 'East': 'West', 'West': 'East'}
@@ -60,7 +62,7 @@ def spots(rot):
 RAIL_OFFSET = (78 / 2 + 7 / 2) * (PX / 128.0)     # bed half-width plus half a rail
 
 
-def sample(img, cell, depth=26):
+def sample(img, cell, depth=round(26 * PX / 192.0)):
     """The coloured rail of the bay in line with that spot cell.
 
     Sampling the bay's centre lands on the roller bed, which is grey whatever the port is for -

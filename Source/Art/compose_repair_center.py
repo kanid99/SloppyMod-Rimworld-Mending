@@ -9,7 +9,12 @@ import os
 from PIL import Image
 from vfe_chassis import Chassis, RAILS, TEAL_LIT, TEAL_DRK
 
-PX = 192                      # pixels per map cell
+PX = 192                      # pixels per map cell, as drawn
+# What is written out. The sprite is drawn at 192 px a cell and reduced once, at the end:
+# three 1152x1152 textures were 16 MB of pixels for one building, at three times vanilla's
+# 64 px a cell, and the game never shows a cell that large. 128 px a cell is 768x768 - under
+# half the memory - and still twice vanilla's density. drawSize is in cells, so it is unchanged.
+OUT_PX = 128
 CW, CH = 5, 5                 # the repair centre's FOOTPRINT, in cells
 # VFE draw a 5x5 machine at drawSize (6,6): the art overhangs the footprint by half a cell on
 # every side. Their conveyor bays are cut into the chassis and stick out only a sliver into that
@@ -222,9 +227,15 @@ def export(outdir):
     """
     sprite = build()
     os.makedirs(outdir, exist_ok=True)
-    sprite.save(f"{outdir}/AutomatedMender_north.png")
-    sprite.rotate(180, expand=True).save(f"{outdir}/AutomatedMender_south.png")
-    sprite.rotate(-90, expand=True).save(f"{outdir}/AutomatedMender_east.png")
+    side = round(sprite.width * OUT_PX / PX)
+
+    def write(image, name):
+        # Turned at full size and reduced afterwards, so every rotation is resampled once.
+        image.resize((side, side), Image.LANCZOS).save(f"{outdir}/AutomatedMender_{name}.png")
+
+    write(sprite, "north")
+    write(sprite.rotate(180, expand=True), "south")
+    write(sprite.rotate(-90, expand=True), "east")
     return sprite
 
 

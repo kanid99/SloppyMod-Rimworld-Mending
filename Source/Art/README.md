@@ -340,4 +340,5 @@ python3 Source/Art/make_about_art.py      # from the repo root
 produce are committed under `objects/`, so they only need re-running to change the tool set.
 
 Output goes to `Textures/Things/Building/Production/`: the benches are 576x192 for north and
-south and 192x576 for east; the repair centre is 1152x1152 for all three.
+south and 192x576 for east; the repair centre is drawn at 1152x1152 and written out at
+768x768 (128 px a cell, `OUT_PX`) for all three.
