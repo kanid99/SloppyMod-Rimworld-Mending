@@ -19,7 +19,17 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 HAND_PSD = os.path.join(_HERE, 'TableTailorHand_north.psd')
 ELEC_PSD = os.path.join(_HERE, 'MendingBench_electric_north.psd')
 CANVAS = (0, 0, 224, 96)
-TARGET = (576, 192)
+CANVAS_SIZE = (CANVAS[2], CANVAS[3])
+# Vanilla draws a 3x1 workbench on a 3.5 x 1.5 cell canvas at 64 px a cell: the slab's top
+# fills the footprint exactly and its leg tabs hang below it. The benches keep that canvas
+# and that placement, exported at three times the size.
+SCALE = 3
+TARGET = (CANVAS_SIZE[0] * SCALE, CANVAS_SIZE[1] * SCALE)        # 672 x 288
+# Object positions in bench_layouts.py were laid out on a slab 219 px long (the old 3-slice
+# stretch); they are scaled along the bench to the slab's real length.
+LAYOUT_W = 219.0
+# ...and drawn a little smaller, so that what was spaced out along 219 px still has room.
+OBJ_SCALE = 0.9
 
 
 def load(path):
@@ -54,8 +64,9 @@ class Bench:
         self.L = layers
         x0, y0, x1, y1 = layers['border'].bbox
         self.SX0, self.SY0, self.SW, self.SH = x0, y0, x1 - x0, y1 - y0
-        self.W, self.H = self.SH * 3, self.SH
+        self.W, self.H = self.SW, self.SH        # the slab as vanilla drew it: 192 x 73
         self.stretch = self.W / self.SW
+        self.along = self.W / LAYOUT_W
         self.art = Image.new('RGBA', (self.W, self.H), (0, 0, 0, 0))
         self.mask = Image.new('RGBA', (self.W, self.H), (0, 0, 0, 0))
 
@@ -87,9 +98,10 @@ class Bench:
     def obj(self, path, cx, cy, h, shadow=True):
         """Place a cut sprite scaled to `h` px tall, centred on (cx, cy) in slab space."""
         img = Image.open(path).convert('RGBA')
+        h = max(1, round(h * OBJ_SCALE))
         s = h / img.height
         img = img.resize((max(1, round(img.width * s)), h), Image.LANCZOS)
-        x, y = round(cx - img.width / 2), round(cy - img.height / 2)
+        x, y = round(cx * self.along - img.width / 2), round(cy - img.height / 2)
         if shadow:
             a = np.asarray(img)[..., 3]
             z = np.zeros_like(a)
@@ -99,7 +111,14 @@ class Bench:
         self.mask.alpha_composite(as_mask(img, red=False), (x, y))
 
     def out(self):
-        return self.art.resize(TARGET, Image.LANCZOS), self.mask.resize(TARGET, Image.NEAREST)
+        return on_canvas(self.art, self.mask, CANVAS_SIZE, (self.SX0, self.SY0), TARGET)
+
+
+def on_canvas(art, mask, size, at, target):
+    """Set the slab where vanilla has it on its canvas, then export."""
+    a = Image.new('RGBA', size, (0, 0, 0, 0)); a.alpha_composite(art, at)
+    m = Image.new('RGBA', size, (0, 0, 0, 0)); m.alpha_composite(mask, at)
+    return a.resize(target, Image.LANCZOS), m.resize(target, Image.NEAREST)
 
 
 def as_mask(img, red):

@@ -5,11 +5,14 @@ PNGs, so the layout can be regenerated whenever the footprint or the tool set ch
 
 ## Why the art is rebuilt rather than exported
 
-A 1x3 building needs a 3:1 sprite. Both PSDs are authored at 224x96 with a 192x73
-slab, which is 2.63:1 - exported straight out, the bench sits short of its own
-footprint. `bench_compose.py` widens the slab to 3:1 with a horizontal 3-slice (so the
-left and right edges keep their thickness) and then *positions* objects on it rather
-than scaling it, so no spool becomes an ellipse.
+Both PSDs are authored the way vanilla authors a 3x1 workbench: a 224x96 canvas
+(3.5 x 1.5 cells at 64 px a cell) with a 192x73 slab whose top fills the footprint and
+whose leg tabs hang 9 px below it. `bench_compose.py` keeps that canvas and that
+placement - the defs draw it at `drawSize (3.5,1.5)` - and exports at three times the
+size. Objects are *positioned* on the slab rather than scaled with it, so no spool
+becomes an ellipse. (The layouts in `bench_layouts.py` were first laid out on a slab
+stretched to 219 px; the composer scales their positions along the bench and draws the
+sprites at `OBJ_SCALE`.)
 
 ## Why the objects are generated but the slab never is
 
@@ -339,6 +342,6 @@ python3 Source/Art/make_about_art.py      # from the repo root
 `gen_bench_objects.py` and `gen_tools.py` need a Gemini API key; the cut object PNGs they
 produce are committed under `objects/`, so they only need re-running to change the tool set.
 
-Output goes to `Textures/Things/Building/Production/`: the benches are 576x192 for north and
-south and 192x576 for east; the repair centre is drawn at 1152x1152 and written out at
+Output goes to `Textures/Things/Building/Production/`: the benches are 672x288 for north and
+south and 288x672 for east; the repair centre is drawn at 1152x1152 and written out at
 768x768 (128 px a cell, `OUT_PX`) for all three.

@@ -21,14 +21,14 @@ BOARD, COMPONENT, SHEET   = 'elec_d_1', 'parts_a_0', 'parts_a_3'
 GOGGLES, TRAY, OFFCUTS    = 'elec_f_2', 'elec_g_1', 'electools_b_3'
 FABRIC, PATCH, NEEDLES    = 'sew_b_3', 'sew_a_3', 'sew_a_1'
 
-# (sprite, centre x, centre y, height) in slab space - the slab is 219 x 73 and its interior
-# runs y 4..66, so nothing is placed with its half-height past that.
+# (sprite, centre x, centre y, height) in layout space: 219 long (bench_compose scales that to
+# the slab's real 192 px and draws the sprites at OBJ_SCALE) and 73 deep, interior y 4..66.
 ELEC_MODERN = {
 'elecm_01': [(SEWING, 178, 34, 44), (SPOOLRACK, 32, 14, 15), (PRESS, 34, 46, 30),
              (DRILL, 80, 22, 24), (WRENCH2, 96, 54, 12), (CONE, 130, 22, 20),
              (CALLIPER, 128, 54, 12)],
-'elecm_02': [(SEWING, 176, 34, 44), (SPOOLRACK, 30, 13, 15), (VICE2, 36, 46, 28),
-             (DRILL, 84, 46, 24), (WRENCH2, 88, 16, 12), (TRAY, 130, 24, 18),
+'elecm_02': [(SEWING, 178, 34, 44), (SPOOLRACK, 35, 13, 15), (VICE2, 36, 46, 28),
+             (DRILL, 84, 46, 24), (WRENCH2, 89, 16, 11), (TRAY, 128, 24, 18),
              (RIVETS, 132, 52, 13)],
 'elecm_03': [(SEWING, 40, 34, 44), (PRESS, 186, 40, 30), (SPOOLRACK, 186, 13, 15),
              (DRILL, 92, 20, 24), (WRENCH2, 100, 52, 12), (CALLIPER, 140, 20, 12),
@@ -47,8 +47,8 @@ ELEC_MODERN = {
 # "More electric tools and bits and bobs" on the hand benches. The vanilla scissors and thread
 # spools are dropped here so there is room for them.
 HAND_DENSE = {
-'handm_01': [(PRESS, 34, 40, 28), (SPOOLRACK, 34, 13, 14), ('metaltools_a_0', 84, 22, 26),
-             ('metaltools_a_2', 88, 52, 24), (CALLIPER, 130, 18, 12), (RIVETS, 132, 50, 14),
+'handm_01': [(PRESS, 34, 40, 28), (SPOOLRACK, 34, 13, 14), ('metaltools_a_0', 90, 22, 26),
+             ('metaltools_a_2', 88, 52, 24), (CALLIPER, 136, 18, 12), (RIVETS, 132, 50, 14),
              (PLATES, 180, 22, 16), ('metaltools_b_1', 184, 50, 28)],
 'handm_02': [(VICE2, 34, 40, 28), (CONE, 34, 14, 16), ('metaltools_a_1', 84, 34, 32),
              (WRENCH2, 122, 18, 12), (SCREWS, 122, 50, 16), (CADDY, 178, 24, 18),

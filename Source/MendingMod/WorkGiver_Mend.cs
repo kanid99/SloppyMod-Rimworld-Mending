@@ -465,7 +465,7 @@ namespace MendingMod
             // already failed (say "8 heavy fur") is not searched for again on the next item - nor
             // on the next bill or bench in the same pawn's scan, since the answer depends only on
             // the pawn and the materials (see FailedCostsFor). Interactive checks start clean.
-            HashSet<string> failedCosts = interactive ? new HashSet<string>() : FailedCostsFor(pawn);
+            HashSet<long> failedCosts = interactive ? new HashSet<long>() : FailedCostsFor(pawn);
             int searches = 0;
             Thing mendTarget = null;
             Thing firstShort = null;
@@ -485,7 +485,7 @@ namespace MendingMod
                     MendingUtility.GetDynamicIngredientCosts(candidate, MendingUtility.GetSkillLevel(candidate, pawn));
 
                 diagCandidates++;
-                string costKey = string.Join(",", costs.Select(c => c.thingDef.defName + "x" + c.count));
+                long costKey = CostKey(costs);
                 if (failedCosts.Contains(costKey))
                 {
                     shortItems++;
@@ -570,11 +570,29 @@ namespace MendingMod
         // A pawn's work scan asks every bench, and every mend bill on it, the same material
         // questions from the same spot within one tick. A cost list that failed for this pawn
         // this tick fails again, so it is remembered until the pawn or the tick changes.
-        private static readonly HashSet<string> scanFailedCosts = new HashSet<string>();
+        private static readonly HashSet<long> scanFailedCosts = new HashSet<long>();
         private static Pawn scanFailedPawn;
         private static int scanFailedTick = -1;
 
-        private static HashSet<string> FailedCostsFor(Pawn pawn)
+        // A cost list as one number: each material's def hash and count folded in, in order. It is
+        // built for every candidate a scan looks at, so it allocates nothing.
+        private static long CostKey(List<ThingDefCountClass> costs)
+        {
+            unchecked
+            {
+                ulong key = 14695981039346656037UL;
+                for (int i = 0; i < costs.Count; i++)
+                {
+                    ThingDefCountClass cost = costs[i];
+                    key = (key ^ (cost.thingDef != null ? cost.thingDef.shortHash : (ushort)0)) * 1099511628211UL;
+                    key = (key ^ (uint)cost.count) * 1099511628211UL;
+                }
+
+                return (long)key;
+            }
+        }
+
+        private static HashSet<long> FailedCostsFor(Pawn pawn)
         {
             int tick = Find.TickManager.TicksGame;
             if (pawn != scanFailedPawn || tick != scanFailedTick)
@@ -794,21 +812,58 @@ namespace MendingMod
             if (billGiver is Building_WorkTableAutonomous autonomous)
                 total += CountHeld(autonomous.innerContainer, def);
 
-            foreach (IHaulSource source in map.haulDestinationManager.AllHaulSourcesListForReading)
-            {
-                if (total >= needed)
-                    return true;
+            if (total >= needed)
+                return true;
 
-                if (source.HaulSourceEnabled && source is Thing holder && holder.Spawned)
+            int held;
+            if (HeldInStorage(map).TryGetValue(def, out held))
+                total += held;
+
+            return total >= needed;
+        }
+
+        // What every haul source on the map (shelves that hold rather than spawn, bookcases,
+        // outfit stands, modded storage) holds, by def. Walking the containers is the costly
+        // part and the answer is the same for every material, bill, bench and pawn asking in the
+        // same tick, so it is counted once per map per tick and looked up after that.
+        private static readonly Dictionary<ThingDef, int> heldCounts = new Dictionary<ThingDef, int>();
+        private static Map heldCountsMap;
+        private static int heldCountsTick = -1;
+        private static int heldCountsFrame = -1;   // so a paused game's right-click menu is never stale
+
+        private static Dictionary<ThingDef, int> HeldInStorage(Map map)
+        {
+            int tick = Find.TickManager.TicksGame;
+            int frame = UnityEngine.Time.frameCount;
+            if (map == heldCountsMap && tick == heldCountsTick && frame == heldCountsFrame)
+                return heldCounts;
+
+            heldCounts.Clear();
+            heldCountsMap = map;
+            heldCountsTick = tick;
+            heldCountsFrame = frame;
+
+            List<IHaulSource> sources = map.haulDestinationManager.AllHaulSourcesListForReading;
+            for (int i = 0; i < sources.Count; i++)
+            {
+                IHaulSource source = sources[i];
+                Thing holder = source as Thing;
+                if (!source.HaulSourceEnabled || holder == null || !holder.Spawned)
+                    continue;
+
+                heldThings.Clear();
+                ThingOwnerUtility.GetAllThingsRecursively(source, heldThings);
+                for (int j = 0; j < heldThings.Count; j++)
                 {
-                    heldThings.Clear();
-                    ThingOwnerUtility.GetAllThingsRecursively(source, heldThings);
-                    total += CountHeld(heldThings, def);
+                    Thing t = heldThings[j];
+                    int sofar;
+                    heldCounts.TryGetValue(t.def, out sofar);
+                    heldCounts[t.def] = sofar + t.stackCount;
                 }
             }
 
             heldThings.Clear();
-            return total >= needed;
+            return heldCounts;
         }
 
         private static int CountHeld(IEnumerable<Thing> things, ThingDef def)

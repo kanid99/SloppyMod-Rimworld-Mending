@@ -138,10 +138,28 @@ namespace MendingMod
         {
             get
             {
-                CompPowerTrader power = GetComp<CompPowerTrader>();
-                return power == null || power.PowerOn;
+                // Asked every tick; the comp list never changes after the building is made, so
+                // the lookup is done once.
+                if (!powerLooked)
+                {
+                    powerComp = GetComp<CompPowerTrader>();
+                    powerLooked = true;
+                }
+
+                return powerComp == null || powerComp.PowerOn;
             }
         }
+
+        private CompPowerTrader powerComp;
+        private bool powerLooked;
+
+        // Checks in a row that found nothing on the item spot. Not saved: a loaded machine just
+        // starts out attentive again.
+        private int emptyScans;
+        private bool spotWasEmpty;
+        private const int EmptyScansBeforeSlowing = 8;
+        private const int ScanInterval = 30;
+        private const int SlowScanInterval = 90;
 
         // Uninstalling or destroying the machine comes through here - MinifyUtility.MakeMinified
         // deinstalls with DeSpawnOrDeselect before wrapping the building up - and anything still
@@ -174,15 +192,24 @@ namespace MendingMod
                 return;
 
             // Twice a second is plenty for noticing new input or a cleared output spot, and avoids
-            // re-scanning the spots on every one of the 60 ticks per second.
+            // re-scanning the spots on every one of the 60 ticks per second. A machine whose item
+            // spot has stayed empty for a few seconds looks less often still, until something
+            // turns up; one waiting on materials, the waste container or a chute keeps the pace.
             if (state == MenderState.Idle)
             {
-                if (this.IsHashIntervalTick(30))
+                if (this.IsHashIntervalTick(emptyScans >= EmptyScansBeforeSlowing ? SlowScanInterval : ScanInterval))
+                {
+                    spotWasEmpty = false;
                     TryStartMend();
+                    if (!spotWasEmpty)
+                        emptyScans = 0;
+                    else if (emptyScans < EmptyScansBeforeSlowing)
+                        emptyScans++;
+                }
             }
             else if (state == MenderState.Ejecting)
             {
-                if (this.IsHashIntervalTick(30))
+                if (this.IsHashIntervalTick(ScanInterval))
                     TryEject();
             }
             else
@@ -328,6 +355,7 @@ namespace MendingMod
 
             if (damagedItem == null)
             {
+                spotWasEmpty = true;
                 idleReason = "DynamicMending.MenderNoItem".Translate();
                 return;
             }

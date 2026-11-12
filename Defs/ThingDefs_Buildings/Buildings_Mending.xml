@@ -16,9 +16,10 @@
            the bench is black, so it keeps its own colours: a wooden bench still has steel
            tools on it. -->
       <shaderType>CutoutComplex</shaderType>
-      <!-- drawSize deliberately equals size: the textures are authored at the footprint's exact
-           3:1 aspect, so the art lands inside its own cells with no overhang. -->
-      <drawSize>(3,1)</drawSize>
+      <!-- Vanilla's workbench convention: the texture is a 3.5 x 1.5 cell canvas with the
+           worktop filling the 3x1 footprint exactly and the leg tabs hanging just below it,
+           so the bench reads the same size as the tailor bench beside it. -->
+      <drawSize>(3.5,1.5)</drawSize>
     </graphicData>
     <size>(3,1)</size>
     <stuffCategories>
@@ -112,7 +113,7 @@
            the bench is black, so it keeps its own colours: a wooden bench still has steel
            tools on it. -->
       <shaderType>CutoutComplex</shaderType>
-      <drawSize>(3,1)</drawSize>
+      <drawSize>(3.5,1.5)</drawSize>
     </graphicData>
     <size>(3,1)</size>
     <stuffCategories>
