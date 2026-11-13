@@ -1,10 +1,11 @@
 """The east rotation, built rather than rotated.
 
 The camera does not turn with the building, so a 90 degree turn of the finished north sprite
-would stand the leg tabs on one side and lay every tool on its face. Instead the slab is stood
-on its end, fresh leg tabs are stamped along the new bottom edge, and each object is moved to
-its quarter-turned position while staying upright.
+would put the front strip and the feet on one side. The slab is vanilla's own east tailor
+bench instead (TableTailorHand_east.psd), and each object is moved to its quarter-turned
+position on it.
 """
+import os
 import numpy as np
 from PIL import Image, ImageFilter
 import bench_compose as V
@@ -12,6 +13,7 @@ import bench_compose as V
 CANVAS_E = (V.CANVAS_SIZE[1], V.CANVAS_SIZE[0])               # 96 x 224
 TARGET_E = (CANVAS_E[0] * V.SCALE, CANVAS_E[1] * V.SCALE)     # 288 x 672
 CELL = 64
+EAST_PSD = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'TableTailorHand_east.psd')
 
 
 class BenchEast:
@@ -19,12 +21,12 @@ class BenchEast:
         self.L = layers
         x0, y0, x1, y1 = layers['border'].bbox
         self.SX0, self.SY0, self.SW, self.SH = x0, y0, x1 - x0, y1 - y0
-        # One cell wide and three long, as vanilla's east benches are, plus the leg tabs that
-        # slab() measures and hangs below the footprint.
-        self.W, self.TOP = CELL, CELL * 3
-        self.H = self.TOP + self.SH              # trimmed to TOP + LEG_H in out()
-        self.stretch = self.TOP / self.SW
-        self.along = self.TOP / V.LAYOUT_W
+        # The slab is vanilla's own east tailor bench, taken as drawn: one cell wide, its top
+        # three cells long, then the front strip and the two feet below the footprint.
+        self.E = V.load(EAST_PSD)
+        ex0, ey0, ex1, ey1 = self.E['border'].bbox
+        self.EX0, self.EY0 = ex0, ey0
+        self.W, self.H = ex1 - ex0, ey1 - ey0          # 64 x 201
         self.art = Image.new('RGBA', (self.W, self.H), (0, 0, 0, 0))
         self.mask = Image.new('RGBA', (self.W, self.H), (0, 0, 0, 0))
 
@@ -33,37 +35,22 @@ class BenchEast:
         return l.composite(viewport=V.CANVAS).crop(l.bbox), l.bbox
 
     def slab(self):
-        border, bb = self._layer('border')
-        base, bsb = self._layer('base')
+        base = None
+        for name in ('border', 'base'):
+            l = self.E[name]
+            img = l.composite(viewport=(0, 0) + CANVAS_E).crop(l.bbox)
+            self._put(img, (l.bbox[0] - self.EX0, l.bbox[1] - self.EY0), slab=True)
+            if name == 'base':
+                base, top = img, l.bbox[1] - self.EY0
+        self.INSET = self.E['base'].bbox[0] - self.EX0
 
-        # Measure the leg tabs rather than assume where they are.
-        alpha = np.asarray(border)[..., 3] > 8
-        rows = alpha.sum(axis=1)
-        full = rows.max()
-        leg_top = next(y for y in range(len(rows) - 1, -1, -1) if rows[y] == full) + 1
-        self.LEG_H = border.size[1] - leg_top
-        cols = alpha[leg_top:, :].sum(axis=0)
-        runs, start = [], None
-        for x, c in enumerate(cols):
-            if c and start is None:
-                start = x
-            elif not c and start is not None:
-                runs.append((start, x)); start = None
-        if start is not None:
-            runs.append((start, len(cols)))
-        tab = border.crop((runs[1][0], leg_top, runs[1][1], border.size[1]))
-        self.H = self.TOP + self.LEG_H
-
-        body = border.crop((0, 0, border.size[0], leg_top)).transpose(Image.ROTATE_270)
-        self._put(body.resize((self.W, self.H - self.LEG_H), Image.LANCZOS), (0, 0), slab=True)
-        for x in (0, self.W - tab.size[0]):
-            self._put(tab, (x, self.H - self.LEG_H), slab=True)
-
-        self.INSET = bsb[0] - self.SX0
-        i = self.INSET
-        bb2 = base.crop((0, 0, base.size[0], leg_top - i)).transpose(Image.ROTATE_270)
-        self._put(bb2.resize((self.W - 2 * i, self.H - self.LEG_H - 2 * i), Image.LANCZOS),
-                  (i, i), slab=True)
+        # Where the worktop ends and the darker front strip begins, measured down the middle
+        # of the base layer. Objects stay on the worktop.
+        col = np.asarray(base.convert('L'))[:, base.size[0] // 2].astype(int)
+        drop = next(y for y in range(len(col) - 1, 0, -1) if col[y - 1] - col[y] > 30)
+        self.FACE = top + drop                       # slab-space y of the worktop's front edge
+        self.stretch = 1.0
+        self.along = self.FACE / V.LAYOUT_W
 
     def _put(self, img, at, slab=False):
         self.art.alpha_composite(img, at)
@@ -75,7 +62,7 @@ class BenchEast:
         w, h = img.size
         m = self.INSET + 4
         x = max(m, min(self.W - w - m, round(across - w / 2)))
-        y = max(m, min(self.H - self.LEG_H - h - m, round(along - h / 2)))
+        y = max(m, min(self.FACE - h - 2, round(along - h / 2)))
         if shadow:
             a = np.asarray(img)[..., 3]
             z = np.zeros_like(a)
@@ -87,7 +74,7 @@ class BenchEast:
         img, bbox = self._layer(name)
         w = bbox[2] - bbox[0]
         centre = (bbox[0] + bbox[2]) / 2 - self.SX0
-        along = self.TOP / 2 + (centre - self.SW / 2) * self.stretch
+        along = (self.FACE + self.INSET) / 2 + (centre - self.SW / 2) * self.stretch
         across = (bbox[1] + bbox[3]) / 2 - self.SY0
         if stretch_width:
             img = img.resize((round(w * self.stretch), img.size[1]), Image.LANCZOS)
@@ -100,8 +87,8 @@ class BenchEast:
 
     def _place_slab(self, img, along, across):
         w, h = img.size
-        x = max(0, min(self.W - w, round(across - w / 2)))
-        y = max(0, min(self.H - h, round(along - h / 2)))
+        x = max(self.INSET, min(self.W - self.INSET - w, round(across - w / 2)))
+        y = max(self.INSET, min(self.FACE - h, round(along - h / 2)))
         self._put(img, (x, y), slab=True)
 
     def obj(self, path, along, across, height, turn=False):
@@ -114,6 +101,4 @@ class BenchEast:
         self._place(img, along * self.along, across)
 
     def out(self):
-        box = (0, 0, self.W, self.H)
-        return V.on_canvas(self.art.crop(box), self.mask.crop(box), CANVAS_E,
-                           ((CANVAS_E[0] - self.W) // 2, (CANVAS_E[1] - CELL * 3) // 2), TARGET_E)
+        return V.on_canvas(self.art, self.mask, CANVAS_E, (self.EX0, self.EY0), TARGET_E)

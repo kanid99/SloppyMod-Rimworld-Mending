@@ -32,8 +32,9 @@ PNGs are committed under `objects/` so the benches rebuild without an API key.
 
 `_south` is a copy of `_north`: the camera never rotates, so a 180 turn would put
 the bench's legs on the ceiling. `_east` is built rather than rotated - `bench_east.py`
-stands the slab on its end, stamps fresh leg tabs underneath, and moves each object to
-its quarter-turned position. Every object in the current layouts is drawn looking
+takes vanilla's own east tailor slab (`TableTailorHand_east.psd`: worktop, front strip
+and feet exactly as vanilla draws them) and moves each object to its quarter-turned
+position on the worktop. Every object in the current layouts is drawn looking
 straight down, so they turn with the bench; an object drawn in side elevation would
 have to stay upright instead.
 
