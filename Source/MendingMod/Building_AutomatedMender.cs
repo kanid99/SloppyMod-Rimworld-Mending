@@ -59,6 +59,12 @@ namespace MendingMod
         private ThingFilter acceptFilter;
         private TaintedMode taintedMode = TaintedMode.Repair;
 
+        // What the machine breaks down instead of repairing - the repair centre's answer to a
+        // bench's recycle bill. Checked before the accept filter, so gear in both is recycled,
+        // and damage does not matter, as it does not for a recycle bill. Starts empty, which
+        // leaves a machine doing exactly what it did before this existed.
+        private ThingFilter recycleFilter;
+
         // Things inside the machine waiting for a reject chute: rejected gear, and whatever a
         // recycle broke down into. Held here while both chutes are blocked, exactly as a repaired
         // item waits for the output spot.
@@ -92,6 +98,7 @@ namespace MendingMod
             Scribe_Values.Look(ref blockedEjects, "blockedEjects");
             Scribe_Values.Look(ref state, "state");
             Scribe_Deep.Look(ref acceptFilter, "acceptFilter");
+            Scribe_Deep.Look(ref recycleFilter, "recycleFilter");
             Scribe_Values.Look(ref taintedMode, "taintedMode", TaintedMode.Repair);
             Scribe_Collections.Look(ref rejectQueue, "rejectQueue", LookMode.Reference);
             Scribe_Values.Look(ref blockedRejects, "blockedRejects");
@@ -101,6 +108,7 @@ namespace MendingMod
             {
                 // A machine built before these existed loads with neither.
                 acceptFilter = acceptFilter ?? DefaultAcceptFilter();
+                recycleFilter = recycleFilter ?? new ThingFilter();
                 rejectQueue = rejectQueue ?? new List<Thing>();
                 rejectQueue.RemoveAll(t => t == null);
             }
@@ -133,6 +141,8 @@ namespace MendingMod
         }
 
         public ThingFilter AcceptFilter => acceptFilter ?? (acceptFilter = DefaultAcceptFilter());
+
+        public ThingFilter RecycleFilter => recycleFilter ?? (recycleFilter = new ThingFilter());
 
         private bool PowerOn
         {
@@ -307,6 +317,9 @@ namespace MendingMod
                 why = "DynamicMending.RejectTainted".Translate();
                 return Intake.Reject;
             }
+
+            if (RecycleFilter.Allows(thing) && MendingUtility.CanEverRecycle(thing))
+                return Intake.Recycle;
 
             if (!AcceptFilter.Allows(thing))
                 why = "DynamicMending.RejectFiltered".Translate();
@@ -694,7 +707,17 @@ namespace MendingMod
                 defaultLabel = "DynamicMending.AcceptFilterLabel".Translate(),
                 defaultDesc = "DynamicMending.AcceptFilterDesc".Translate(),
                 icon = TexCommand.SelectShelf,
-                action = () => Find.WindowStack.Add(new Dialog_MenderAcceptFilter(this)),
+                action = () => Find.WindowStack.Add(new Dialog_MenderAcceptFilter(
+                    this, AcceptFilter, "DynamicMending.AcceptFilterLabel", "DynamicMending.AcceptFilterHint")),
+            };
+
+            yield return new Command_Action
+            {
+                defaultLabel = "DynamicMending.RecycleFilterLabel".Translate(),
+                defaultDesc = "DynamicMending.RecycleFilterDesc".Translate(),
+                icon = TexCommand.Replant,
+                action = () => Find.WindowStack.Add(new Dialog_MenderAcceptFilter(
+                    this, RecycleFilter, "DynamicMending.RecycleFilterLabel", "DynamicMending.RecycleFilterHint")),
             };
 
             // Cycles rather than opening a menu, so it behaves with several machines selected:
