@@ -85,6 +85,13 @@
   <DynamicMending.RecycleFilterLabel>Recycled gear</DynamicMending.RecycleFilterLabel>
   <DynamicMending.RecycleFilterDesc>Choose what this machine breaks down for materials instead of repairing, like a recycle bill on a mending station. Damaged or not, gear this filter allows is recycled, even if the accepted gear filter also allows it, and what it breaks down into leaves by the red reject chutes. Empty by default: nothing is recycled.</DynamicMending.RecycleFilterDesc>
   <DynamicMending.RecycleFilterHint>Gear this filter allows is recycled, not repaired. Use the hit-point slider to recycle only worn-out gear. Tainted apparel has its own setting on the machine.</DynamicMending.RecycleFilterHint>
+  <DynamicMending.OverclockLabel>Overclock: {0}</DynamicMending.OverclockLabel>
+  <DynamicMending.OverclockDesc>Set how hard this machine runs, from 10% to 200%. Slower is more careful: at 10% it takes ten times as long but works like a skill 20 crafter, uses fewer materials and almost never botches a repair. Faster gets through gear quicker but works like a less skilled crafter. Power draw and heat both rise with the square of the speed, as on Vanilla Furniture Expanded - Factory's machines, whose boosters and heatsinks also work on this one.</DynamicMending.OverclockDesc>
+  <DynamicMending.OverclockTitle>Overclock</DynamicMending.OverclockTitle>
+  <DynamicMending.OverclockSkill>Works like a skill {0} crafter</DynamicMending.OverclockSkill>
+  <DynamicMending.OverclockPower>Power draw: {0} W</DynamicMending.OverclockPower>
+  <DynamicMending.OverclockHeat>Heat while working: {0} per second</DynamicMending.OverclockHeat>
+  <DynamicMending.OverclockInspect>Overclock {0}: works like a skill {1} crafter</DynamicMending.OverclockInspect>
   <DynamicMending.Tainted_Repair>Tainted apparel: repair</DynamicMending.Tainted_Repair>
   <DynamicMending.Tainted_Recycle>Tainted apparel: recycle</DynamicMending.Tainted_Recycle>
   <DynamicMending.Tainted_Reject>Tainted apparel: reject</DynamicMending.Tainted_Reject>

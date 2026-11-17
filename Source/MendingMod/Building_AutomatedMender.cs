@@ -30,7 +30,20 @@ namespace MendingMod
     [StaticConstructorOnStartup]
     public class Building_AutomatedMender : Building, IThingHolder
     {
+        // The skill it works at at 100% overclock, as it always did before overclocking existed.
         private const int FixedSkillLevel = 10;
+
+        // Overclocking, after Vanilla Furniture Expanded - Factory's machines: the same 10%-200%
+        // range, work time divided by the setting, and power and heat both scaled by
+        // 0.25 + 0.75 x setting squared (PipeSystem's CompPowerTrader_Overclocked and
+        // CompHeatPusherPowered_Overclocked). Unlike theirs it also trades speed for care, which
+        // is what a repair is about: slowed right down it works like a master and almost never
+        // botches a job; pushed hard it rushes like a novice.
+        public const float MinOverclock = 0.1f;
+        public const float MaxOverclock = 2f;
+        private const float IdleLoadFraction = 0.25f;
+        private const int SlowestSkill = 20;
+        private const int FastestSkill = 5;
 
         // TryEject retries on the 30-tick idle scan, so this is roughly two in-game minutes of a
         // blocked output spot before the machine gives up and puts the item down nearby.
@@ -49,6 +62,8 @@ namespace MendingMod
         private Thing currentItem;
         private int workTicksRemaining;
         private int workTicksTotal;
+        private float overclock = 1f;
+        private int jobSkill = FixedSkillLevel;     // fixed when a job starts, so its cost and its result agree
         private int blockedEjects;
         private MenderState state = MenderState.Idle;
         private string idleReason;
@@ -95,6 +110,8 @@ namespace MendingMod
             Scribe_References.Look(ref currentItem, "currentItem");
             Scribe_Values.Look(ref workTicksRemaining, "workTicksRemaining");
             Scribe_Values.Look(ref workTicksTotal, "workTicksTotal");
+            Scribe_Values.Look(ref overclock, "overclock", 1f);
+            Scribe_Values.Look(ref jobSkill, "jobSkill", FixedSkillLevel);
             Scribe_Values.Look(ref blockedEjects, "blockedEjects");
             Scribe_Values.Look(ref state, "state");
             Scribe_Deep.Look(ref acceptFilter, "acceptFilter");
@@ -163,6 +180,20 @@ namespace MendingMod
         private CompPowerTrader powerComp;
         private bool powerLooked;
 
+        private CompPowerTrader PowerTrader
+        {
+            get
+            {
+                if (!powerLooked)
+                {
+                    powerComp = GetComp<CompPowerTrader>();
+                    powerLooked = true;
+                }
+
+                return powerComp;
+            }
+        }
+
         // Checks in a row that found nothing on the item spot. Not saved: a loaded machine just
         // starts out attentive again.
         private int emptyScans;
@@ -200,6 +231,11 @@ namespace MendingMod
 
             if (!PowerOn)
                 return;
+
+            // Vanilla's heat pusher works in one-second steps too; CompPowerTrader resets its draw
+            // to the def's whenever power comes back on, so it is re-applied rather than set once.
+            if (this.IsHashIntervalTick(60))
+                ApplyOverclockLoad();
 
             // Twice a second is plenty for noticing new input or a cleared output spot, and avoids
             // re-scanning the spots on every one of the 60 ticks per second. A machine whose item
@@ -239,6 +275,86 @@ namespace MendingMod
         public List<IntVec3> RejectCells => MenderSpots.RejectCells(Footprint, Rotation);
 
         public bool IsRepairing => state == MenderState.Working;
+
+        public float Overclock
+        {
+            get => overclock;
+            set
+            {
+                float next = Mathf.Clamp(value, MinOverclock, MaxOverclockNow);
+                if (Mathf.Approximately(next, overclock))
+                    return;
+
+                // A job already running speeds up or slows down from where it is, as VFE's
+                // processes do when the slider moves; the skill it was started at stands.
+                if (state == MenderState.Working)
+                {
+                    workTicksRemaining = Mathf.Max(1, Mathf.RoundToInt(workTicksRemaining * overclock / next));
+                    workTicksTotal = Mathf.Max(1, Mathf.RoundToInt(workTicksTotal * overclock / next));
+                }
+
+                overclock = next;
+            }
+        }
+
+        // 10 at 100%, rising to 20 at the slowest setting and falling to 5 at 200%.
+        public static int SkillAt(float setting)
+        {
+            // Beyond 200% - reachable only with VFE Factory's boosters - it keeps getting worse at
+            // the same rate, down to skill 0.
+            float skill = setting <= 1f
+                ? Mathf.Lerp(SlowestSkill, FixedSkillLevel, (setting - MinOverclock) / (1f - MinOverclock))
+                : FixedSkillLevel - (FixedSkillLevel - FastestSkill) * (setting - 1f) / (MaxOverclock - 1f);
+            return Mathf.Clamp(Mathf.RoundToInt(skill), 0, 20);
+        }
+
+        // Vanilla Expanded Framework's two factory stats, raised and lowered by VFE Factory's
+        // booster and heatsink facilities once the compat patch links them to this building.
+        // Looked up by name: without the framework they do not exist and both read as 1.
+        private static StatDef maxOverclockStat;
+        private static StatDef heatFactorStat;
+        private static bool statsLooked;
+
+        private float FactoryStat(bool overclockStat)
+        {
+            if (!statsLooked)
+            {
+                maxOverclockStat = DefDatabase<StatDef>.GetNamedSilentFail("VEF_BuildingMaxOverclockFactor");
+                heatFactorStat = DefDatabase<StatDef>.GetNamedSilentFail("VEF_FactoryHeatPerSecondFactor");
+                statsLooked = true;
+            }
+
+            StatDef stat = overclockStat ? maxOverclockStat : heatFactorStat;
+            return stat == null ? 1f : this.GetStatValue(stat);
+        }
+
+        public float MaxOverclockNow => MaxOverclock * Mathf.Max(1f, FactoryStat(true));
+
+        public float HeatFactor => Mathf.Max(0f, FactoryStat(false));
+
+        public static float LoadFactorAt(float setting) => IdleLoadFraction + (1f - IdleLoadFraction) * setting * setting;
+
+        public int EffectiveSkill => SkillAt(overclock);
+
+        public float BasePowerConsumption => PowerTrader?.Props.PowerConsumption ?? 0f;
+
+        public float BaseHeatPerSecond => GetComp<CompHeatPusherMending>()?.Props.heatPerSecond ?? 0f;
+
+        // Power is drawn at the overclocked rate whenever the machine is on, working or not, as
+        // on VFE's machines; heat only while a job runs (CompHeatPusherMending).
+        private void ApplyOverclockLoad()
+        {
+            // A booster taken away lowers the ceiling; VFE pulls its own machines back the same way.
+            if (overclock > MaxOverclockNow)
+                Overclock = MaxOverclockNow;
+
+            CompPowerTrader power = PowerTrader;
+            if (power != null && power.PowerOn)
+                power.PowerOutput = -power.Props.PowerConsumption * LoadFactorAt(overclock);
+
+            if (IsRepairing)
+                GetComp<CompHeatPusherMending>()?.PushHeat(LoadFactorAt(overclock) * HeatFactor);
+        }
 
         private IEnumerable<Thing> ThingsOn(IntVec3 cell)
         {
@@ -384,7 +500,8 @@ namespace MendingMod
             List<Thing> available = ThingsOn(ResourceInputCells)
                 .Where(t => t != damagedItem && !IsOffLimits(t))
                 .ToList();
-            List<ThingDefCountClass> costs = MendingUtility.GetDynamicIngredientCosts(damagedItem, FixedSkillLevel, ignoreResearch: true);
+            int skill = EffectiveSkill;
+            List<ThingDefCountClass> costs = MendingUtility.GetDynamicIngredientCosts(damagedItem, skill, ignoreResearch: true);
 
             // Pass 1: verify every material is available before touching anything.
             Dictionary<ThingDef, int> stock = new Dictionary<ThingDef, int>();
@@ -434,8 +551,10 @@ namespace MendingMod
             }
 
             currentItem = damagedItem;
+            jobSkill = skill;
 
-            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.GetDynamicWorkAmount(currentItem, FixedSkillLevel, ignoreResearch: true)));
+            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(
+                MendingUtility.GetDynamicWorkAmount(currentItem, skill, ignoreResearch: true) / overclock));
             workTicksRemaining = workTicksTotal;
             state = MenderState.Working;
         }
@@ -494,7 +613,8 @@ namespace MendingMod
             currentItem = thing;
             recycling = true;
             idleReason = null;
-            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.RecycleWorkAmount(thing)));
+            jobSkill = EffectiveSkill;
+            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.RecycleWorkAmount(thing) / overclock));
             workTicksRemaining = workTicksTotal;
             state = MenderState.Working;
         }
@@ -570,8 +690,8 @@ namespace MendingMod
                 return;
             }
 
-            GetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(currentItem, FixedSkillLevel);
-            MendResult result = MendingUtility.ResolveRepair(currentItem, FixedSkillLevel, ignoreResearch: true);
+            GetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(currentItem, jobSkill);
+            MendResult result = MendingUtility.ResolveRepair(currentItem, jobSkill, ignoreResearch: true);
             MendingUtility.ShowRepairResult(result, this);
 
             state = MenderState.Ejecting;
@@ -592,7 +712,7 @@ namespace MendingMod
                 return;
 
             string label = item.LabelShortCap;
-            List<Thing> products = MendingUtility.MakeRecycleProducts(item, FixedSkillLevel);
+            List<Thing> products = MendingUtility.MakeRecycleProducts(item, jobSkill);
             foreach (Thing product in products)
             {
                 if (innerContainer.TryAdd(product))
@@ -720,6 +840,14 @@ namespace MendingMod
                     this, RecycleFilter, "DynamicMending.RecycleFilterLabel", "DynamicMending.RecycleFilterHint")),
             };
 
+            yield return new Command_Action
+            {
+                defaultLabel = "DynamicMending.OverclockLabel".Translate(overclock.ToStringPercent()),
+                defaultDesc = "DynamicMending.OverclockDesc".Translate(),
+                icon = TexCommand.DesirePower,
+                action = () => Find.WindowStack.Add(new Window_MenderOverclock(this)),
+            };
+
             // Cycles rather than opening a menu, so it behaves with several machines selected:
             // each one steps on from its own setting.
             yield return new Command_Action
@@ -759,6 +887,9 @@ namespace MendingMod
 
             if (!lastRejected.NullOrEmpty())
                 sb.AppendLine().Append(lastRejected);
+
+            sb.AppendLine();
+            sb.Append("DynamicMending.OverclockInspect".Translate(overclock.ToStringPercent(), EffectiveSkill));
 
             sb.AppendLine();
             sb.Append(("DynamicMending.Tainted_" + taintedMode).Translate());
