@@ -45,10 +45,6 @@ namespace MendingMod
         private const int SlowestSkill = 20;
         private const int FastestSkill = 5;
 
-        // TryEject retries on the 30-tick idle scan, so this is roughly two in-game minutes of a
-        // blocked output spot before the machine gives up and puts the item down nearby.
-        private const int BlockedEjectsBeforeScatter = 240;
-
         // Built in a static constructor context so the materials are created after the graphics
         // system is up, which is what [StaticConstructorOnStartup] guarantees.
         private static readonly Material BarFilledMat =
@@ -64,7 +60,6 @@ namespace MendingMod
         private int workTicksTotal;
         private float overclock = 1f;
         private int jobSkill = FixedSkillLevel;     // fixed when a job starts, so its cost and its result agree
-        private int blockedEjects;
         private MenderState state = MenderState.Idle;
         private string idleReason;
 
@@ -84,7 +79,6 @@ namespace MendingMod
         // recycle broke down into. Held here while both chutes are blocked, exactly as a repaired
         // item waits for the output spot.
         private List<Thing> rejectQueue = new List<Thing>();
-        private int blockedRejects;
         private bool recycling;
         private string lastRejected;
 
@@ -112,13 +106,11 @@ namespace MendingMod
             Scribe_Values.Look(ref workTicksTotal, "workTicksTotal");
             Scribe_Values.Look(ref overclock, "overclock", 1f);
             Scribe_Values.Look(ref jobSkill, "jobSkill", FixedSkillLevel);
-            Scribe_Values.Look(ref blockedEjects, "blockedEjects");
             Scribe_Values.Look(ref state, "state");
             Scribe_Deep.Look(ref acceptFilter, "acceptFilter");
             Scribe_Deep.Look(ref recycleFilter, "recycleFilter");
             Scribe_Values.Look(ref taintedMode, "taintedMode", TaintedMode.Repair);
             Scribe_Collections.Look(ref rejectQueue, "rejectQueue", LookMode.Reference);
-            Scribe_Values.Look(ref blockedRejects, "blockedRejects");
             Scribe_Values.Look(ref recycling, "recycling");
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
@@ -219,7 +211,6 @@ namespace MendingMod
             idleReason = null;
             state = MenderState.Idle;
             rejectQueue.Clear();         // dropped with everything else, just above
-            blockedRejects = 0;
             recycling = false;
 
             base.DeSpawn(mode);
@@ -622,14 +613,13 @@ namespace MendingMod
         // Puts whatever is waiting onto a free reject chute. True once nothing is left waiting.
         //
         // Direct placement only, like the output port, so a belt laid on a chute collects from
-        // it. After a couple of minutes of both chutes refusing, it gives up and puts the lot
-        // down beside the machine - a chute built over is otherwise a machine that jams for good.
+        // it. Each chute takes one stack (more with storage or a belt on it), so a recycle that
+        // breaks into several materials can take a moment to get out.
         private bool FlushRejects()
         {
             rejectQueue.RemoveAll(t => t == null || t.Destroyed || !innerContainer.Contains(t));
             if (rejectQueue.Count == 0)
             {
-                blockedRejects = 0;
                 return true;
             }
 
@@ -648,23 +638,13 @@ namespace MendingMod
 
             if (rejectQueue.Count == 0)
             {
-                blockedRejects = 0;
                 return true;
             }
 
-            blockedRejects++;
-            if (blockedRejects < BlockedEjectsBeforeScatter)
-                return false;
-
-            foreach (Thing thing in rejectQueue)
-                innerContainer.TryDrop(thing, Position, Map, ThingPlaceMode.Near, out _);
-
-            Messages.Message("DynamicMending.RejectChuteUnreachable".Translate(Label),
-                             new TargetInfo(Position, Map), MessageTypeDefOf.CautionInput, historical: false);
-
-            rejectQueue.Clear();
-            blockedRejects = 0;
-            return true;
+            // Like Vanilla Furniture Expanded - Factory's machines, it simply waits for a chute
+            // to clear, however long that takes, and takes nothing new in meanwhile. Nothing held
+            // is ever lost: uninstalling or deconstructing the machine puts it all on the floor.
+            return false;
         }
 
         private void TickWork()
@@ -726,10 +706,8 @@ namespace MendingMod
             FlushRejects();
         }
 
-        // Direct placement first so the item lands exactly on an output cell (a conveyor laid
-        // there will collect it on its next tick); only if every output cell refuses does it fall
-        // back to scattering the item nearby.
-        // Only ever places onto the output spot itself, never scattered nearby: a designated spot
+        // Direct placement, so the item lands exactly on the output spot (a conveyor laid there
+        // will collect it on its next tick). Only ever onto the spot itself, never scattered: a designated spot
         // that sometimes puts the item two tiles away is worse than one that visibly waits. If
         // the spot is blocked the item stays inside and this retries, so a conveyor or stockpile
         // clearing the spot gets the item on the next scan.
@@ -751,32 +729,12 @@ namespace MendingMod
             {
                 currentItem = null;
                 idleReason = null;
-                blockedEjects = 0;
                 state = MenderState.Idle;
                 return;
             }
 
-            // Waiting on the spot is right for a stockpile being filled or a belt that has not
-            // come round yet. It is wrong if the spot has been made permanently unusable - a wall
-            // built over it, say - because then the item is held forever and the only way to get
-            // it back is to uninstall the machine. After a couple of in-game minutes of refusals,
-            // put it down nearby instead of hoarding it.
-            blockedEjects++;
-            if (blockedEjects >= BlockedEjectsBeforeScatter
-                && innerContainer.Contains(currentItem)
-                && innerContainer.TryDrop(currentItem, Position, Map, ThingPlaceMode.Near, out _))
-            {
-                Messages.Message(
-                    "DynamicMending.MenderOutputUnreachable".Translate(currentItem.LabelShortCap, Label),
-                    new TargetInfo(Position, Map), MessageTypeDefOf.CautionInput, historical: false);
-
-                currentItem = null;
-                idleReason = null;
-                blockedEjects = 0;
-                state = MenderState.Idle;
-                return;
-            }
-
+            // Wait for the spot, however long that takes, as VFE Factory's machines do. Nothing
+            // held is lost: uninstalling or deconstructing the machine puts it on the floor.
             idleReason = "DynamicMending.MenderOutputBlocked".Translate(currentItem.LabelShortCap);
         }
 
