@@ -4,9 +4,9 @@ using Verse;
 
 namespace MendingMod
 {
-    // The mod's only Harmony patch. Everything else - float menus, inspect previews, worn-gear
-    // repair - goes through extension points the game provides; this is the one place it has
-    // none. See Bill_Mend.
+    // Player-added mend bills. Everything else - float menus, inspect previews, worn-gear
+    // repair - goes through extension points the game provides; this is one of the two places it
+    // has none. See Bill_Mend.
     [HarmonyPatch(typeof(BillUtility), nameof(BillUtility.MakeNewBill))]
     public static class Patch_BillUtility_MakeNewBill
     {
@@ -23,6 +23,23 @@ namespace MendingMod
                 return;
 
             __result = new Bill_Mend(recipe, precept);
+        }
+    }
+
+    // The other: CompBreakdownable has no way to vary its breakdown rate per building, and the
+    // repair center's should follow its overclock. The BreakdownManager's roll for that one
+    // building is handed to Building_AutomatedMender.CheckForBreakdown; every other building
+    // runs vanilla's untouched.
+    [HarmonyPatch(typeof(CompBreakdownable), nameof(CompBreakdownable.CheckForBreakdown))]
+    public static class Patch_CompBreakdownable_CheckForBreakdown
+    {
+        public static bool Prefix(CompBreakdownable __instance)
+        {
+            if (!(__instance.parent is Building_AutomatedMender mender))
+                return true;
+
+            mender.CheckForBreakdown(__instance);
+            return false;
         }
     }
 }

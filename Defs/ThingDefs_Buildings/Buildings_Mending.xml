@@ -288,6 +288,15 @@
         <heatPushMaxTemperature>60</heatPushMaxTemperature>
       </li>
       <li Class="CompProperties_Flickable" />
+      <!-- Breaks down like any powered machine, fixed with a component - but how often follows
+           the overclock: see Building_AutomatedMender.CheckForBreakdown. -->
+      <li Class="CompProperties_Breakdownable" />
+      <!-- Lit only while a job runs: see CompGlowerMending. -->
+      <li Class="CompProperties_Glower">
+        <compClass>MendingMod.CompGlowerMending</compClass>
+        <glowRadius>4</glowRadius>
+        <glowColor>(62,201,217,0)</glowColor>
+      </li>
       <li Class="MendingMod.CompProperties_MenderWasteBuffer">
         <wasteBufferThreshold>1</wasteBufferThreshold>
         <toxicWasteDefName>Wastepack</toxicWasteDefName>
@@ -300,6 +309,9 @@
         <trashWasteLabel>trash</trashWasteLabel>
       </li>
     </comps>
+    <inspectorTabs>
+      <li>MendingMod.ITab_MenderStatus</li>
+    </inspectorTabs>
   </ThingDef>
 
 </Defs>

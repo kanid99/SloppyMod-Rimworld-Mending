@@ -4,6 +4,7 @@ using System.Text;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.Sound;
 
 namespace MendingMod
 {
@@ -59,6 +60,11 @@ namespace MendingMod
         private int workTicksRemaining;
         private int workTicksTotal;
         private float overclock = 1f;
+
+        // The working sound and glow. Not saved: a loaded machine picks them up on its next tick.
+        private Sustainer workSustainer;
+        private Thing workSoundItem;
+        private bool glowLit;
         private int jobSkill = FixedSkillLevel;     // fixed when a job starts, so its cost and its result agree
         private MenderState state = MenderState.Idle;
         private string idleReason;
@@ -212,6 +218,7 @@ namespace MendingMod
             state = MenderState.Idle;
             rejectQueue.Clear();         // dropped with everything else, just above
             recycling = false;
+            EndWorkSound();
 
             base.DeSpawn(mode);
         }
@@ -219,6 +226,8 @@ namespace MendingMod
         protected override void Tick()
         {
             base.Tick();
+
+            UpdateWorkEffects();
 
             if (!PowerOn)
                 return;
@@ -302,26 +311,159 @@ namespace MendingMod
         // Vanilla Expanded Framework's two factory stats, raised and lowered by VFE Factory's
         // booster and heatsink facilities once the compat patch links them to this building.
         // Looked up by name: without the framework they do not exist and both read as 1.
-        private static StatDef maxOverclockStat;
-        private static StatDef heatFactorStat;
-        private static bool statsLooked;
+        // VEF_BuildingBreakdownFactor is the framework's third factory stat: breakdowns come that
+        // many times as often. It is 1 unless something raises it.
+        private enum FactoryStatKind { MaxOverclock, Heat, Breakdown }
 
-        private float FactoryStat(bool overclockStat)
+        private static StatDef[] factoryStats;
+
+        private float FactoryStat(FactoryStatKind kind)
         {
-            if (!statsLooked)
+            if (factoryStats == null)
             {
-                maxOverclockStat = DefDatabase<StatDef>.GetNamedSilentFail("VEF_BuildingMaxOverclockFactor");
-                heatFactorStat = DefDatabase<StatDef>.GetNamedSilentFail("VEF_FactoryHeatPerSecondFactor");
-                statsLooked = true;
+                factoryStats = new[] { "VEF_BuildingMaxOverclockFactor", "VEF_FactoryHeatPerSecondFactor", "VEF_BuildingBreakdownFactor" }
+                    .Select(n => DefDatabase<StatDef>.GetNamedSilentFail(n))
+                    .ToArray();
             }
 
-            StatDef stat = overclockStat ? maxOverclockStat : heatFactorStat;
+            StatDef stat = factoryStats[(int)kind];
             return stat == null ? 1f : this.GetStatValue(stat);
         }
 
-        public float MaxOverclockNow => MaxOverclock * Mathf.Max(1f, FactoryStat(true));
+        public float MaxOverclockNow => MaxOverclock * Mathf.Max(1f, FactoryStat(FactoryStatKind.MaxOverclock));
 
-        public float HeatFactor => Mathf.Max(0f, FactoryStat(false));
+        public float HeatFactor => Mathf.Max(0f, FactoryStat(FactoryStatKind.Heat));
+
+        // ------------------------------------------------------------------ breakdowns
+        //
+        // Vanilla's CompBreakdownable rolls Rand.MTBEventOccurs(13680000, 1, 1041) every time the
+        // BreakdownManager checks it, every 1041 ticks. Patch_CompBreakdownable_CheckForBreakdown
+        // hands the roll for this building here instead, so it can scale the risk with the
+        // overclock, by the same 0.25 + 0.75 x setting squared as power and heat: about a quarter
+        // of the usual rate at 10%, the usual rate at 100%, three and a quarter times it at 200%.
+        private const float VanillaBreakdownMTBTicks = 13680000f;
+        private const float BreakdownCheckIntervalTicks = 1041f;
+
+        public float BreakdownFactor => LoadFactorAt(overclock) * Mathf.Max(0f, FactoryStat(FactoryStatKind.Breakdown));
+
+        public void CheckForBreakdown(CompBreakdownable breakdown)
+        {
+            // Vanilla's own condition: not already broken, and powered.
+            if (breakdown.BrokenDown || !PowerOn)
+                return;
+
+            float factor = BreakdownFactor;
+            if (factor > 0f && Rand.MTBEventOccurs(VanillaBreakdownMTBTicks / factor, 1f, BreakdownCheckIntervalTicks))
+                breakdown.DoBreakdown();
+        }
+
+        // ------------------------------------------------------------------ ideology
+        //
+        // Vanilla Memes Expanded's automation precepts, as Vanilla Expanded Framework applies them
+        // to VFE Factory's machines (Process.GetFactoryAcceleration): work takes 0.75x as long
+        // under the efficient one, 1.5x under the other. Looked up by name, so without that mod
+        // (or without Ideology) neither exists and the factor is 1.
+        private static PreceptDef automationFaster;
+        private static PreceptDef automationSlower;
+        private static bool preceptsLooked;
+
+        public static float PreceptWorkFactor
+        {
+            get
+            {
+                if (!preceptsLooked)
+                {
+                    automationFaster = DefDatabase<PreceptDef>.GetNamedSilentFail("VME_AutomationEfficiency_Increased");
+                    automationSlower = DefDatabase<PreceptDef>.GetNamedSilentFail("VME_AutomationEfficiency_Decreased");
+                    preceptsLooked = true;
+                }
+
+                if (automationFaster == null && automationSlower == null)
+                    return 1f;
+
+                FactionIdeosTracker ideos = Faction.OfPlayer?.ideos;
+                if (ideos == null)
+                    return 1f;
+                if (automationFaster != null && ideos.GetPrecept(automationFaster) != null)
+                    return 0.75f;
+                if (automationSlower != null && ideos.GetPrecept(automationSlower) != null)
+                    return 1.5f;
+                return 1f;
+            }
+        }
+
+        // ------------------------------------------------------------------ sound and glow
+        //
+        // The working sound is the one the item's own crafting recipe plays - the tailor's sewing
+        // machine for clothes, the smithy's hammering for blades and armor, machining for guns -
+        // so it sounds like the job it is doing. Gear with no recipe of its own falls back by
+        // material: anything metal gets the smithy, cloth and leather the sewing machine.
+        private static SoundDef soundTailor;
+        private static SoundDef soundSmith;
+        private static bool soundsLooked;
+
+        private static SoundDef WorkSoundFor(Thing item)
+        {
+            SoundDef own = item.def.recipeMaker?.soundWorking;
+            if (own != null)
+                return own;
+
+            if (!soundsLooked)
+            {
+                soundTailor = DefDatabase<SoundDef>.GetNamedSilentFail("Recipe_Tailor");
+                soundSmith = DefDatabase<SoundDef>.GetNamedSilentFail("Recipe_Smith");
+                soundsLooked = true;
+            }
+
+            List<StuffCategoryDef> categories = item.Stuff?.stuffProps?.categories;
+            if (categories != null)
+            {
+                if (categories.Contains(StuffCategoryDefOf.Metallic))
+                    return soundSmith;
+                if (categories.Contains(StuffCategoryDefOf.Fabric) || categories.Contains(StuffCategoryDefOf.Leathery))
+                    return soundTailor;
+            }
+
+            return item.def.IsApparel ? soundTailor : soundSmith;
+        }
+
+        private void UpdateWorkEffects()
+        {
+            bool working = state == MenderState.Working && currentItem != null && PowerOn && Spawned;
+
+            if (working)
+            {
+                if (workSustainer == null || workSustainer.Ended || workSoundItem != currentItem)
+                {
+                    EndWorkSound();
+                    SoundDef sound = WorkSoundFor(currentItem);
+                    workSoundItem = currentItem;
+                    if (sound != null && sound.sustain)
+                        workSustainer = sound.TrySpawnSustainer(SoundInfo.InMap(this, MaintenanceType.PerTick));
+                }
+
+                workSustainer?.Maintain();
+            }
+            else
+            {
+                EndWorkSound();
+            }
+
+            if (working != glowLit && Spawned)
+            {
+                glowLit = working;
+                GetComp<CompGlowerMending>()?.UpdateLit(Map);
+            }
+        }
+
+        private void EndWorkSound()
+        {
+            if (workSustainer != null && !workSustainer.Ended)
+                workSustainer.End();
+
+            workSustainer = null;
+            workSoundItem = null;
+        }
 
         public static float LoadFactorAt(float setting) => IdleLoadFraction + (1f - IdleLoadFraction) * setting * setting;
 
@@ -545,7 +687,7 @@ namespace MendingMod
             jobSkill = skill;
 
             workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(
-                MendingUtility.GetDynamicWorkAmount(currentItem, skill, ignoreResearch: true) / overclock));
+                MendingUtility.GetDynamicWorkAmount(currentItem, skill, ignoreResearch: true) * PreceptWorkFactor / overclock));
             workTicksRemaining = workTicksTotal;
             state = MenderState.Working;
         }
@@ -605,7 +747,7 @@ namespace MendingMod
             recycling = true;
             idleReason = null;
             jobSkill = EffectiveSkill;
-            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.RecycleWorkAmount(thing) / overclock));
+            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.RecycleWorkAmount(thing) * PreceptWorkFactor / overclock));
             workTicksRemaining = workTicksTotal;
             state = MenderState.Working;
         }
@@ -817,6 +959,111 @@ namespace MendingMod
                      : TexCommand.ForbidOff,
                 action = () => taintedMode = (TaintedMode)(((int)taintedMode + 1) % 3),
             };
+        }
+
+        // ------------------------------------------------------------------ status tab
+        //
+        // Everything ITab_MenderStatus shows, worked out here so the tab and the machine cannot
+        // disagree. Cached for half a second of game time (and redone when the overclock moves):
+        // pricing the item on the spot runs the same cost calculation a job does, which is too
+        // much to repeat every frame the tab is open.
+        private List<string> statusCache;
+        private int statusCacheTick = -1;
+        private float statusCacheOverclock = -1f;
+
+        public List<string> StatusLines()
+        {
+            int now = Find.TickManager.TicksGame;
+            if (statusCache != null && now - statusCacheTick < 30 && Mathf.Approximately(statusCacheOverclock, overclock))
+                return statusCache;
+
+            List<string> lines = new List<string>();
+
+            // What it is doing.
+            lines.Add("DynamicMending.TabHeaderNow".Translate());
+            if (!PowerOn)
+            {
+                lines.Add("DynamicMending.MenderNoPower".Translate());
+            }
+            else if (state == MenderState.Working && currentItem != null)
+            {
+                lines.Add((recycling ? "DynamicMending.MenderRecycling" : "DynamicMending.MenderRepairing")
+                    .Translate(currentItem.LabelCap, WorkProgress.ToStringPercent()));
+                lines.Add("DynamicMending.TabTimeLeft".Translate(workTicksRemaining.ToStringTicksToPeriod()));
+                lines.Add("DynamicMending.TabJobSkill".Translate(jobSkill));
+            }
+            else
+            {
+                lines.Add(idleReason ?? "DynamicMending.MenderIdle".Translate().ToString());
+            }
+
+            // How hard it is being driven, and what that costs.
+            float load = LoadFactorAt(overclock);
+            lines.Add("");
+            lines.Add("DynamicMending.TabHeaderOverclock".Translate(overclock.ToStringPercent()));
+            lines.Add("DynamicMending.OverclockSkill".Translate(EffectiveSkill));
+            lines.Add("DynamicMending.OverclockPower".Translate(Mathf.RoundToInt(BasePowerConsumption * load)));
+            lines.Add("DynamicMending.OverclockHeat".Translate((BaseHeatPerSecond * load * HeatFactor).ToString("0.#")));
+            lines.Add("DynamicMending.TabBreakdowns".Translate(BreakdownFactor.ToStringPercent()));
+            float precept = PreceptWorkFactor;
+            if (!Mathf.Approximately(precept, 1f))
+                lines.Add("DynamicMending.TabPrecept".Translate(precept.ToStringPercent()));
+
+            // What is waiting on the item spot, and what will happen to it.
+            lines.Add("");
+            lines.Add("DynamicMending.TabHeaderNext".Translate());
+            Thing next = Spawned ? ThingsOn(ItemInputCell).FirstOrDefault(t => IsGear(t) && !IsOffLimits(t)) : null;
+            if (next == null)
+            {
+                lines.Add("DynamicMending.TabNothingWaiting".Translate());
+            }
+            else
+            {
+                switch (Decide(next, out string why))
+                {
+                    case Intake.Reject:
+                        lines.Add("DynamicMending.TabNextReject".Translate(next.LabelCap, why));
+                        break;
+                    case Intake.Recycle:
+                        lines.Add("DynamicMending.TabNextRecycle".Translate(next.LabelCap));
+                        break;
+                    default:
+                        lines.Add("DynamicMending.TabNextRepair".Translate(next.LabelCap));
+                        Dictionary<ThingDef, int> stock = new Dictionary<ThingDef, int>();
+                        foreach (Thing t in ThingsOn(ResourceInputCells))
+                        {
+                            stock.TryGetValue(t.def, out int had);
+                            stock[t.def] = had + t.stackCount;
+                        }
+
+                        foreach (ThingDefCountClass cost in MendingUtility.GetDynamicIngredientCosts(next, EffectiveSkill, ignoreResearch: true))
+                        {
+                            stock.TryGetValue(cost.thingDef, out int have);
+                            lines.Add("DynamicMending.TabCostLine".Translate(cost.count, cost.thingDef.label, have));
+                        }
+                        break;
+                }
+            }
+
+            // Anything held for the chutes, and the last thing turned away.
+            if (rejectQueue.Count > 0)
+            {
+                lines.Add("");
+                lines.Add("DynamicMending.TabHeaderHeld".Translate(rejectQueue.Count));
+                foreach (Thing held in rejectQueue)
+                    lines.Add("  " + held.LabelCap);
+            }
+
+            if (!lastRejected.NullOrEmpty())
+            {
+                lines.Add("");
+                lines.Add(lastRejected);
+            }
+
+            statusCache = lines;
+            statusCacheTick = now;
+            statusCacheOverclock = overclock;
+            return lines;
         }
 
         public override string GetInspectString()

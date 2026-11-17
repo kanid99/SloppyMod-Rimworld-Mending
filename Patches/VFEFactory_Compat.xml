@@ -57,6 +57,28 @@
           </value>
         </li>
 
+        <!--
+          Build it from VFE Factory's own Factories tab, next to the machines it works alongside,
+          with the factory hopper offered as a related build when it is selected - as VFE's
+          machines do. Without VFE Factory it stays on the Production tab.
+        -->
+        <li Class="PatchOperationReplace">
+          <xpath>/Defs/ThingDef[defName="AutomatedMender"]/designationCategory</xpath>
+          <value>
+            <designationCategory>VFEFactory_Factories</designationCategory>
+          </value>
+        </li>
+        <li Class="PatchOperationAdd">
+          <xpath>/Defs/ThingDef[defName="AutomatedMender"]</xpath>
+          <value>
+            <building>
+              <relatedBuildCommands>
+                <li>VFEFactory_FactoryHopper</li>
+              </relatedBuildCommands>
+            </building>
+          </value>
+        </li>
+
         <li Class="PatchOperationReplace">
           <xpath>/Defs/ThingDef[defName="AutomatedMender"]/description</xpath>
           <value>
