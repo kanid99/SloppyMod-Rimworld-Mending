@@ -114,6 +114,8 @@
   <DynamicMending.RejectTainted>tainted</DynamicMending.RejectTainted>
   <DynamicMending.RejectFiltered>not in the accepted gear filter</DynamicMending.RejectFiltered>
   <DynamicMending.RejectUndamaged>not damaged</DynamicMending.RejectUndamaged>
+  <DynamicMending.RejectNotGear>not apparel or a weapon</DynamicMending.RejectNotGear>
+  <DynamicMending.RejectForbidden>forbidden</DynamicMending.RejectForbidden>
   <DynamicMending.RejectThreshold>above the auto-repair threshold of {0}</DynamicMending.RejectThreshold>
   <DynamicMending.RejectTooAdvanced>beyond what this machine can repair</DynamicMending.RejectTooAdvanced>
   <DynamicMending.RejectChuteBlocked>Waiting: both reject chutes (red) are blocked, {0} item(s) held.</DynamicMending.RejectChuteBlocked>

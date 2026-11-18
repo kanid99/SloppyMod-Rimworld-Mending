@@ -285,6 +285,18 @@ namespace MendingMod
 
         public int LogisticsCapacity => 4;
 
+        // Why it would not take an item, for the arm's inspect pane; null if it would.
+        public string LogisticsRefusal(Thing thing)
+        {
+            if (thing == null)
+                return null;
+            if (!IsGear(thing))
+                return "DynamicMending.RejectNotGear".Translate();
+            if (IsOffLimits(thing))
+                return "DynamicMending.RejectForbidden".Translate();
+            return Decide(thing, out string why) == Intake.Reject ? why : null;
+        }
+
         public IntVec3 OutputCell => MenderSpots.OutputCell(Footprint, Rotation);
 
         public List<IntVec3> RejectCells => MenderSpots.RejectCells(Footprint, Rotation);
