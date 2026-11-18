@@ -270,6 +270,21 @@ namespace MendingMod
 
         public IEnumerable<IntVec3> ResourceInputCells => MenderSpots.ResourceInputCells(Footprint, Rotation);
 
+        // ---- Logistics hook (found by name by SloppyMods Factory Logistics, no reference either way)
+        //
+        // A conveyor arm Feeder standing behind the item spot asks these: where to deliver, which
+        // items the machine would take - gear its filters would repair or recycle, never one it
+        // would only send back out as a reject - and how many it wants queued on the way.
+        public IntVec3 LogisticsInputCell => ItemInputCell;
+
+        public bool LogisticsAccepts(Thing thing)
+        {
+            return Spawned && thing != null && IsGear(thing) && !IsOffLimits(thing)
+                && Decide(thing, out string _) != Intake.Reject;
+        }
+
+        public int LogisticsCapacity => 4;
+
         public IntVec3 OutputCell => MenderSpots.OutputCell(Footprint, Rotation);
 
         public List<IntVec3> RejectCells => MenderSpots.RejectCells(Footprint, Rotation);
