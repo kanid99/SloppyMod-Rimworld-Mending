@@ -1,0 +1,11 @@
+[h2]Build 0.9.128[/h2]
+[h3]Changed[/h3]
+[list]
+[*]The repair center no longer waits for every material before starting. It takes the damaged item in straight away, collects whatever materials are on its resource spots, and holds the item and those materials until the rest turn up; then the repair starts. The status shows what it is still waiting for.
+[*]Materials are now used up when a repair finishes rather than when it starts.
+[/list]
+[h3]Added[/h3]
+[list]
+[*][b]Cancel job[/b] button: stops whatever the repair center is doing and puts the item, every material gathered for it and anything waiting for a reject chute on the floor beside it. The item is forbidden so it is not fed straight back in.
+[*][b]SloppyMods Factory Logistics:[/b] a conveyor arm Feeder at one of the repair center's resource spots now asks for exactly the materials the waiting repair still lacks, and its Loaders send exactly that amount.
+[/list]

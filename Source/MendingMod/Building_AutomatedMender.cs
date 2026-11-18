@@ -53,7 +53,10 @@ namespace MendingMod
         private static readonly Material BarUnfilledMat =
             SolidColorMaterials.SimpleSolidColorMaterial(new Color(0.12f, 0.13f, 0.14f));
 
-        private enum MenderState : byte { Idle, Working, Ejecting }
+        // Gathering: the item is inside and the machine is collecting its materials from the
+        // resource spots as they turn up; the job starts once it holds all of them. (Appended last
+        // so saved states keep their numbers.)
+        private enum MenderState : byte { Idle, Working, Ejecting, Gathering }
 
         private ThingOwner<Thing> innerContainer;
         private Thing currentItem;
@@ -88,6 +91,10 @@ namespace MendingMod
         private bool recycling;
         private string lastRejected;
 
+        // The materials the current repair costs. Held inside the machine as they are gathered
+        // and only used up when the repair finishes, so cancelling gives them all back.
+        private List<ThingDefCountClass> pendingCosts;
+
         public Building_AutomatedMender()
         {
             innerContainer = new ThingOwner<Thing>(this, oneStackOnly: false);
@@ -118,6 +125,7 @@ namespace MendingMod
             Scribe_Values.Look(ref taintedMode, "taintedMode", TaintedMode.Repair);
             Scribe_Collections.Look(ref rejectQueue, "rejectQueue", LookMode.Reference);
             Scribe_Values.Look(ref recycling, "recycling");
+            Scribe_Collections.Look(ref pendingCosts, "pendingCosts", LookMode.Deep);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -218,6 +226,7 @@ namespace MendingMod
             state = MenderState.Idle;
             rejectQueue.Clear();         // dropped with everything else, just above
             recycling = false;
+            pendingCosts = null;
             EndWorkSound();
 
             base.DeSpawn(mode);
@@ -258,6 +267,11 @@ namespace MendingMod
                 if (this.IsHashIntervalTick(ScanInterval))
                     TryEject();
             }
+            else if (state == MenderState.Gathering)
+            {
+                if (this.IsHashIntervalTick(ScanInterval))
+                    Gather();
+            }
             else
             {
                 TickWork();
@@ -284,6 +298,27 @@ namespace MendingMod
         }
 
         public int LogisticsCapacity => 4;
+
+        // The material spots, and what a Feeder at one of them should bring: what the repair being
+        // gathered still lacks, less what is already lying on the other material spots. (What is
+        // on the Feeder's own spot, and on its belts, the Feeder counts itself.)
+        public IEnumerable<IntVec3> LogisticsResourceCells => ResourceInputCells;
+
+        public List<ThingDefCountClass> LogisticsMaterialNeeds(IntVec3 cell)
+        {
+            List<ThingDefCountClass> needs = new List<ThingDefCountClass>();
+            if (!Spawned || state != MenderState.Gathering || pendingCosts == null)
+                return needs;
+            List<Thing> elsewhere = ThingsOn(ResourceInputCells.Where(c => c != cell)).Where(s => !IsOffLimits(s)).ToList();
+            foreach (ThingDefCountClass cost in pendingCosts)
+            {
+                int remaining = cost.count - HeldOf(cost.thingDef)
+                    - elsewhere.Where(s => s.def == cost.thingDef).Sum(s => s.stackCount);
+                if (remaining > 0)
+                    needs.Add(new ThingDefCountClass(cost.thingDef, remaining));
+            }
+            return needs;
+        }
 
         // Why it would not take an item, for the arm's inspect pane; null if it would.
         public string LogisticsRefusal(Thing thing)
@@ -657,66 +692,164 @@ namespace MendingMod
                 return;
             }
 
-            List<Thing> available = ThingsOn(ResourceInputCells)
-                .Where(t => t != damagedItem && !IsOffLimits(t))
-                .ToList();
             int skill = EffectiveSkill;
-            List<ThingDefCountClass> costs = MendingUtility.GetDynamicIngredientCosts(damagedItem, skill, ignoreResearch: true);
 
-            // Pass 1: verify every material is available before touching anything.
-            Dictionary<ThingDef, int> stock = new Dictionary<ThingDef, int>();
-            foreach (Thing thing in available)
-            {
-                stock.TryGetValue(thing.def, out int have);
-                stock[thing.def] = have + thing.stackCount;
-            }
-
-            foreach (ThingDefCountClass cost in costs)
-            {
-                if (!stock.TryGetValue(cost.thingDef, out int have) || have < cost.count)
-                {
-                    // Naming the exact shortfall rather than a generic "idle" - otherwise the only
-                    // way to find out why nothing is happening is to guess at the input spots.
-                    idleReason = "DynamicMending.MenderNeedsMaterial".Translate(
-                        damagedItem.LabelShortCap, cost.count, cost.thingDef.label, have);
-                    return;
-                }
-            }
-
-            idleReason = null;
-
-            // Draw the item in BEFORE paying for it. Consuming first and then failing to take the
-            // item would destroy the materials and leave the item sitting on the spot - and since
-            // the scan retries twice a second, it would eat every fresh stack put down after it.
+            // Take the item in straight away and gather its materials as they turn up: whatever is
+            // on the resource spots now, the rest when it arrives. The item and everything gathered
+            // stay inside until the repair finishes, or until the job is cancelled.
             if (!TryTakeIn(damagedItem))
             {
                 idleReason = "DynamicMending.MenderCannotTakeItem".Translate(damagedItem.LabelShortCap);
                 return;
             }
 
-            // Pass 2: only now consume, since pass 1 guaranteed every cost can be met and the
-            // item is safely inside.
-            foreach (ThingDefCountClass cost in costs)
-            {
-                int remaining = cost.count;
-                foreach (Thing stack in available.Where(t => t != damagedItem && t.def == cost.thingDef).ToList())
-                {
-                    if (remaining <= 0)
-                        break;
+            currentItem = damagedItem;
+            jobSkill = skill;
+            recycling = false;
+            pendingCosts = MendingUtility.GetDynamicIngredientCosts(damagedItem, skill, ignoreResearch: true)
+                .Where(c => c.thingDef != null && c.count > 0)
+                .Select(c => new ThingDefCountClass(c.thingDef, c.count))
+                .ToList();
+            state = MenderState.Gathering;
+            idleReason = null;
+            Gather();
+        }
 
-                    int take = Mathf.Min(remaining, stack.stackCount);
-                    stack.SplitOff(take).Destroy(DestroyMode.Vanish);
-                    remaining -= take;
+        // How much of a material the machine already holds for the current repair.
+        private int HeldOf(ThingDef def)
+        {
+            int count = 0;
+            foreach (Thing thing in innerContainer)
+            {
+                if (thing != currentItem && thing.def == def)
+                    count += thing.stackCount;
+            }
+            return count;
+        }
+
+        // Pulls what the current repair still lacks off the resource spots, and starts the repair
+        // once nothing is missing.
+        private void Gather()
+        {
+            if (currentItem == null || currentItem.Destroyed || !innerContainer.Contains(currentItem))
+            {
+                ResetJob();
+                return;
+            }
+
+            string missing = null;
+            if (pendingCosts != null)
+            {
+                foreach (ThingDefCountClass cost in pendingCosts)
+                {
+                    int remaining = cost.count - HeldOf(cost.thingDef);
+                    if (remaining <= 0)
+                        continue;
+
+                    foreach (Thing stack in ThingsOn(ResourceInputCells)
+                        .Where(s => s.def == cost.thingDef && !IsOffLimits(s)).ToList())
+                    {
+                        if (remaining <= 0)
+                            break;
+                        int take = Mathf.Min(remaining, stack.stackCount);
+                        Thing part = stack.SplitOff(take);
+                        if (part.Spawned)
+                            part.DeSpawn();
+                        else if (part.holdingOwner != null)
+                            part.holdingOwner.Remove(part);
+                        if (!innerContainer.TryAdd(part, canMergeWithExistingStacks: true))
+                        {
+                            GenPlace.TryPlaceThing(part, Position, Map, ThingPlaceMode.Near);
+                            break;
+                        }
+                        remaining -= take;
+                    }
+
+                    if (remaining > 0 && missing == null)
+                    {
+                        // Naming the exact shortfall rather than a generic "idle" - otherwise the
+                        // only way to find out why nothing is happening is to guess at the spots.
+                        missing = "DynamicMending.MenderGathering".Translate(
+                            currentItem.LabelShortCap, remaining, cost.thingDef.label, HeldOf(cost.thingDef), cost.count);
+                    }
                 }
             }
 
-            currentItem = damagedItem;
-            jobSkill = skill;
+            if (missing != null)
+            {
+                idleReason = missing;
+                return;
+            }
 
+            idleReason = null;
             workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(
-                MendingUtility.GetDynamicWorkAmount(currentItem, skill, ignoreResearch: true) * PreceptWorkFactor / overclock));
+                MendingUtility.GetDynamicWorkAmount(currentItem, jobSkill, ignoreResearch: true) * PreceptWorkFactor / overclock));
             workTicksRemaining = workTicksTotal;
             state = MenderState.Working;
+        }
+
+        // The repair is done: the gathered materials are used up now, not when it started.
+        private void ConsumeGathered()
+        {
+            if (pendingCosts == null)
+                return;
+            foreach (ThingDefCountClass cost in pendingCosts)
+            {
+                int remaining = cost.count;
+                foreach (Thing thing in innerContainer.Where(x => x != currentItem && x.def == cost.thingDef).ToList())
+                {
+                    if (remaining <= 0)
+                        break;
+                    int take = Mathf.Min(remaining, thing.stackCount);
+                    thing.SplitOff(take).Destroy(DestroyMode.Vanish);
+                    remaining -= take;
+                }
+            }
+            pendingCosts = null;
+        }
+
+        private void ResetJob()
+        {
+            currentItem = null;
+            workTicksRemaining = 0;
+            workTicksTotal = 0;
+            idleReason = null;
+            state = MenderState.Idle;
+            recycling = false;
+            pendingCosts = null;
+            rejectQueue.Clear();
+        }
+
+        // The player's way out of a stuck job: the item, every material gathered for it and
+        // anything waiting for a chute go on the floor beside the machine - never onto its own
+        // spots, where it would be taken straight back in - and the machine goes idle. The item is
+        // forbidden, so a belt or a hauler does not bring it straight back either.
+        private void CancelJob()
+        {
+            if (!Spawned)
+                return;
+            HashSet<IntVec3> spots = new HashSet<IntVec3>(ResourceInputCells);
+            spots.Add(ItemInputCell);
+            spots.Add(OutputCell);
+            foreach (IntVec3 c in RejectCells)
+                spots.Add(c);
+            CellRect footprint = Footprint;
+            Map map = Map;
+
+            Thing item = currentItem;
+            foreach (Thing thing in innerContainer.ToList())
+            {
+                innerContainer.TryDrop(thing, Position, map, ThingPlaceMode.Near, out Thing dropped, null,
+                    c => !spots.Contains(c) && !footprint.Contains(c));
+                if (dropped != null && thing == item)
+                    dropped.SetForbidden(true, false);
+            }
+            if (innerContainer.Count > 0)
+                innerContainer.TryDropAll(Position, map, ThingPlaceMode.Near);
+
+            ResetJob();
+            EndWorkSound();
+            Messages.Message("DynamicMending.MenderCancelled".Translate(), this, MessageTypeDefOf.NeutralEvent, false);
         }
 
         // Not ThingOwner.TryAddOrTransfer: a spawned thing belongs to the map's own ThingOwner
@@ -839,6 +972,7 @@ namespace MendingMod
                 return;
             }
 
+            ConsumeGathered();
             GetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(currentItem, jobSkill);
             MendResult result = MendingUtility.ResolveRepair(currentItem, jobSkill, ignoreResearch: true);
             MendingUtility.ShowRepairResult(result, this);
@@ -948,6 +1082,17 @@ namespace MendingMod
         {
             foreach (Gizmo gizmo in base.GetGizmos())
                 yield return gizmo;
+
+            if (state != MenderState.Idle || innerContainer.Count > 0)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "DynamicMending.CancelJobLabel".Translate(),
+                    defaultDesc = "DynamicMending.CancelJobDesc".Translate(),
+                    icon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel"),
+                    action = CancelJob,
+                };
+            }
 
             yield return new Command_Action
             {

@@ -114,6 +114,10 @@
   <DynamicMending.RejectTainted>tainted</DynamicMending.RejectTainted>
   <DynamicMending.RejectFiltered>not in the accepted gear filter</DynamicMending.RejectFiltered>
   <DynamicMending.RejectUndamaged>not damaged</DynamicMending.RejectUndamaged>
+  <DynamicMending.MenderGathering>Holding {0}: waiting for {1} more {2} ({3} of {4} gathered)</DynamicMending.MenderGathering>
+  <DynamicMending.CancelJobLabel>Cancel job</DynamicMending.CancelJobLabel>
+  <DynamicMending.CancelJobDesc>Stop the current job. The item, every material gathered for it, and anything waiting for a reject chute are put on the floor beside the machine. The item is forbidden so it is not brought straight back.</DynamicMending.CancelJobDesc>
+  <DynamicMending.MenderCancelled>Repair center job cancelled; its contents were put on the floor.</DynamicMending.MenderCancelled>
   <DynamicMending.RejectNotGear>not apparel or a weapon</DynamicMending.RejectNotGear>
   <DynamicMending.RejectForbidden>forbidden</DynamicMending.RejectForbidden>
   <DynamicMending.RejectThreshold>above the auto-repair threshold of {0}</DynamicMending.RejectThreshold>
