@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+
+	<!--
+		SloppyMod Trash POWER!: the industrial repair center joins the exhaust pipe network. Pipe it
+		to an open, powered exhaust port and its toxic repair waste is vented there as toxic gas and a
+		little ground pollution (CompMenderWasteBuffer.Vent) instead of filling the waste container;
+		with no port open it goes into the network's expansion tanks, and only what neither can take
+		ends up in the container. Unpiped, nothing changes. Trash POWER! requires Vanilla Expanded
+		Framework, so the pipe comp's class always exists when this applies.
+	-->
+	<Operation Class="PatchOperationFindMod">
+		<mods>
+			<li>SloppyMod Trash POWER!</li>
+		</mods>
+		<match Class="PatchOperationAdd">
+			<xpath>Defs/ThingDef[defName="AutomatedMender"]/comps</xpath>
+			<value>
+				<li Class="PipeSystem.CompProperties_Resource">
+					<pipeNet>STB_ExhaustNet</pipeNet>
+				</li>
+				<li Class="TrashbrickBurning.CompProperties_ExhaustSource" />
+			</value>
+		</match>
+	</Operation>
+
+</Patch>

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -22,6 +23,12 @@ namespace MendingMod
         // "find the item actually called trash", not to silently producing wastepacks instead.
         public string trashWasteLabel = "trash";
 
+        // With SloppyMod Trash POWER!, a repair center piped to its exhaust network vents its toxic
+        // waste instead of filling the container: one wastepack's worth is this much toxic gas and
+        // these many polluted cells, out of whichever exhaust port it reaches.
+        public float ventToxGasPerWastepack = 6000f;
+        public float ventPollutionPerWastepack = 2f;
+
         public CompProperties_MenderWasteBuffer()
         {
             compClass = typeof(CompMenderWasteBuffer);
@@ -40,6 +47,79 @@ namespace MendingMod
         public CompProperties_MenderWasteBuffer Props => (CompProperties_MenderWasteBuffer)props;
 
         private float Threshold => Mathf.Max(0.01f, Props?.wasteBufferThreshold ?? 1f);
+
+        // ---- Trash POWER! exhaust (found by name; no reference either way)
+        //
+        // Its patch gives the repair center a pipe comp on the exhaust network and an exhaust
+        // source comp. Toxic waste is offered to the source: to an open exhaust port, else into
+        // the expansion tanks; whatever it cannot take goes in the container as before.
+        private ThingComp exhaustSource;
+        private MethodInfo exhaustRoute;
+        private bool exhaustResolved;
+
+        private void ResolveExhaustOnce()
+        {
+            if (exhaustResolved)
+                return;
+            exhaustResolved = true;
+            if (!(parent is ThingWithComps owner))
+                return;
+            foreach (ThingComp comp in owner.AllComps)
+            {
+                for (System.Type type = comp.GetType(); type != null && type != typeof(ThingComp); type = type.BaseType)
+                {
+                    if (type.FullName != "TrashbrickBurning.CompExhaustSource")
+                        continue;
+                    System.Type f = typeof(float).MakeByRefType();
+                    exhaustRoute = type.GetMethod("TryRoute", BindingFlags.Instance | BindingFlags.Public, null, new[] { f, f, f }, null);
+                    if (exhaustRoute != null)
+                        exhaustSource = comp;
+                    return;
+                }
+            }
+        }
+
+        public bool CanVent
+        {
+            get
+            {
+                ResolveExhaustOnce();
+                return exhaustSource != null;
+            }
+        }
+
+        // Sends this much toxic waste (in wastepacks) down the exhaust and returns what it could
+        // not take, which stays in the container.
+        private float Vent(float amount)
+        {
+            if (amount <= 0f || !CanVent || parent.Map == null)
+                return amount;
+            float gas = amount * (Props?.ventToxGasPerWastepack ?? 6000f);
+            float pollution = amount * (Props?.ventPollutionPerWastepack ?? 2f);
+            if (gas <= 0f)
+                return amount;
+            object[] args = { gas, 0f, pollution };
+            try
+            {
+                exhaustRoute.Invoke(exhaustSource, args);
+            }
+            catch (System.Exception e)
+            {
+                Log.ErrorOnce("[SloppyMods Mending] Venting through the Trash POWER! exhaust failed; waste stays in the container. " + e, 82231107);
+                exhaustSource = null;
+                return amount;
+            }
+            float left = Mathf.Clamp((float)args[0], 0f, gas);
+            return amount * (left / gas);
+        }
+
+        // Waste already in the container goes too, once there is somewhere for it.
+        public override void CompTick()
+        {
+            base.CompTick();
+            if (toxicBuffer > 0.01f && parent.IsHashIntervalTick(250) && MendingModMain.Settings.generateWaste && CanVent)
+                toxicBuffer = Vent(toxicBuffer);
+        }
 
         // Once either buffer reaches its threshold the building stops taking work until someone
         // empties it - otherwise "a pawn has to remove the waste" carries no weight.
@@ -225,7 +305,7 @@ namespace MendingMod
                 return;
 
             if (target == toxicWasteDef)
-                toxicBuffer += amount;
+                toxicBuffer += Vent(amount);
             else
                 trashBuffer += amount;
         }
