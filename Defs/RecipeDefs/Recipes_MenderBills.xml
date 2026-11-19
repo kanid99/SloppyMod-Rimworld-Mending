@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    The industrial repair center's bills. It runs them itself: no building lists these recipes and
+    no work giver does them, so pawns never take them. Each bill's ingredient filter (with its
+    hit-point and quality sliders) says which gear it covers; the machine works down its bill list
+    and the first bill that takes an item decides what happens to it.
+  -->
+  <RecipeDef Name="MenderBillBase" Abstract="True">
+    <workAmount>1</workAmount>
+    <workerCounterClass>MendingMod.RecipeWorkerCounter_MenderBill</workerCounterClass>
+    <fixedIngredientFilter>
+      <categories>
+        <li>Apparel</li>
+        <li>Weapons</li>
+      </categories>
+    </fixedIngredientFilter>
+    <defaultIngredientFilter>
+      <categories>
+        <li>Apparel</li>
+        <li>Weapons</li>
+      </categories>
+    </defaultIngredientFilter>
+  </RecipeDef>
+
+  <RecipeDef ParentName="MenderBillBase">
+    <defName>MenderBill_Repair</defName>
+    <label>repair gear</label>
+    <description>Repair gear this bill's filter allows that is damaged (below the auto-repair threshold in the mod settings) and that the machine can repair.</description>
+    <jobString>Repairing.</jobString>
+  </RecipeDef>
+
+  <RecipeDef ParentName="MenderBillBase">
+    <defName>MenderBill_Recycle</defName>
+    <label>recycle gear</label>
+    <description>Break down gear this bill's filter allows into materials, damaged or not. The materials leave by the red reject chutes. Use the hit-point slider to recycle only worn-out gear.</description>
+    <jobString>Recycling.</jobString>
+    <defaultIngredientFilter Inherit="False" />
+  </RecipeDef>
+
+</Defs>

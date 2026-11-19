@@ -1,0 +1,12 @@
+[h2]Build 0.9.130[/h2]
+[h3]Added[/h3]
+[list]
+[*][b]Bills for the industrial repair center.[/b] A new Bills tab, like a work bench's, takes any number of [b]Repair gear[/b] and [b]Recycle gear[/b] bills. Each has its own gear filter with hit-point and quality sliders - for example "recycle anything under 30%", then "repair armor", then "repair everything else".
+[*]Bills are worked down in order (drag to reorder): the first bill whose filter takes an item decides what happens to it. A repair bill passes gear it cannot repair on to the bills below it. Gear no bill takes goes out a reject chute.
+[*]Repeat modes: forever, do X times, and (for repair) until you have X matching gear that does not need repairing. Bills can be suspended, copied and pasted. The machine runs them itself; pawns never take them.
+[/list]
+[h3]Changed[/h3]
+[list]
+[*]The Accepted gear, Recycled gear and Tainted apparel buttons are replaced by bills. Existing machines are converted on load: the recycled-gear filter becomes a recycle bill, the accepted-gear filter a repair bill below it, and the tainted-apparel setting the bills' "deadman's apparel" checkboxes - so they carry on doing exactly what they did.
+[*]With Vanilla Furniture Expanded - Factory installed, the Overclock button uses the same icon as the factory machines.
+[/list]

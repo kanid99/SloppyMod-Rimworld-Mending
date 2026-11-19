@@ -78,12 +78,6 @@
   <DynamicMending.MoteRecycledNothing>{0} was too worn to salvage</DynamicMending.MoteRecycledNothing>
 
   <!-- Repair centre: accept filter, tainted gear, reject chutes. -->
-  <DynamicMending.AcceptFilterLabel>Accepted gear</DynamicMending.AcceptFilterLabel>
-  <DynamicMending.AcceptFilterDesc>Choose what this machine will repair. Gear the recycled gear filter allows is recycled instead. Anything else that reaches its item spot - along with undamaged gear, gear above the auto-repair threshold and gear beyond its tech - is sent out the red reject chutes instead of blocking the spot.</DynamicMending.AcceptFilterDesc>
-  <DynamicMending.AcceptFilterHint>Gear this filter rejects leaves by the red chutes. Tainted apparel has its own setting on the machine.</DynamicMending.AcceptFilterHint>
-  <DynamicMending.RecycleFilterLabel>Recycled gear</DynamicMending.RecycleFilterLabel>
-  <DynamicMending.RecycleFilterDesc>Choose what this machine breaks down for materials instead of repairing, like a recycle bill on a mending station. Damaged or not, gear this filter allows is recycled, even if the accepted gear filter also allows it, and what it breaks down into leaves by the red reject chutes. Empty by default: nothing is recycled.</DynamicMending.RecycleFilterDesc>
-  <DynamicMending.RecycleFilterHint>Gear this filter allows is recycled, not repaired. Use the hit-point slider to recycle only worn-out gear. Tainted apparel has its own setting on the machine.</DynamicMending.RecycleFilterHint>
   <DynamicMending.OverclockLabel>Overclock: {0}</DynamicMending.OverclockLabel>
   <DynamicMending.OverclockDesc>Set how hard this machine runs, from 10% to 200%. Slower is more careful: at 10% it takes ten times as long but works like a skill 20 crafter, uses fewer materials and almost never botches a repair. Faster gets through gear quicker but works like a less skilled crafter. Power draw, heat and how often it breaks down all rise with the square of the speed, as power and heat do on Vanilla Furniture Expanded - Factory's machines, whose boosters and heatsinks also work on this one.</DynamicMending.OverclockDesc>
   <DynamicMending.OverclockTitle>Overclock</DynamicMending.OverclockTitle>
@@ -105,19 +99,20 @@
   <DynamicMending.TabNextRecycle>{0}: will be recycled</DynamicMending.TabNextRecycle>
   <DynamicMending.TabNextReject>{0}: will be rejected - {1}</DynamicMending.TabNextReject>
   <DynamicMending.TabHeaderHeld>Waiting for a reject chute ({0})</DynamicMending.TabHeaderHeld>
-  <DynamicMending.Tainted_Repair>Tainted apparel: repair</DynamicMending.Tainted_Repair>
-  <DynamicMending.Tainted_Recycle>Tainted apparel: recycle</DynamicMending.Tainted_Recycle>
-  <DynamicMending.Tainted_Reject>Tainted apparel: reject</DynamicMending.Tainted_Reject>
-  <DynamicMending.TaintedDesc>What to do with apparel taken from a corpse: repair it like anything else, break it down for materials, or send it straight out the reject chutes. Click to change.</DynamicMending.TaintedDesc>
   <DynamicMending.MenderRecycling>Recycling {0}: {1}</DynamicMending.MenderRecycling>
   <DynamicMending.LastRejected>Last rejected: {0} ({1})</DynamicMending.LastRejected>
   <DynamicMending.RejectTainted>tainted</DynamicMending.RejectTainted>
-  <DynamicMending.RejectFiltered>not in the accepted gear filter</DynamicMending.RejectFiltered>
+  <DynamicMending.RejectFiltered>no bill takes it</DynamicMending.RejectFiltered>
   <DynamicMending.RejectUndamaged>not damaged</DynamicMending.RejectUndamaged>
   <DynamicMending.MenderGathering>Holding {0}: waiting for {1} more {2} ({3} of {4} gathered)</DynamicMending.MenderGathering>
   <DynamicMending.CancelJobLabel>Cancel job</DynamicMending.CancelJobLabel>
   <DynamicMending.CancelJobDesc>Stop the current job. The item, every material gathered for it, and anything waiting for a reject chute are put on the floor beside the machine. The item is forbidden so it is not brought straight back.</DynamicMending.CancelJobDesc>
   <DynamicMending.MenderCancelled>Repair center job cancelled; its contents were put on the floor.</DynamicMending.MenderCancelled>
+  <DynamicMending.RejectCannotRecycle>cannot be recycled</DynamicMending.RejectCannotRecycle>
+  <DynamicMending.BillsInspect>Bills: {0} (Bills tab)</DynamicMending.BillsInspect>
+  <DynamicMending.BillCountDescription>matching gear on the map that does not need repairing</DynamicMending.BillCountDescription>
+  <DynamicMending.BillTargetLabel>Until you have: {1} (now {0}) - matching gear that does not need repairing</DynamicMending.BillTargetLabel>
+  <DynamicMending.BillOrderHint>The machine works down its bill list in order: the first bill whose filter takes an item decides what happens to it. A repair bill passes on gear it cannot repair (undamaged, above the auto-repair threshold) to the bills below it. Gear no bill takes goes out a reject chute.</DynamicMending.BillOrderHint>
   <DynamicMending.RejectNotGear>not apparel or a weapon</DynamicMending.RejectNotGear>
   <DynamicMending.RejectForbidden>forbidden</DynamicMending.RejectForbidden>
   <DynamicMending.RejectThreshold>above the auto-repair threshold of {0}</DynamicMending.RejectThreshold>

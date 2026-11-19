@@ -10,6 +10,9 @@ namespace MendingMod
         public static JobDef EmptyMenderWaste;
         public static JobDef RepairWorn;
 
+        public static RecipeDef MenderBill_Repair;
+        public static RecipeDef MenderBill_Recycle;
+
         static MendingDefOf()
         {
             DefOfHelper.EnsureInitializedInCtor(typeof(MendingDefOf));

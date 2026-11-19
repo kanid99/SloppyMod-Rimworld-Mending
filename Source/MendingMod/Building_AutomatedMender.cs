@@ -29,7 +29,7 @@ namespace MendingMod
     // Furniture Expanded's conveyors) are read through IThingHolder, which is also what makes
     // conveyor feeding work with no dependency on that mod.
     [StaticConstructorOnStartup]
-    public class Building_AutomatedMender : Building, IThingHolder
+    public class Building_AutomatedMender : Building, IThingHolder, IBillGiver
     {
         // The skill it works at at 100% overclock, as it always did before overclocking existed.
         private const int FixedSkillLevel = 10;
@@ -48,6 +48,11 @@ namespace MendingMod
 
         // Built in a static constructor context so the materials are created after the graphics
         // system is up, which is what [StaticConstructorOnStartup] guarantees.
+        // Vanilla Furniture Expanded - Factory's own overclock icon when that mod is loaded, so the
+        // repair center's button matches the factory machines beside it; vanilla's otherwise.
+        private static readonly Texture2D OverclockIcon =
+            ContentFinder<Texture2D>.Get("UI/Gizmo/Factory_Overclock", false) ?? TexCommand.DesirePower;
+
         private static readonly Material BarFilledMat =
             SolidColorMaterials.SimpleSolidColorMaterial(new Color(0.24f, 0.79f, 0.85f));
         private static readonly Material BarUnfilledMat =
@@ -75,6 +80,7 @@ namespace MendingMod
         // What the machine will take. Anything on the item spot it will not take - filtered out,
         // undamaged, above the auto-repair threshold, beyond its tech - goes out a reject chute
         // rather than sitting on the spot and stalling the belt behind it.
+        // Legacy (before bills): loaded only to turn into bills, then cleared.
         private ThingFilter acceptFilter;
         private TaintedMode taintedMode = TaintedMode.Repair;
 
@@ -95,9 +101,20 @@ namespace MendingMod
         // and only used up when the repair finishes, so cancelling gives them all back.
         private List<ThingDefCountClass> pendingCosts;
 
+        // What to do with gear on the item spot: repair and recycle bills, worked down in order.
+        private BillStack billStack;
+
+        // The bill the current job came from, so "do X times" counts it when it finishes.
+        private Bill_Mender currentBill;
+
+        // Set once its first bills exist (new, or turned from a pre-bills machine's filters), so a
+        // player who deletes every bill is not handed the default one back on the next load.
+        private bool billsInitialized;
+
         public Building_AutomatedMender()
         {
             innerContainer = new ThingOwner<Thing>(this, oneStackOnly: false);
+            billStack = new BillStack(this);
         }
 
         public ThingOwner GetDirectlyHeldThings()
@@ -120,52 +137,96 @@ namespace MendingMod
             Scribe_Values.Look(ref overclock, "overclock", 1f);
             Scribe_Values.Look(ref jobSkill, "jobSkill", FixedSkillLevel);
             Scribe_Values.Look(ref state, "state");
-            Scribe_Deep.Look(ref acceptFilter, "acceptFilter");
-            Scribe_Deep.Look(ref recycleFilter, "recycleFilter");
-            Scribe_Values.Look(ref taintedMode, "taintedMode", TaintedMode.Repair);
+            Scribe_Deep.Look(ref billStack, "bills", this);
+            Scribe_References.Look(ref currentBill, "currentBill");
+            Scribe_Values.Look(ref billsInitialized, "billsInitialized", false);
+            if (Scribe.mode != LoadSaveMode.Saving)
+            {
+                Scribe_Deep.Look(ref acceptFilter, "acceptFilter");
+                Scribe_Deep.Look(ref recycleFilter, "recycleFilter");
+                Scribe_Values.Look(ref taintedMode, "taintedMode", TaintedMode.Repair);
+            }
             Scribe_Collections.Look(ref rejectQueue, "rejectQueue", LookMode.Reference);
             Scribe_Values.Look(ref recycling, "recycling");
             Scribe_Collections.Look(ref pendingCosts, "pendingCosts", LookMode.Deep);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
-                // A machine built before these existed loads with neither.
-                acceptFilter = acceptFilter ?? DefaultAcceptFilter();
-                recycleFilter = recycleFilter ?? new ThingFilter();
+                if (billStack == null)
+                    billStack = new BillStack(this);
+                if (!billsInitialized)
+                    MigrateToBills();
                 rejectQueue = rejectQueue ?? new List<Thing>();
                 rejectQueue.RemoveAll(t => t == null);
             }
         }
 
-        // The tree the accept-filter window shows, and everything a new machine accepts: all
-        // apparel and all weapons, which is what the two mend recipes cover.
-        private static ThingFilter parentFilter;
+        // ---- bills
+        public BillStack BillStack => billStack;
 
-        public static ThingFilter ParentFilter
+        public IEnumerable<IntVec3> IngredientStackCells => Enumerable.Empty<IntVec3>();
+
+        // Pawns never work these bills; the machine runs them itself.
+        public bool CurrentlyUsableForBills() => false;
+
+        public bool UsableForBillsAfterFueling() => false;
+
+        public void Notify_BillDeleted(Bill bill)
         {
-            get
+            if (bill == currentBill)
+                currentBill = null;
+        }
+
+        private static SpecialThingFilterDef Special(string defName) => DefDatabase<SpecialThingFilterDef>.GetNamedSilentFail(defName);
+
+        // A new machine starts with one bill: repair any gear, which is what it always did.
+        // A machine from before bills turns its accepted-gear filter into a repair bill, its
+        // recycled-gear filter (if anything was in it) into a recycle bill above it, and its
+        // tainted-apparel setting into those bills' "deadman's apparel" checkboxes.
+        private void MigrateToBills()
+        {
+            Bill_Mender repair = new Bill_Mender(MendingDefOf.MenderBill_Repair);
+            if (acceptFilter != null)
+                repair.ingredientFilter.CopyAllowancesFrom(acceptFilter);
+
+            Bill_Mender recycle = null;
+            if (recycleFilter != null && recycleFilter.AllowedDefCount > 0)
             {
-                if (parentFilter == null)
-                {
-                    parentFilter = new ThingFilter();
-                    parentFilter.SetAllow(ThingCategoryDefOf.Apparel, true);
-                    parentFilter.SetAllow(ThingCategoryDefOf.Weapons, true);
-                }
-
-                return parentFilter;
+                recycle = new Bill_Mender(MendingDefOf.MenderBill_Recycle);
+                recycle.ingredientFilter.CopyAllowancesFrom(recycleFilter);
             }
+
+            SpecialThingFilterDef tainted = Special("AllowDeadmansApparel");
+            SpecialThingFilterDef clean = Special("AllowNonDeadmansApparel");
+            if (taintedMode != TaintedMode.Repair && tainted != null)
+            {
+                repair.ingredientFilter.SetAllow(tainted, false);
+                if (recycle != null)
+                    recycle.ingredientFilter.SetAllow(tainted, false);
+            }
+            if (taintedMode == TaintedMode.Recycle && tainted != null && clean != null)
+            {
+                Bill_Mender taintedBill = new Bill_Mender(MendingDefOf.MenderBill_Recycle);
+                taintedBill.ingredientFilter.SetAllow(ThingCategoryDefOf.Apparel, true);
+                taintedBill.ingredientFilter.SetAllow(clean, false);
+                billStack.AddBill(taintedBill);
+            }
+
+            if (recycle != null)
+                billStack.AddBill(recycle);
+            billStack.AddBill(repair);
+
+            acceptFilter = null;
+            recycleFilter = null;
+            billsInitialized = true;
         }
 
-        private static ThingFilter DefaultAcceptFilter()
+        public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
-            ThingFilter filter = new ThingFilter();
-            filter.CopyAllowancesFrom(ParentFilter);
-            return filter;
+            base.SpawnSetup(map, respawningAfterLoad);
+            if (!billsInitialized)
+                MigrateToBills();
         }
-
-        public ThingFilter AcceptFilter => acceptFilter ?? (acceptFilter = DefaultAcceptFilter());
-
-        public ThingFilter RecycleFilter => recycleFilter ?? (recycleFilter = new ThingFilter());
 
         private bool PowerOn
         {
@@ -614,34 +675,55 @@ namespace MendingMod
         private enum Intake : byte { Repair, Recycle, Reject }
 
         // What to do with one piece of gear on the item spot, and - for a reject - why, so the
-        // inspect pane can say. Order matters: tainted handling first, because "recycle it" and
-        // "reject it" should apply whatever else is true of the item.
+        // inspect pane can say. The bills are worked down in order; the first one that takes the
+        // item decides. A repair bill whose filter allows the item but that cannot repair it
+        // (undamaged, above the threshold, too advanced) passes it on to the next bill, so a
+        // recycle bill lower down can still catch it.
         private Intake Decide(Thing thing, out string why)
         {
+            return Decide(thing, out why, out Bill_Mender _);
+        }
+
+        private Intake Decide(Thing thing, out string why, out Bill_Mender bill)
+        {
             why = null;
+            bill = null;
+            string firstReason = null;
 
-            if (thing is Apparel apparel && apparel.WornByCorpse && taintedMode != TaintedMode.Repair)
+            foreach (Bill b in billStack)
             {
-                if (taintedMode == TaintedMode.Recycle && MendingUtility.CanEverRecycle(thing))
-                    return Intake.Recycle;
+                if (!(b is Bill_Mender mb) || !mb.ShouldDoNow() || !mb.ingredientFilter.Allows(thing))
+                    continue;
 
-                why = "DynamicMending.RejectTainted".Translate();
-                return Intake.Reject;
+                if (mb.IsRecycle)
+                {
+                    if (MendingUtility.CanEverRecycle(thing))
+                    {
+                        bill = mb;
+                        return Intake.Recycle;
+                    }
+                    firstReason = firstReason ?? "DynamicMending.RejectCannotRecycle".Translate().ToString();
+                    continue;
+                }
+
+                string reason = null;
+                if (thing.HitPoints >= thing.MaxHitPoints)
+                    reason = "DynamicMending.RejectUndamaged".Translate();
+                else if (!MendingUtility.BelowAutoRepairThreshold(thing))
+                    reason = "DynamicMending.RejectThreshold".Translate(MendingModMain.Settings.autoRepairBelow.ToStringPercent());
+                else if (!IsMendable(thing))
+                    reason = "DynamicMending.RejectTooAdvanced".Translate();
+
+                if (reason == null)
+                {
+                    bill = mb;
+                    return Intake.Repair;
+                }
+                firstReason = firstReason ?? reason;
             }
 
-            if (RecycleFilter.Allows(thing) && MendingUtility.CanEverRecycle(thing))
-                return Intake.Recycle;
-
-            if (!AcceptFilter.Allows(thing))
-                why = "DynamicMending.RejectFiltered".Translate();
-            else if (thing.HitPoints >= thing.MaxHitPoints)
-                why = "DynamicMending.RejectUndamaged".Translate();
-            else if (!MendingUtility.BelowAutoRepairThreshold(thing))
-                why = "DynamicMending.RejectThreshold".Translate(MendingModMain.Settings.autoRepairBelow.ToStringPercent());
-            else if (!IsMendable(thing))
-                why = "DynamicMending.RejectTooAdvanced".Translate();
-
-            return why == null ? Intake.Repair : Intake.Reject;
+            why = firstReason ?? "DynamicMending.RejectFiltered".Translate().ToString();
+            return Intake.Reject;
         }
 
         private void TryStartMend()
@@ -662,16 +744,19 @@ namespace MendingMod
                 if (!IsGear(thing) || IsOffLimits(thing))
                     continue;
 
-                switch (Decide(thing, out string why))
+                switch (Decide(thing, out string why, out Bill_Mender decidedBy))
                 {
                     case Intake.Reject:
                         Reject(thing, why);
                         return;
 
                     case Intake.Recycle:
+                        currentBill = decidedBy;
                         StartRecycle(thing);
                         return;
                 }
+
+                currentBill = decidedBy;
 
                 damagedItem = thing;
                 break;
@@ -817,6 +902,7 @@ namespace MendingMod
             state = MenderState.Idle;
             recycling = false;
             pendingCosts = null;
+            currentBill = null;
             rejectQueue.Clear();
         }
 
@@ -973,6 +1059,8 @@ namespace MendingMod
             }
 
             ConsumeGathered();
+            currentBill?.NoteDone();
+            currentBill = null;
             GetComp<CompMenderWasteBuffer>()?.Notify_ItemMended(currentItem, jobSkill);
             MendResult result = MendingUtility.ResolveRepair(currentItem, jobSkill, ignoreResearch: true);
             MendingUtility.ShowRepairResult(result, this);
@@ -986,6 +1074,8 @@ namespace MendingMod
         // stack of steel on it.
         private void FinishRecycle()
         {
+            currentBill?.NoteDone();
+            currentBill = null;
             recycling = false;
             Thing item = currentItem;
             currentItem = null;
@@ -1096,41 +1186,12 @@ namespace MendingMod
 
             yield return new Command_Action
             {
-                defaultLabel = "DynamicMending.AcceptFilterLabel".Translate(),
-                defaultDesc = "DynamicMending.AcceptFilterDesc".Translate(),
-                icon = TexCommand.SelectShelf,
-                action = () => Find.WindowStack.Add(new Dialog_MenderAcceptFilter(
-                    this, AcceptFilter, "DynamicMending.AcceptFilterLabel", "DynamicMending.AcceptFilterHint")),
-            };
-
-            yield return new Command_Action
-            {
-                defaultLabel = "DynamicMending.RecycleFilterLabel".Translate(),
-                defaultDesc = "DynamicMending.RecycleFilterDesc".Translate(),
-                icon = TexCommand.Replant,
-                action = () => Find.WindowStack.Add(new Dialog_MenderAcceptFilter(
-                    this, RecycleFilter, "DynamicMending.RecycleFilterLabel", "DynamicMending.RecycleFilterHint")),
-            };
-
-            yield return new Command_Action
-            {
                 defaultLabel = "DynamicMending.OverclockLabel".Translate(overclock.ToStringPercent()),
                 defaultDesc = "DynamicMending.OverclockDesc".Translate(),
-                icon = TexCommand.DesirePower,
+                icon = OverclockIcon,
                 action = () => Find.WindowStack.Add(new Window_MenderOverclock(this)),
             };
 
-            // Cycles rather than opening a menu, so it behaves with several machines selected:
-            // each one steps on from its own setting.
-            yield return new Command_Action
-            {
-                defaultLabel = ("DynamicMending.Tainted_" + taintedMode).Translate(),
-                defaultDesc = "DynamicMending.TaintedDesc".Translate(),
-                icon = taintedMode == TaintedMode.Reject ? TexCommand.ForbidOn
-                     : taintedMode == TaintedMode.Recycle ? TexCommand.Replant
-                     : TexCommand.ForbidOff,
-                action = () => taintedMode = (TaintedMode)(((int)taintedMode + 1) % 3),
-            };
         }
 
         // ------------------------------------------------------------------ status tab
@@ -1269,7 +1330,7 @@ namespace MendingMod
             sb.Append("DynamicMending.OverclockInspect".Translate(overclock.ToStringPercent(), EffectiveSkill));
 
             sb.AppendLine();
-            sb.Append(("DynamicMending.Tainted_" + taintedMode).Translate());
+            sb.Append("DynamicMending.BillsInspect".Translate(billStack.Count));
 
             sb.AppendLine();
             sb.Append("DynamicMending.MenderSpotLegend".Translate());
