@@ -79,7 +79,7 @@
 
   <!-- Repair centre: accept filter, tainted gear, reject chutes. -->
   <DynamicMending.OverclockLabel>Overclock: {0}</DynamicMending.OverclockLabel>
-  <DynamicMending.OverclockDesc>Set how hard this machine runs, from 10% to 200%. Slower is more careful: at 10% it takes ten times as long but works like a skill 20 crafter, uses fewer materials and almost never botches a repair. Faster gets through gear quicker but works like a less skilled crafter. Power draw, heat and how often it breaks down all rise with the square of the speed, as power and heat do on Vanilla Furniture Expanded - Factory's machines, whose boosters and heatsinks also work on this one.</DynamicMending.OverclockDesc>
+  <DynamicMending.OverclockDesc>Set how hard this machine runs, from 10% to 200%. Slower is more careful: at 10% it takes ten times as long but works like a skill 20 crafter, uses fewer materials and almost never botches a repair. At 100% and above it works like a skill 8 crafter (more with a better core); faster gets through gear quicker at no cost in skill. Power draw, heat and how often it breaks down all rise with the square of the speed, as power and heat do on Vanilla Furniture Expanded - Factory's machines, whose boosters and heatsinks also work on this one.</DynamicMending.OverclockDesc>
   <DynamicMending.OverclockTitle>Overclock</DynamicMending.OverclockTitle>
   <DynamicMending.OverclockSkill>Works like a skill {0} crafter</DynamicMending.OverclockSkill>
   <DynamicMending.OverclockPower>Power draw: {0} W</DynamicMending.OverclockPower>

@@ -31,20 +31,20 @@ namespace MendingMod
     [StaticConstructorOnStartup]
     public class Building_AutomatedMender : Building, IThingHolder, IBillGiver
     {
-        // The skill it works at at 100% overclock, as it always did before overclocking existed.
-        private const int FixedSkillLevel = 10;
+        // The skill it works at at 100% overclock or faster, on its basic subcore. Better cores add
+        // to it (MenderCores).
+        private const int FixedSkillLevel = 8;
 
         // Overclocking, after Vanilla Furniture Expanded - Factory's machines: the same 10%-200%
         // range, work time divided by the setting, and power and heat both scaled by
         // 0.25 + 0.75 x setting squared (PipeSystem's CompPowerTrader_Overclocked and
-        // CompHeatPusherPowered_Overclocked). Unlike theirs it also trades speed for care, which
+        // CompHeatPusherPowered_Overclocked). Unlike theirs, slowing it down also buys care, which
         // is what a repair is about: slowed right down it works like a master and almost never
-        // botches a job; pushed hard it rushes like a novice.
+        // botches a job. Speeding it up past 100% costs only power and heat, not skill.
         public const float MinOverclock = 0.1f;
         public const float MaxOverclock = 2f;
         private const float IdleLoadFraction = 0.25f;
         private const int SlowestSkill = 20;
-        private const int FastestSkill = 5;
 
         // Built in a static constructor context so the materials are created after the graphics
         // system is up, which is what [StaticConstructorOnStartup] guarantees.
@@ -430,11 +430,9 @@ namespace MendingMod
         // 10 at 100%, rising to 20 at the slowest setting and falling to 5 at 200%.
         public static int SkillAt(float setting)
         {
-            // Beyond 200% - reachable only with VFE Factory's boosters - it keeps getting worse at
-            // the same rate, down to skill 0.
-            float skill = setting <= 1f
-                ? Mathf.Lerp(SlowestSkill, FixedSkillLevel, (setting - MinOverclock) / (1f - MinOverclock))
-                : FixedSkillLevel - (FixedSkillLevel - FastestSkill) * (setting - 1f) / (MaxOverclock - 1f);
+            if (setting >= 1f)
+                return FixedSkillLevel;
+            float skill = Mathf.Lerp(SlowestSkill, FixedSkillLevel, (setting - MinOverclock) / (1f - MinOverclock));
             return Mathf.Clamp(Mathf.RoundToInt(skill), 0, 20);
         }
 
