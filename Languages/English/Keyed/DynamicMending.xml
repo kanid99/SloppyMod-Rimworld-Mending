@@ -113,6 +113,15 @@
   <DynamicMending.BillCountDescription>matching gear on the map that does not need repairing</DynamicMending.BillCountDescription>
   <DynamicMending.BillTargetLabel>Until you have: {1} (now {0}) - matching gear that does not need repairing</DynamicMending.BillTargetLabel>
   <DynamicMending.BillOrderHint>The machine works down its bill list in order: the first bill whose filter takes an item decides what happens to it. A repair bill passes on gear it cannot repair (undamaged, above the auto-repair threshold) to the bills below it. Gear no bill takes goes out a reject chute.</DynamicMending.BillOrderHint>
+  <DynamicMending.CoreUpgradeLabel>Upgrade core</DynamicMending.CoreUpgradeLabel>
+  <DynamicMending.CoreUpgradePendingLabel>Installing: {0}</DynamicMending.CoreUpgradePendingLabel>
+  <DynamicMending.CoreUpgradeDesc>Give the machine a better brain. It runs on a {0} now. Each tier up adds +4 crafting skill (up to 20), works 20% faster and uses 20% fewer materials: standard subcore, high subcore, then a persona core. Pick one and a constructor brings it from storage and installs it; the core it replaces comes back out (the basic subcore it was built with stays part of the building). An upgraded core is returned when the machine is deconstructed.</DynamicMending.CoreUpgradeDesc>
+  <DynamicMending.CoreOption>{0}: +{1} skill, {2} faster, {3} fewer materials</DynamicMending.CoreOption>
+  <DynamicMending.CoreCancel>Cancel the core upgrade</DynamicMending.CoreCancel>
+  <DynamicMending.CoreBasic>Core: {0}</DynamicMending.CoreBasic>
+  <DynamicMending.CoreUpgraded>Core: {0} (+{1} skill, {2} faster, {3} fewer materials)</DynamicMending.CoreUpgraded>
+  <DynamicMending.CoreWaiting>Waiting for a constructor to install a {0}.</DynamicMending.CoreWaiting>
+  <DynamicMending.CoreInstalled>The repair center now runs on a {0}.</DynamicMending.CoreInstalled>
   <DynamicMending.RejectNotGear>not apparel or a weapon</DynamicMending.RejectNotGear>
   <DynamicMending.RejectForbidden>forbidden</DynamicMending.RejectForbidden>
   <DynamicMending.RejectThreshold>above the auto-repair threshold of {0}</DynamicMending.RejectThreshold>

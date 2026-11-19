@@ -111,6 +111,11 @@ namespace MendingMod
         // player who deletes every bill is not handed the default one back on the next load.
         private bool billsInitialized;
 
+        // Its machine brain: 0 the basic subcore it is built with, up to MenderCores.MaxTier.
+        // wantedCoreTier above coreTier asks a constructor to bring and install that core.
+        private int coreTier;
+        private int wantedCoreTier;
+
         public Building_AutomatedMender()
         {
             innerContainer = new ThingOwner<Thing>(this, oneStackOnly: false);
@@ -140,6 +145,8 @@ namespace MendingMod
             Scribe_Deep.Look(ref billStack, "bills", this);
             Scribe_References.Look(ref currentBill, "currentBill");
             Scribe_Values.Look(ref billsInitialized, "billsInitialized", false);
+            Scribe_Values.Look(ref coreTier, "coreTier", 0);
+            Scribe_Values.Look(ref wantedCoreTier, "wantedCoreTier", 0);
             if (Scribe.mode != LoadSaveMode.Saving)
             {
                 Scribe_Deep.Look(ref acceptFilter, "acceptFilter");
@@ -590,7 +597,74 @@ namespace MendingMod
 
         public static float LoadFactorAt(float setting) => IdleLoadFraction + (1f - IdleLoadFraction) * setting * setting;
 
-        public int EffectiveSkill => SkillAt(overclock);
+        public int EffectiveSkill => Mathf.Clamp(SkillAt(overclock) + CoreSkillBonus, 0, 20);
+
+        // ---- cores
+        public int CoreTier => coreTier;
+
+        public int WantedCoreTier => wantedCoreTier;
+
+        public bool CoreUpgradePending => wantedCoreTier > coreTier && MenderCores.DefFor(wantedCoreTier) != null;
+
+        public int CoreSkillBonus => coreTier * MenderCores.SkillPerTier;
+
+        // Work goes this much faster, and materials cost this fraction of normal.
+        public float CoreSpeedFactor => 1f + coreTier * MenderCores.SpeedPerTier;
+
+        public float CoreCostFactor => Mathf.Max(0f, 1f - coreTier * MenderCores.SavingPerTier);
+
+        // What a repair of this item costs at this skill, after the core's saving.
+        private List<ThingDefCountClass> CostsFor(Thing item, int skill)
+        {
+            float factor = CoreCostFactor;
+            return MendingUtility.GetDynamicIngredientCosts(item, skill, ignoreResearch: true)
+                .Where(c => c.thingDef != null && c.count > 0)
+                .Select(c => new ThingDefCountClass(c.thingDef, Mathf.Max(1, Mathf.CeilToInt(c.count * factor))))
+                .ToList();
+        }
+
+        // A constructor has brought the wanted core. The core it replaces comes back out, except
+        // the basic subcore it was built with, which is part of the building (and is refunded with
+        // it when it is deconstructed).
+        public void InstallCore(Thing core)
+        {
+            int tier = -1;
+            for (int i = 1; i <= MenderCores.MaxTier; i++)
+            {
+                if (MenderCores.DefFor(i) == core.def)
+                    tier = i;
+            }
+            if (tier <= coreTier || !Spawned)
+            {
+                GenPlace.TryPlaceThing(core, Position, Map, ThingPlaceMode.Near);
+                return;
+            }
+
+            if (coreTier > 0)
+            {
+                ThingDef oldDef = MenderCores.DefFor(coreTier);
+                if (oldDef != null)
+                    GenPlace.TryPlaceThing(ThingMaker.MakeThing(oldDef), Position, Map, ThingPlaceMode.Near);
+            }
+            core.Destroy(DestroyMode.Vanish);
+            coreTier = tier;
+            if (wantedCoreTier < coreTier)
+                wantedCoreTier = coreTier;
+            Messages.Message("DynamicMending.CoreInstalled".Translate(MenderCores.LabelFor(coreTier)), this, MessageTypeDefOf.PositiveEvent, false);
+        }
+
+        // Deconstructed: an upgraded core comes back out with the refund.
+        public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
+        {
+            if (mode == DestroyMode.Deconstruct && Spawned && coreTier > 0)
+            {
+                ThingDef def = MenderCores.DefFor(coreTier);
+                if (def != null)
+                    GenPlace.TryPlaceThing(ThingMaker.MakeThing(def), Position, Map, ThingPlaceMode.Near);
+                coreTier = 0;
+            }
+            base.Destroy(mode);
+        }
 
         public float BasePowerConsumption => PowerTrader?.Props.PowerConsumption ?? 0f;
 
@@ -791,10 +865,7 @@ namespace MendingMod
             currentItem = damagedItem;
             jobSkill = skill;
             recycling = false;
-            pendingCosts = MendingUtility.GetDynamicIngredientCosts(damagedItem, skill, ignoreResearch: true)
-                .Where(c => c.thingDef != null && c.count > 0)
-                .Select(c => new ThingDefCountClass(c.thingDef, c.count))
-                .ToList();
+            pendingCosts = CostsFor(damagedItem, skill);
             state = MenderState.Gathering;
             idleReason = null;
             Gather();
@@ -868,7 +939,7 @@ namespace MendingMod
 
             idleReason = null;
             workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(
-                MendingUtility.GetDynamicWorkAmount(currentItem, jobSkill, ignoreResearch: true) * PreceptWorkFactor / overclock));
+                MendingUtility.GetDynamicWorkAmount(currentItem, jobSkill, ignoreResearch: true) * PreceptWorkFactor / (overclock * CoreSpeedFactor)));
             workTicksRemaining = workTicksTotal;
             state = MenderState.Working;
         }
@@ -993,7 +1064,7 @@ namespace MendingMod
             recycling = true;
             idleReason = null;
             jobSkill = EffectiveSkill;
-            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.RecycleWorkAmount(thing) * PreceptWorkFactor / overclock));
+            workTicksTotal = Mathf.Max(60, Mathf.RoundToInt(MendingUtility.RecycleWorkAmount(thing) * PreceptWorkFactor / (overclock * CoreSpeedFactor)));
             workTicksRemaining = workTicksTotal;
             state = MenderState.Working;
         }
@@ -1184,6 +1255,19 @@ namespace MendingMod
                 };
             }
 
+            if (Faction == Faction.OfPlayer && Enumerable.Range(coreTier + 1, MenderCores.MaxTier - coreTier).Any(i => MenderCores.DefFor(i) != null))
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = CoreUpgradePending
+                        ? "DynamicMending.CoreUpgradePendingLabel".Translate(MenderCores.LabelFor(wantedCoreTier))
+                        : "DynamicMending.CoreUpgradeLabel".Translate(),
+                    defaultDesc = "DynamicMending.CoreUpgradeDesc".Translate(MenderCores.LabelFor(coreTier)),
+                    icon = MenderCores.DefFor(CoreUpgradePending ? wantedCoreTier : coreTier + 1)?.uiIcon ?? TexCommand.Install,
+                    action = OpenCoreMenu,
+                };
+            }
+
             yield return new Command_Action
             {
                 defaultLabel = "DynamicMending.OverclockLabel".Translate(overclock.ToStringPercent()),
@@ -1192,6 +1276,35 @@ namespace MendingMod
                 action = () => Find.WindowStack.Add(new Window_MenderOverclock(this)),
             };
 
+        }
+
+        private void OpenCoreMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            for (int i = coreTier + 1; i <= MenderCores.MaxTier; i++)
+            {
+                ThingDef def = MenderCores.DefFor(i);
+                if (def == null)
+                    continue;
+                int tier = i;
+                options.Add(new FloatMenuOption("DynamicMending.CoreOption".Translate(def.LabelCap,
+                    tier * MenderCores.SkillPerTier, (tier * MenderCores.SpeedPerTier).ToStringPercent(), (tier * MenderCores.SavingPerTier).ToStringPercent()),
+                    () => wantedCoreTier = tier, def));
+            }
+            if (CoreUpgradePending)
+                options.Add(new FloatMenuOption("DynamicMending.CoreCancel".Translate(), () => wantedCoreTier = coreTier));
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private string CoreLine()
+        {
+            string line = coreTier == 0
+                ? "DynamicMending.CoreBasic".Translate(MenderCores.LabelFor(0)).ToString()
+                : "DynamicMending.CoreUpgraded".Translate(MenderCores.LabelFor(coreTier), CoreSkillBonus,
+                    (CoreSpeedFactor - 1f).ToStringPercent(), (1f - CoreCostFactor).ToStringPercent()).ToString();
+            if (CoreUpgradePending)
+                line += "\n" + "DynamicMending.CoreWaiting".Translate(MenderCores.LabelFor(wantedCoreTier));
+            return line;
         }
 
         // ------------------------------------------------------------------ status tab
@@ -1269,7 +1382,7 @@ namespace MendingMod
                             stock[t.def] = had + t.stackCount;
                         }
 
-                        foreach (ThingDefCountClass cost in MendingUtility.GetDynamicIngredientCosts(next, EffectiveSkill, ignoreResearch: true))
+                        foreach (ThingDefCountClass cost in CostsFor(next, EffectiveSkill))
                         {
                             stock.TryGetValue(cost.thingDef, out int have);
                             lines.Add("DynamicMending.TabCostLine".Translate(cost.count, cost.thingDef.label, have));
@@ -1328,6 +1441,8 @@ namespace MendingMod
 
             sb.AppendLine();
             sb.Append("DynamicMending.OverclockInspect".Translate(overclock.ToStringPercent(), EffectiveSkill));
+            sb.AppendLine();
+            sb.Append(CoreLine());
 
             sb.AppendLine();
             sb.Append("DynamicMending.BillsInspect".Translate(billStack.Count));

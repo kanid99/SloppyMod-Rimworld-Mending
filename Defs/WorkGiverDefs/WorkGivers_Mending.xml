@@ -55,4 +55,17 @@
     </requiredCapacities>
   </WorkGiverDef>
 
+  <WorkGiverDef>
+    <defName>InstallMenderCore</defName>
+    <label>install repair center cores</label>
+    <giverClass>MendingMod.WorkGiver_InstallMenderCore</giverClass>
+    <workType>Construction</workType>
+    <verb>install a core in</verb>
+    <gerund>installing a core in</gerund>
+    <priorityInType>60</priorityInType>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+  </WorkGiverDef>
+
 </Defs>

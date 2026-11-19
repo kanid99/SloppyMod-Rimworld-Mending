@@ -9,6 +9,7 @@ namespace MendingMod
         public static JobDef DoMend;
         public static JobDef EmptyMenderWaste;
         public static JobDef RepairWorn;
+        public static JobDef InstallMenderCore;
 
         public static RecipeDef MenderBill_Repair;
         public static RecipeDef MenderBill_Recycle;

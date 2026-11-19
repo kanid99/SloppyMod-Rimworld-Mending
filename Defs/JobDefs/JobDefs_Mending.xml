@@ -20,4 +20,10 @@
     <reportString>emptying waste from TargetA.</reportString>
   </JobDef>
 
+  <JobDef>
+    <defName>InstallMenderCore</defName>
+    <driverClass>MendingMod.JobDriver_InstallMenderCore</driverClass>
+    <reportString>installing a core in TargetA.</reportString>
+  </JobDef>
+
 </Defs>
