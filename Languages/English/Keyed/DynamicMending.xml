@@ -122,6 +122,10 @@
   <DynamicMending.CoreUpgraded>Core: {0} (+{1} skill, {2} faster, {3} fewer materials)</DynamicMending.CoreUpgraded>
   <DynamicMending.CoreWaiting>Waiting for a constructor to install a {0}.</DynamicMending.CoreWaiting>
   <DynamicMending.CoreInstalled>The repair center now runs on a {0}.</DynamicMending.CoreInstalled>
+  <DynamicMending.BillAllowComponents>Repair gear that needs components</DynamicMending.BillAllowComponents>
+  <DynamicMending.BillAllowAdvancedComponents>Repair gear that needs advanced components</DynamicMending.BillAllowAdvancedComponents>
+  <DynamicMending.BillAllowComponentsDesc>Unticked, this bill skips gear whose repair would cost these (judged from the actual repair cost, after any core saving) and passes it on to the next bill - or out a reject chute if no bill takes it.</DynamicMending.BillAllowComponentsDesc>
+  <DynamicMending.RejectNeedsComponents>its repair needs components a bill does not allow</DynamicMending.RejectNeedsComponents>
   <DynamicMending.RejectNotGear>not apparel or a weapon</DynamicMending.RejectNotGear>
   <DynamicMending.RejectForbidden>forbidden</DynamicMending.RejectForbidden>
   <DynamicMending.RejectThreshold>above the auto-repair threshold of {0}</DynamicMending.RejectThreshold>

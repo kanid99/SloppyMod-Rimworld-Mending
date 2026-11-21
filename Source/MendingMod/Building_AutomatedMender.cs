@@ -785,6 +785,8 @@ namespace MendingMod
                     reason = "DynamicMending.RejectThreshold".Translate(MendingModMain.Settings.autoRepairBelow.ToStringPercent());
                 else if (!IsMendable(thing))
                     reason = "DynamicMending.RejectTooAdvanced".Translate();
+                else if ((!mb.allowComponents || !mb.allowAdvancedComponents) && !mb.AllowsCosts(CostsFor(thing, EffectiveSkill)))
+                    reason = "DynamicMending.RejectNeedsComponents".Translate();
 
                 if (reason == null)
                 {

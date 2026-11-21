@@ -13,12 +13,36 @@ namespace MendingMod
     /// </summary>
     public class Bill_Mender : Bill_Production
     {
+        // Repair bills only: whether to take gear whose repair would cost components / advanced
+        // components. Unticked, such gear is passed on to the next bill.
+        public bool allowComponents = true;
+        public bool allowAdvancedComponents = true;
         public Bill_Mender()
         {
         }
 
         public Bill_Mender(RecipeDef recipe) : base(recipe)
         {
+        }
+
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            Scribe_Values.Look(ref allowComponents, "allowComponents", true);
+            Scribe_Values.Look(ref allowAdvancedComponents, "allowAdvancedComponents", true);
+        }
+
+        /// <summary>Whether this bill's component settings let it pay a repair costing these materials.</summary>
+        public bool AllowsCosts(List<ThingDefCountClass> costs)
+        {
+            foreach (ThingDefCountClass cost in costs)
+            {
+                if (!allowComponents && cost.thingDef == ThingDefOf.ComponentIndustrial)
+                    return false;
+                if (!allowAdvancedComponents && cost.thingDef == ThingDefOf.ComponentSpacer)
+                    return false;
+            }
+            return true;
         }
 
         public bool IsRecycle
@@ -41,6 +65,8 @@ namespace MendingMod
         public override Bill Clone()
         {
             Bill_Mender copy = (Bill_Mender)base.Clone();
+            copy.allowComponents = allowComponents;
+            copy.allowAdvancedComponents = allowAdvancedComponents;
             return copy;
         }
     }
@@ -224,6 +250,15 @@ namespace MendingMod
                     if (bill.unpauseWhenYouHave >= bill.targetCount)
                         bill.unpauseWhenYouHave = Mathf.Max(0, bill.targetCount - 1);
                 }
+            }
+
+            if (!bill.IsRecycle)
+            {
+                list.Gap(12f);
+                list.CheckboxLabeled("DynamicMending.BillAllowComponents".Translate(), ref bill.allowComponents,
+                    "DynamicMending.BillAllowComponentsDesc".Translate());
+                list.CheckboxLabeled("DynamicMending.BillAllowAdvancedComponents".Translate(), ref bill.allowAdvancedComponents,
+                    "DynamicMending.BillAllowComponentsDesc".Translate());
             }
 
             list.Gap(12f);
