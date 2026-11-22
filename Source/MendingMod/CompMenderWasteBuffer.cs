@@ -233,17 +233,18 @@ namespace MendingMod
                 * MendingUtility.SkillEffortFactor(skillLevel)
                 * MendingModMain.Settings.degradationMultiplier;
 
-            AddWaste(wasteAmount, UsesToxicIngredients(item.def, item.Stuff));
+            AddWaste(wasteAmount, UsesToxicIngredients(item));
         }
 
-        private static bool UsesToxicIngredients(ThingDef itemDef, ThingDef stuffDef)
+        private static bool UsesToxicIngredients(Thing item)
         {
-            if (IsToxicMaterial(stuffDef))
+            if (IsToxicMaterial(item.Stuff))
                 return true;
 
-            if (itemDef.costList != null)
+            List<ThingDefCountClass> costs = MendingUtility.BuildCost(item);
+            if (costs != null)
             {
-                foreach (ThingDefCountClass cost in itemDef.costList)
+                foreach (ThingDefCountClass cost in costs)
                 {
                     if (IsToxicMaterial(cost.thingDef))
                         return true;

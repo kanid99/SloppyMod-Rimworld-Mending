@@ -42,7 +42,7 @@ namespace MendingMod
             if (item.Stuff != null && SpacerMaterials.Contains(item.Stuff.defName))
                 return TechLevel.Spacer;
 
-            costs = costs ?? CostListCalculator.CostListAdjusted(item);
+            costs = costs ?? BuildCost(item);
             if (!costs.NullOrEmpty())
             {
                 foreach (ThingDefCountClass cost in costs)
@@ -149,6 +149,77 @@ namespace MendingMod
             return !ignoreResearch && IsUnfamiliar(item);
         }
 
+        // What an item is made of. Normally its own cost list (scaled for its stuff), but some mods
+        // put the cost only on a separate recipe that makes the item - Vanilla Apparel Expanded's
+        // quiver is 30 leather and 15 wood in a recipe, with no cost list on the item at all - and
+        // reading only the item made it look free: nothing to recycle, no materials to repair.
+        // So an empty cost list falls back to the recipe that makes the item.
+        public static List<ThingDefCountClass> BuildCost(Thing item)
+        {
+            List<ThingDefCountClass> costs = CostListCalculator.CostListAdjusted(item);
+            if (!costs.NullOrEmpty() || item == null)
+                return costs;
+            return RecipeCost(item) ?? costs;
+        }
+
+        private static readonly Dictionary<ThingDef, RecipeDef> recipeForDef = new Dictionary<ThingDef, RecipeDef>();
+
+        private static RecipeDef RecipeMaking(ThingDef def)
+        {
+            if (recipeForDef.TryGetValue(def, out RecipeDef cached))
+                return cached;
+            RecipeDef found = null;
+            foreach (RecipeDef recipe in DefDatabase<RecipeDef>.AllDefsListForReading)
+            {
+                if (recipe.products == null || recipe.ingredients.NullOrEmpty())
+                    continue;
+                if (recipe.products.Any(p => p.thingDef == def))
+                {
+                    found = recipe;
+                    break;
+                }
+            }
+            recipeForDef[def] = found;
+            return found;
+        }
+
+        // The recipe's ingredients for one item. An ingredient that is a single thing is that
+        // thing; one that is a choice ("any leather") is the item's own stuff if it has one that
+        // fits, else the cheapest thing the choice allows - the same pick a colonist would make.
+        private static List<ThingDefCountClass> RecipeCost(Thing item)
+        {
+            RecipeDef recipe = RecipeMaking(item.def);
+            if (recipe == null)
+                return null;
+            int made = Mathf.Max(1, recipe.products.First(p => p.thingDef == item.def).count);
+
+            List<ThingDefCountClass> result = new List<ThingDefCountClass>();
+            foreach (IngredientCount ingredient in recipe.ingredients)
+            {
+                ThingDef def = null;
+                if (ingredient.IsFixedIngredient)
+                    def = ingredient.FixedIngredient;
+                else if (item.Stuff != null && ingredient.filter.Allows(item.Stuff))
+                    def = item.Stuff;
+                else
+                    def = ingredient.filter.AllowedThingDefs
+                        .Where(d => d.category == ThingCategory.Item && (recipe.fixedIngredientFilter == null || recipe.fixedIngredientFilter.Allows(d)))
+                        .OrderBy(d => d.BaseMarketValue)
+                        .FirstOrDefault();
+                if (def == null)
+                    continue;
+
+                float units = ingredient.GetBaseCount() / Mathf.Max(0.0001f, recipe.IngredientValueGetter.ValuePerUnitOf(def));
+                int count = Mathf.Max(1, Mathf.RoundToInt(units / made));
+                ThingDefCountClass existing = result.FirstOrDefault(c => c.thingDef == def);
+                if (existing != null)
+                    existing.count += count;
+                else
+                    result.Add(new ThingDefCountClass(def, count));
+            }
+            return result.Count > 0 ? result : null;
+        }
+
         // Undefined means "nothing known and no spacer materials found", which stays allowed.
         public static bool CanBenchRepair(ThingDef benchDef, Thing item)
         {
@@ -159,7 +230,7 @@ namespace MendingMod
 
             // Looked up once and handed to both checks below. This runs for every candidate in the
             // work giver's target search, and both of them used to fetch it independently.
-            List<ThingDefCountClass> costs = CostListCalculator.CostListAdjusted(item);
+            List<ThingDefCountClass> costs = BuildCost(item);
 
             // Separate from the tech-level cap on purpose: plenty of industrial-tier gear is built
             // around components, and a bench with no power has no way to rebuild one.
@@ -179,7 +250,7 @@ namespace MendingMod
             if (item.Stuff == ThingDefOf.ComponentIndustrial || item.Stuff == ThingDefOf.ComponentSpacer)
                 return true;
 
-            costs = costs ?? CostListCalculator.CostListAdjusted(item);
+            costs = costs ?? BuildCost(item);
             if (costs.NullOrEmpty())
                 return false;
 
@@ -210,7 +281,7 @@ namespace MendingMod
         public static List<ThingDefCountClass> RecycleYield(Thing item, int skillLevel)
         {
             List<ThingDefCountClass> result = new List<ThingDefCountClass>();
-            List<ThingDefCountClass> costs = CostListCalculator.CostListAdjusted(item);
+            List<ThingDefCountClass> costs = BuildCost(item);
             if (costs.NullOrEmpty())
                 return result;
 
@@ -231,7 +302,7 @@ namespace MendingMod
         // Recycling one would simply destroy it, so bills and the repair centre refuse them.
         public static bool CanEverRecycle(Thing item)
         {
-            return !CostListCalculator.CostListAdjusted(item).NullOrEmpty();
+            return !BuildCost(item).NullOrEmpty();
         }
 
         public static float RecycleWorkAmount(Thing item)
@@ -480,7 +551,7 @@ namespace MendingMod
             float raw = missing * skillMult * (unfamiliar ? UnfamiliarCostFactor : 1f);
             float fraction = Mathf.Clamp01(raw) * MendingModMain.Settings.degradationMultiplier;
 
-            List<ThingDefCountClass> baseCosts = CostListCalculator.CostListAdjusted(item);
+            List<ThingDefCountClass> baseCosts = BuildCost(item);
             string baseList = baseCosts.NullOrEmpty()
                 ? "none"
                 : string.Join(", ", baseCosts.Select(c => $"{c.thingDef.defName} x{c.count}"));
@@ -524,7 +595,7 @@ namespace MendingMod
                 return result;
             }
 
-            List<ThingDefCountClass> adjusted = CostListCalculator.CostListAdjusted(item);
+            List<ThingDefCountClass> adjusted = BuildCost(item);
             if (adjusted.NullOrEmpty())
                 return result;
 
