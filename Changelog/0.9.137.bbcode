@@ -1,0 +1,5 @@
+[h2]Build 0.9.137[/h2]
+[h3]Fixed[/h3]
+[list]
+[*]Gear whose materials are only on its crafting recipe (such as Vanilla Apparel Expanded's quiver) could still be refused as "cannot be recycled" in large mod lists: the check that skips conversion recipes was too strict and could throw out the real recipe when a mod added an unusual item to a material category like "any leather". It now only rules out a recipe whose ingredient is the item itself or nothing but gear. With dev mode on, any gear that still counts as made of nothing is reported in the log.
+[/list]

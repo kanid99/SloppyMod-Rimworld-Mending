@@ -184,6 +184,8 @@ namespace MendingMod
                 break;
             }
             recipeForDef[def] = found;
+            if (found == null && Prefs.DevMode && def.recipeMaker == null)
+                Log.Message("[DynamicMending] " + def.defName + " has no cost list and no recipe made from materials was found for it; it counts as made of nothing (free to repair, cannot be recycled).");
             return found;
         }
 
@@ -202,17 +204,26 @@ namespace MendingMod
             return null;
         }
 
+        // Only a recipe that makes the item from materials. A conversion recipe takes gear in
+        // (dye this jacket, upgrade that helmet): an ingredient that is the item itself, or that
+        // is gear and nothing but gear, rules the recipe out. A broad choice like "any leather"
+        // is not ruled out just because some mod's oddity in that category looks like gear.
         private static bool MadeFromMaterials(RecipeDef recipe, ThingDef product)
         {
             foreach (IngredientCount ingredient in recipe.ingredients)
             {
-                foreach (ThingDef d in ingredient.filter.AllowedThingDefs)
-                {
-                    if (d == product || d.IsApparel || d.IsWeapon || d.IsCorpse || d.race != null)
-                        return false;
-                }
+                List<ThingDef> allowed = ingredient.filter.AllowedThingDefs.ToList();
+                if (allowed.Contains(product))
+                    return false;
+                if (allowed.Count > 0 && allowed.All(IsGearish))
+                    return false;
             }
             return true;
+        }
+
+        private static bool IsGearish(ThingDef d)
+        {
+            return d.IsApparel || d.IsWeapon || d.IsCorpse || d.race != null;
         }
 
         // The recipe's ingredients for one item. An ingredient that is a single thing is that
@@ -239,7 +250,7 @@ namespace MendingMod
                 }
                 else
                     def = ingredient.filter.AllowedThingDefs
-                        .Where(d => d.category == ThingCategory.Item && (recipe.fixedIngredientFilter == null || recipe.fixedIngredientFilter.Allows(d)))
+                        .Where(d => d.category == ThingCategory.Item && !IsGearish(d) && (recipe.fixedIngredientFilter == null || recipe.fixedIngredientFilter.Allows(d)))
                         .OrderBy(d => d.BaseMarketValue)
                         .FirstOrDefault();
                 if (def == null)
