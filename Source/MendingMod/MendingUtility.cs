@@ -173,14 +173,31 @@ namespace MendingMod
             {
                 if (recipe.products == null || recipe.ingredients.NullOrEmpty())
                     continue;
-                if (recipe.products.Any(p => p.thingDef == def))
-                {
-                    found = recipe;
-                    break;
-                }
+                if (!recipe.products.Any(p => p.thingDef == def))
+                    continue;
+                // Only a recipe that makes the item from materials. Conversion recipes - dyeing,
+                // re-tailoring, upgrading one piece of gear into another - take gear in, and
+                // "made of a jacket" is not something to recycle a jacket into.
+                if (!MadeFromMaterials(recipe, def))
+                    continue;
+                found = recipe;
+                break;
             }
             recipeForDef[def] = found;
             return found;
+        }
+
+        private static bool MadeFromMaterials(RecipeDef recipe, ThingDef product)
+        {
+            foreach (IngredientCount ingredient in recipe.ingredients)
+            {
+                foreach (ThingDef d in ingredient.filter.AllowedThingDefs)
+                {
+                    if (d == product || d.IsApparel || d.IsWeapon || d.IsCorpse || d.race != null)
+                        return false;
+                }
+            }
+            return true;
         }
 
         // The recipe's ingredients for one item. An ingredient that is a single thing is that
