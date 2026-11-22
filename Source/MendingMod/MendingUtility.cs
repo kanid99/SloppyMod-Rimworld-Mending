@@ -187,6 +187,21 @@ namespace MendingMod
             return found;
         }
 
+        // "Any leather", "any wood", "any fabric", "any metal": the plain, everyday one.
+        private static readonly string[] PlainDefaults = { "Leather_Plain", "WoodLog", "Cloth", "Steel" };
+
+        private static ThingDef PlainDefault(IngredientCount ingredient, RecipeDef recipe)
+        {
+            foreach (string name in PlainDefaults)
+            {
+                ThingDef d = DefDatabase<ThingDef>.GetNamedSilentFail(name);
+                if (d != null && ingredient.filter.Allows(d)
+                    && (recipe.fixedIngredientFilter == null || recipe.fixedIngredientFilter.Allows(d)))
+                    return d;
+            }
+            return null;
+        }
+
         private static bool MadeFromMaterials(RecipeDef recipe, ThingDef product)
         {
             foreach (IngredientCount ingredient in recipe.ingredients)
@@ -202,7 +217,8 @@ namespace MendingMod
 
         // The recipe's ingredients for one item. An ingredient that is a single thing is that
         // thing; one that is a choice ("any leather") is the item's own stuff if it has one that
-        // fits, else the cheapest thing the choice allows - the same pick a colonist would make.
+        // fits, else the plain everyday option (plain leather, wood, cloth, steel), else the
+        // cheapest thing the choice allows.
         private static List<ThingDefCountClass> RecipeCost(Thing item)
         {
             RecipeDef recipe = RecipeMaking(item.def);
@@ -218,6 +234,9 @@ namespace MendingMod
                     def = ingredient.FixedIngredient;
                 else if (item.Stuff != null && ingredient.filter.Allows(item.Stuff))
                     def = item.Stuff;
+                else if ((def = PlainDefault(ingredient, recipe)) != null)
+                {
+                }
                 else
                     def = ingredient.filter.AllowedThingDefs
                         .Where(d => d.category == ThingCategory.Item && (recipe.fixedIngredientFilter == null || recipe.fixedIngredientFilter.Allows(d)))
