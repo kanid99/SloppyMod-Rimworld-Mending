@@ -162,31 +162,45 @@ namespace MendingMod
             return RecipeCost(item) ?? costs;
         }
 
-        private static readonly Dictionary<ThingDef, RecipeDef> recipeForDef = new Dictionary<ThingDef, RecipeDef>();
+        // Every recipe that makes the item from materials (see MadeFromMaterials), first found
+        // first. Some items have more than one - another mod's variant, a cheaper workshop version
+        // - and the first may not resolve to anything usable, so the cost tries each in turn.
+        private static readonly Dictionary<ThingDef, List<RecipeDef>> recipesForDef = new Dictionary<ThingDef, List<RecipeDef>>();
 
-        private static RecipeDef RecipeMaking(ThingDef def)
+        private static List<RecipeDef> RecipesMaking(ThingDef def)
         {
-            if (recipeForDef.TryGetValue(def, out RecipeDef cached))
+            if (recipesForDef.TryGetValue(def, out List<RecipeDef> cached))
                 return cached;
-            RecipeDef found = null;
+            List<RecipeDef> found = new List<RecipeDef>();
+            List<string> skipped = new List<string>();
             foreach (RecipeDef recipe in DefDatabase<RecipeDef>.AllDefsListForReading)
             {
                 if (recipe.products == null || recipe.ingredients.NullOrEmpty())
                     continue;
                 if (!recipe.products.Any(p => p.thingDef == def))
                     continue;
-                // Only a recipe that makes the item from materials. Conversion recipes - dyeing,
-                // re-tailoring, upgrading one piece of gear into another - take gear in, and
-                // "made of a jacket" is not something to recycle a jacket into.
-                if (!MadeFromMaterials(recipe, def))
-                    continue;
-                found = recipe;
-                break;
+                if (MadeFromMaterials(recipe, def))
+                    found.Add(recipe);
+                else
+                    skipped.Add(recipe.defName);
             }
-            recipeForDef[def] = found;
-            if (found == null && Prefs.DevMode && def.recipeMaker == null)
-                Log.Message("[DynamicMending] " + def.defName + " has no cost list and no recipe made from materials was found for it; it counts as made of nothing (free to repair, cannot be recycled).");
+            recipesForDef[def] = found;
+            if (found.Count == 0 && Prefs.DevMode)
+                Log.Message("[DynamicMending] " + def.defName + " has no cost list and no recipe made from materials"
+                    + (skipped.Count > 0 ? " (skipped as conversions: " + string.Join(", ", skipped) + ")" : "")
+                    + "; it counts as made of nothing (free to repair, cannot be recycled).");
             return found;
+        }
+
+        private static List<ThingDefCountClass> RecipeCost(Thing item)
+        {
+            foreach (RecipeDef recipe in RecipesMaking(item.def))
+            {
+                List<ThingDefCountClass> cost = RecipeCost(item, recipe);
+                if (cost != null)
+                    return cost;
+            }
+            return null;
         }
 
         // "Any leather", "any wood", "any fabric", "any metal": the plain, everyday one.
@@ -230,11 +244,8 @@ namespace MendingMod
         // thing; one that is a choice ("any leather") is the item's own stuff if it has one that
         // fits, else the plain everyday option (plain leather, wood, cloth, steel), else the
         // cheapest thing the choice allows.
-        private static List<ThingDefCountClass> RecipeCost(Thing item)
+        private static List<ThingDefCountClass> RecipeCost(Thing item, RecipeDef recipe)
         {
-            RecipeDef recipe = RecipeMaking(item.def);
-            if (recipe == null)
-                return null;
             int made = Mathf.Max(1, recipe.products.First(p => p.thingDef == item.def).count);
 
             List<ThingDefCountClass> result = new List<ThingDefCountClass>();
