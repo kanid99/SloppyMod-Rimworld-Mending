@@ -203,6 +203,28 @@ namespace MendingMod
             return null;
         }
 
+        // Repairing gear nothing says the materials of (no cost list, no recipe: quest rewards,
+        // relics, trader-only gear) would otherwise be free. It costs a plain material worth half
+        // the item's value for a full rebuild instead - cloth for apparel, steel for weapons,
+        // plasteel for spacer gear and better - scaled by damage like any repair. Recycling such
+        // gear still gives nothing back.
+        public static List<ThingDefCountClass> ValueBasedCost(Thing item)
+        {
+            if (item == null)
+                return null;
+            bool spacer = item.def.techLevel >= TechLevel.Spacer;
+            ThingDef material = spacer ? ThingDefOf.Plasteel
+                : item.def.IsApparel ? (DefDatabase<ThingDef>.GetNamedSilentFail("Cloth") ?? ThingDefOf.Steel)
+                : ThingDefOf.Steel;
+            if (material == null || material.BaseMarketValue <= 0f)
+                return null;
+            float value = item.def.BaseMarketValue;
+            if (value <= 0f)
+                return null;
+            int count = Mathf.Max(1, Mathf.RoundToInt(value * 0.5f / material.BaseMarketValue));
+            return new List<ThingDefCountClass> { new ThingDefCountClass(material, count) };
+        }
+
         // "Any leather", "any wood", "any fabric", "any metal": the plain, everyday one.
         private static readonly string[] PlainDefaults = { "Leather_Plain", "WoodLog", "Cloth", "Steel" };
 
@@ -358,9 +380,38 @@ namespace MendingMod
 
         // Nothing to get back at all - a quest reward with no recipe, a def with no cost list.
         // Recycling one would simply destroy it, so bills and the repair centre refuse them.
+        // Recycling works out what the item is made of from the item itself, then from the recipe
+        // that makes it (BuildCost); if neither says, it is still recycled - it simply gives
+        // nothing back. So any piece of gear can be recycled.
         public static bool CanEverRecycle(Thing item)
         {
-            return !BuildCost(item).NullOrEmpty();
+            return item != null && (item.def.IsApparel || item.def.IsWeapon);
+        }
+
+        /// <summary>
+        /// The material an item is "made of" for the material filters: its stuff if it has one,
+        /// otherwise the largest stuff ingredient in its build cost (a steel flak vest is metal).
+        /// </summary>
+        public static ThingDef MainMaterial(Thing item)
+        {
+            if (item == null)
+                return null;
+            if (item.Stuff != null)
+                return item.Stuff;
+            ThingDef best = null;
+            int bestCount = 0;
+            List<ThingDefCountClass> costs = BuildCost(item);
+            if (costs == null)
+                return null;
+            foreach (ThingDefCountClass cost in costs)
+            {
+                if (cost.thingDef != null && cost.thingDef.IsStuff && cost.count > bestCount)
+                {
+                    best = cost.thingDef;
+                    bestCount = cost.count;
+                }
+            }
+            return best;
         }
 
         public static float RecycleWorkAmount(Thing item)
@@ -654,6 +705,8 @@ namespace MendingMod
             }
 
             List<ThingDefCountClass> adjusted = BuildCost(item);
+            if (adjusted.NullOrEmpty())
+                adjusted = ValueBasedCost(item);
             if (adjusted.NullOrEmpty())
                 return result;
 

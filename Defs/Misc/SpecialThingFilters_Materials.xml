@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- "Made of cloth / leather / metal / wood" checkboxes for item filters: see MaterialKindFilters.cs. -->
+  <SpecialThingFilterDef>
+    <defName>DM_AllowMadeOfCloth_Apparel</defName>
+    <label>allow made of cloth</label>
+    <description>Allow apparel made of cloth: its material, or the main material in its build cost.</description>
+    <parentCategory>Apparel</parentCategory>
+    <allowedByDefault>true</allowedByDefault>
+    <saveKey>dmAllowMadeOfClothApparel</saveKey>
+    <workerClass>MendingMod.SpecialThingFilterWorker_MadeOfCloth</workerClass>
+  </SpecialThingFilterDef>
+  <SpecialThingFilterDef>
+    <defName>DM_AllowMadeOfLeather_Apparel</defName>
+    <label>allow made of leather</label>
+    <description>Allow apparel made of leather: its material, or the main material in its build cost.</description>
+    <parentCategory>Apparel</parentCategory>
+    <allowedByDefault>true</allowedByDefault>
+    <saveKey>dmAllowMadeOfLeatherApparel</saveKey>
+    <workerClass>MendingMod.SpecialThingFilterWorker_MadeOfLeather</workerClass>
+  </SpecialThingFilterDef>
+  <SpecialThingFilterDef>
+    <defName>DM_AllowMadeOfMetal_Apparel</defName>
+    <label>allow made of metal</label>
+    <description>Allow apparel made of metal: its material, or the main material in its build cost.</description>
+    <parentCategory>Apparel</parentCategory>
+    <allowedByDefault>true</allowedByDefault>
+    <saveKey>dmAllowMadeOfMetalApparel</saveKey>
+    <workerClass>MendingMod.SpecialThingFilterWorker_MadeOfMetal</workerClass>
+  </SpecialThingFilterDef>
+  <SpecialThingFilterDef>
+    <defName>DM_AllowMadeOfWood_Apparel</defName>
+    <label>allow made of wood</label>
+    <description>Allow apparel made of wood: its material, or the main material in its build cost.</description>
+    <parentCategory>Apparel</parentCategory>
+    <allowedByDefault>true</allowedByDefault>
+    <saveKey>dmAllowMadeOfWoodApparel</saveKey>
+    <workerClass>MendingMod.SpecialThingFilterWorker_MadeOfWood</workerClass>
+  </SpecialThingFilterDef>
+  <SpecialThingFilterDef>
+    <defName>DM_AllowMadeOfMetal_Weapons</defName>
+    <label>allow made of metal</label>
+    <description>Allow weapons made of metal: its material, or the main material in its build cost.</description>
+    <parentCategory>Weapons</parentCategory>
+    <allowedByDefault>true</allowedByDefault>
+    <saveKey>dmAllowMadeOfMetalWeapons</saveKey>
+    <workerClass>MendingMod.SpecialThingFilterWorker_MadeOfMetal</workerClass>
+  </SpecialThingFilterDef>
+  <SpecialThingFilterDef>
+    <defName>DM_AllowMadeOfWood_Weapons</defName>
+    <label>allow made of wood</label>
+    <description>Allow weapons made of wood: its material, or the main material in its build cost.</description>
+    <parentCategory>Weapons</parentCategory>
+    <allowedByDefault>true</allowedByDefault>
+    <saveKey>dmAllowMadeOfWoodWeapons</saveKey>
+    <workerClass>MendingMod.SpecialThingFilterWorker_MadeOfWood</workerClass>
+  </SpecialThingFilterDef>
+
+</Defs>
