@@ -203,26 +203,66 @@ namespace MendingMod
             return null;
         }
 
-        // Repairing gear nothing says the materials of (no cost list, no recipe: quest rewards,
-        // relics, trader-only gear) would otherwise be free. It costs a plain material worth half
-        // the item's value for a full rebuild instead - cloth for apparel, steel for weapons,
-        // plasteel for spacer gear and better - scaled by damage like any repair. Recycling such
-        // gear still gives nothing back.
+        // Repairing gear nothing says the materials of - no cost list and no recipe that makes it
+        // (quest rewards, relics, trader-only gear) - would otherwise be free. Instead it takes
+        // generic materials for its tech era, or simple ones when it is plainly wood or metal:
+        //   wood (by name: bow, club, staff, wooden...)  wood logs
+        //   metal (by name, or any industrial+ weapon)   steel; plasteel from spacer up
+        //   otherwise, by era: neolithic leather / medieval and industrial cloth (apparel) or
+        //   steel (weapons) / spacer and up plasteel
+        // plus a component for industrial ranged weapons and an advanced component for
+        // ultra-tech gear. The main material comes to about half the item's value for a full
+        // rebuild; like every repair it is scaled by damage. Recycling such gear gives nothing.
         public static List<ThingDefCountClass> ValueBasedCost(Thing item)
         {
             if (item == null)
                 return null;
-            bool spacer = item.def.techLevel >= TechLevel.Spacer;
-            ThingDef material = spacer ? ThingDefOf.Plasteel
-                : item.def.IsApparel ? (DefDatabase<ThingDef>.GetNamedSilentFail("Cloth") ?? ThingDefOf.Steel)
-                : ThingDefOf.Steel;
-            if (material == null || material.BaseMarketValue <= 0f)
+            ThingDef def = item.def;
+            TechLevel tech = def.techLevel;
+            string name = (def.defName + " " + def.label).ToLowerInvariant();
+            bool looksWood = Has(name, "wood", "bow", "club", "staff", "plank", "bamboo", "log");
+            bool looksMetal = Has(name, "steel", "iron", "metal", "plate", "mail", "blade", "sword", "knife", "gun", "rifle", "pistol");
+
+            ThingDef wood = DefDatabase<ThingDef>.GetNamedSilentFail("WoodLog");
+            ThingDef leather = DefDatabase<ThingDef>.GetNamedSilentFail("Leather_Plain");
+            ThingDef cloth = DefDatabase<ThingDef>.GetNamedSilentFail("Cloth");
+            ThingDef metal = tech >= TechLevel.Spacer ? ThingDefOf.Plasteel : ThingDefOf.Steel;
+
+            ThingDef material;
+            if (looksWood && !looksMetal && wood != null)
+                material = wood;
+            else if (looksMetal || (def.IsWeapon && tech >= TechLevel.Industrial))
+                material = metal;
+            else if (tech >= TechLevel.Spacer)
+                material = ThingDefOf.Plasteel;
+            else if (tech <= TechLevel.Neolithic)
+                material = def.IsWeapon ? (wood ?? ThingDefOf.Steel) : (leather ?? cloth ?? ThingDefOf.Steel);
+            else
+                material = def.IsApparel ? (cloth ?? ThingDefOf.Steel) : ThingDefOf.Steel;
+
+            float value = def.BaseMarketValue;
+            if (material == null || material.BaseMarketValue <= 0f || value <= 0f)
                 return null;
-            float value = item.def.BaseMarketValue;
-            if (value <= 0f)
-                return null;
-            int count = Mathf.Max(1, Mathf.RoundToInt(value * 0.5f / material.BaseMarketValue));
-            return new List<ThingDefCountClass> { new ThingDefCountClass(material, count) };
+
+            List<ThingDefCountClass> cost = new List<ThingDefCountClass>
+            {
+                new ThingDefCountClass(material, Mathf.Max(1, Mathf.RoundToInt(value * 0.5f / material.BaseMarketValue))),
+            };
+            if (tech >= TechLevel.Ultra)
+                cost.Add(new ThingDefCountClass(ThingDefOf.ComponentSpacer, 1));
+            else if (tech == TechLevel.Industrial && def.IsRangedWeapon)
+                cost.Add(new ThingDefCountClass(ThingDefOf.ComponentIndustrial, 1));
+            return cost;
+        }
+
+        private static bool Has(string text, params string[] words)
+        {
+            foreach (string w in words)
+            {
+                if (text.Contains(w))
+                    return true;
+            }
+            return false;
         }
 
         // "Any leather", "any wood", "any fabric", "any metal": the plain, everyday one.
