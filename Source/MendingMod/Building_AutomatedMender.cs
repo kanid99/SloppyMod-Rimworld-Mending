@@ -761,11 +761,17 @@ namespace MendingMod
             why = null;
             bill = null;
             string firstReason = null;
+            string filterReason = null;
 
             foreach (Bill b in billStack)
             {
-                if (!(b is Bill_Mender mb) || !mb.ShouldDoNow() || !mb.ingredientFilter.Allows(thing))
+                if (!(b is Bill_Mender mb) || !mb.ShouldDoNow())
                     continue;
+                if (!mb.ingredientFilter.Allows(thing))
+                {
+                    filterReason = filterReason ?? FilterBlocker(mb, thing);
+                    continue;
+                }
 
                 if (mb.IsRecycle)
                 {
@@ -796,8 +802,44 @@ namespace MendingMod
                 firstReason = firstReason ?? reason;
             }
 
-            why = firstReason ?? "DynamicMending.RejectFiltered".Translate().ToString();
+            why = firstReason ?? filterReason ?? "DynamicMending.RejectFiltered".Translate().ToString();
             return Intake.Reject;
+        }
+
+        // Which part of a bill's filter turns this item away, so "no bill takes it" can name the
+        // checkbox to tick. Material filters (Material Filter's per-material entries, our own
+        // made-of-cloth/leather/metal/wood) are the easy one to miss: "Clear all" unticks them,
+        // and ticking the item afterwards does not tick them back.
+        private static string FilterBlocker(Bill_Mender bill, Thing thing)
+        {
+            ThingFilter filter = bill.ingredientFilter;
+            string name = bill.LabelCap;
+            if (!filter.Allows(thing.def))
+                return "DynamicMending.RejectFilterItem".Translate(name, thing.def.label).ToString();
+
+            foreach (SpecialThingFilterDef sf in DefDatabase<SpecialThingFilterDef>.AllDefsListForReading)
+            {
+                if (filter.Allows(sf))
+                    continue;
+                bool matches;
+                try
+                {
+                    matches = sf.Worker.CanEverMatch(thing.def) && sf.Worker.Matches(thing);
+                }
+                catch
+                {
+                    matches = false;
+                }
+                if (matches)
+                    return "DynamicMending.RejectFilterSpecial".Translate(name, sf.LabelCap).ToString();
+            }
+
+            if (thing.def.useHitPoints && !filter.AllowedHitPointsPercents.IncludesEpsilon(
+                    (float)thing.HitPoints / thing.MaxHitPoints))
+                return "DynamicMending.RejectFilterHitPoints".Translate(name).ToString();
+            if (thing.TryGetQuality(out QualityCategory q) && !filter.AllowedQualityLevels.Includes(q))
+                return "DynamicMending.RejectFilterQuality".Translate(name).ToString();
+            return null;
         }
 
         private void TryStartMend()

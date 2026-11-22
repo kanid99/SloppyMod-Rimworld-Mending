@@ -103,6 +103,10 @@
   <DynamicMending.LastRejected>Last rejected: {0} ({1})</DynamicMending.LastRejected>
   <DynamicMending.RejectTainted>tainted</DynamicMending.RejectTainted>
   <DynamicMending.RejectFiltered>no bill takes it</DynamicMending.RejectFiltered>
+  <DynamicMending.RejectFilterItem>no bill takes it ({0}: {1} is not ticked)</DynamicMending.RejectFilterItem>
+  <DynamicMending.RejectFilterSpecial>no bill takes it ({0}: "{1}" is not ticked)</DynamicMending.RejectFilterSpecial>
+  <DynamicMending.RejectFilterHitPoints>no bill takes it ({0}: outside its hit-point range)</DynamicMending.RejectFilterHitPoints>
+  <DynamicMending.RejectFilterQuality>no bill takes it ({0}: outside its quality range)</DynamicMending.RejectFilterQuality>
   <DynamicMending.RejectUndamaged>not damaged</DynamicMending.RejectUndamaged>
   <DynamicMending.MenderGathering>Holding {0}: waiting for {1} more {2} ({3} of {4} gathered)</DynamicMending.MenderGathering>
   <DynamicMending.CancelJobLabel>Cancel job</DynamicMending.CancelJobLabel>
